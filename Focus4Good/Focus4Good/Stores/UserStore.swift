@@ -12,19 +12,22 @@ final class UserStore: ObservableObject {
     @Published var errorMessage: String?
 
     static let shared = UserStore()
-    private init() {}
+    private init() {
+        currentUser = DummyData.currentUser
+        isAuthenticated = true
+    }
 
     // MARK: - Auth
     func signIn(email: String, password: String) async {
         isLoading = true
         errorMessage = nil
-        do { isLoading = false }
+        isLoading = false
     }
 
     func signUp(fullName: String, email: String, password: String) async {
         isLoading = true
         errorMessage = nil
-        do { isLoading = false }
+        isLoading = false
     }
 
     func signOut() {
@@ -36,7 +39,7 @@ final class UserStore: ObservableObject {
     // MARK: - User
     func fetchCurrentUser(userId: UUID) async {
         isLoading = true
-        do { isLoading = false }
+        isLoading = false
     }
 
     func updateProfile(fullName: String, profileImageUrl: String?) async {
@@ -71,7 +74,7 @@ final class UserStore: ObservableObject {
     func fetchSettings() async {
         guard currentUser?.id != nil else { return }
         isLoading = true
-        do { isLoading = false }
+        isLoading = false
     }
 
     func updateSettings(_ settings: UserSettings) async {

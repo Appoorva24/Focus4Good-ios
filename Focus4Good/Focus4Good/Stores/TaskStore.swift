@@ -27,12 +27,14 @@ final class TaskStore: ObservableObject {
     }
 
     static let shared = TaskStore()
-    private init() {}
+    private init() {
+        tasks = DummyData.tasks
+    }
 
     // MARK: - Tasks
     func fetchTasks(userId: UUID) async {
         isLoading = true
-        do { isLoading = false }
+        isLoading = false
     }
 
     func addTask(_ task: UserTask) async {
@@ -62,7 +64,7 @@ final class TaskStore: ObservableObject {
     // MARK: - Categories
     func fetchCategories() async {
         isLoading = true
-        do { isLoading = false }
+        isLoading = false
     }
 
     func addCategory(_ category: TaskCategory) async {
