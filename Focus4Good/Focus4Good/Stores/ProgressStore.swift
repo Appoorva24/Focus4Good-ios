@@ -1,13 +1,14 @@
 import Foundation
-import Combine
+import Observation
 
+@Observable
 @MainActor
-final class ProgressStore: ObservableObject {
+final class ProgressStore {
 
     // MARK: - State
-    @Published var progressRecords: [UserProgress] = []
-    @Published var isLoading: Bool = false
-    @Published var errorMessage: String?
+    var progressRecords: [UserProgress] = []
+    var isLoading: Bool = false
+    var errorMessage: String?
 
     // MARK: - Computed
     var dailyProgress: UserProgress? {
@@ -64,7 +65,8 @@ final class ProgressStore: ObservableObject {
                     tasksCompleted: 0,
                     focusTimeMinutes: 0,
                     calmCentreMinutes: 0,
-                    focusPointsEarned: 0
+                    focusPointsEarned: 0,
+                    taskGoal: defaultTaskGoal(for: periodType)
                 )
                 mutation(&newRecord)
                 progressRecords.append(newRecord)
@@ -78,6 +80,15 @@ final class ProgressStore: ObservableObject {
         case "weekly": return calendar.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
         case "monthly": return calendar.dateInterval(of: .month, for: Date())?.start ?? Date()
         default: return calendar.startOfDay(for: Date())
+        }
+    }
+
+    private func defaultTaskGoal(for periodType: String) -> Int {
+        switch periodType {
+        case "daily": return 15
+        case "weekly": return 75
+        case "monthly": return 300
+        default: return 15
         }
     }
 }

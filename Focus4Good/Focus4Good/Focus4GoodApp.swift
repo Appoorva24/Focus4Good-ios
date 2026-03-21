@@ -12,6 +12,7 @@ struct Focus4GoodApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environment(ProgressStore.shared)
         }
     }
 }

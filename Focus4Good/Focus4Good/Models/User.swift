@@ -34,4 +34,5 @@ struct UserProgress: Identifiable, Codable, Hashable {
     var focusTimeMinutes: Int
     var calmCentreMinutes: Int
     var focusPointsEarned: Int
+    var taskGoal: Int
 }
