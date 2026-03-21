@@ -1,11 +1,10 @@
-
 import SwiftUI
 
 struct ScheduleView: View {
-    @EnvironmentObject private var taskStore: TaskStore
-    @EnvironmentObject private var userStore: UserStore
+    @Environment(TaskStore.self) private var taskStore
+    @Environment(UserStore.self) private var userStore
     @State private var showAddTask = false
-    @State private var selectedTask: UserTask? = nil
+    @State private var selectedTask: UserTask?
 
     private var repetitiveTasks: [UserTask] {
         taskStore.tasks.filter { $0.repeatType != .never && !$0.isCompleted }
@@ -21,6 +20,7 @@ struct ScheduleView: View {
     }
 
     var body: some View {
+        // No NavigationStack here — lives inside HomeView's NavigationStack
         ZStack(alignment: .bottomTrailing) {
             Group {
                 if taskStore.todaysTasks.isEmpty && repetitiveTasks.isEmpty {
@@ -35,13 +35,9 @@ struct ScheduleView: View {
         .navigationBarTitleDisplayMode(.large)
         .sheet(isPresented: $showAddTask) {
             AddTaskSheet()
-                .environmentObject(taskStore)
-                .environmentObject(userStore)
         }
         .navigationDestination(item: $selectedTask) { task in
             PomodoroView(task: task)
-                .environmentObject(taskStore)
-                .environmentObject(userStore)
         }
     }
 
@@ -49,15 +45,10 @@ struct ScheduleView: View {
         VStack(spacing: 20) {
             Spacer()
             Image(systemName: "calendar.badge.plus")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 72, height: 72)
+                .resizable().scaledToFit().frame(width: 72, height: 72)
                 .foregroundStyle(AppTheme.orange.opacity(0.5))
-            Text("No tasks for today")
-                .font(.title3.bold())
-            Text("Tap + to add your first task")
-                .font(.subheadline)
-                .foregroundStyle(AppTheme.textSecondary)
+            Text("No tasks for today").font(.title3.bold())
+            Text("Tap + to add your first task").font(.subheadline).foregroundStyle(AppTheme.textSecondary)
             Spacer()
         }
         .frame(maxWidth: .infinity)
@@ -69,13 +60,9 @@ struct ScheduleView: View {
                 Section {
                     ForEach(repetitiveTasks) { task in
                         TaskRowView(task: task, selectedTask: $selectedTask)
-                            .environmentObject(taskStore)
                     }
                 } header: {
-                    Text("Repetitive")
-                        .font(.headline)
-                        .foregroundStyle(AppTheme.textPrimary)
-                        .textCase(nil)
+                    Text("Repetitive").font(.headline).foregroundStyle(AppTheme.textPrimary).textCase(nil)
                 }
             }
 
@@ -83,20 +70,14 @@ struct ScheduleView: View {
                 Section {
                     ForEach(todayTasks) { task in
                         TaskRowView(task: task, selectedTask: $selectedTask)
-                            .environmentObject(taskStore)
                     }
                 } header: {
                     HStack {
-                        Text("Today")
-                            .font(.headline)
-                            .foregroundStyle(AppTheme.textPrimary)
-                            .textCase(nil)
+                        Text("Today").font(.headline).foregroundStyle(AppTheme.textPrimary).textCase(nil)
                         Spacer()
                         let remaining = todayTasks.filter { !$0.isCompleted }.count
                         if remaining > 0 {
-                            Text("\(remaining) Remaining")
-                                .font(.caption.bold())
-                                .foregroundStyle(AppTheme.orange)
+                            Text("\(remaining) Remaining").font(.caption.bold()).foregroundStyle(AppTheme.orange)
                         }
                     }
                 }
@@ -106,25 +87,21 @@ struct ScheduleView: View {
     }
 
     private var floatingAddButton: some View {
-        Button {
-            showAddTask = true
-        } label: {
+        Button { showAddTask = true } label: {
             Image(systemName: "plus")
-                .font(.title2.bold())
-                .foregroundStyle(.white)
+                .font(.title2.bold()).foregroundStyle(.white)
                 .frame(width: 56, height: 56)
                 .background(Circle().fill(AppTheme.orange))
                 .shadow(color: AppTheme.orange.opacity(0.4), radius: 8, x: 0, y: 4)
         }
-        .padding(.trailing, 24)
-        .padding(.bottom, 32)
+        .padding(.trailing, 24).padding(.bottom, 32)
     }
 }
 
 struct TaskRowView: View {
     let task: UserTask
     @Binding var selectedTask: UserTask?
-    @EnvironmentObject private var taskStore: TaskStore
+    @Environment(TaskStore.self) private var taskStore
 
     var body: some View {
         HStack(spacing: 14) {
@@ -136,9 +113,7 @@ struct TaskRowView: View {
                         .stroke(task.isCompleted ? AppTheme.orange : Color(.systemGray3), lineWidth: 1.5)
                         .frame(width: 22, height: 22)
                     if task.isCompleted {
-                        Image(systemName: "checkmark")
-                            .font(.caption.bold())
-                            .foregroundStyle(AppTheme.orange)
+                        Image(systemName: "checkmark").font(.caption.bold()).foregroundStyle(AppTheme.orange)
                     }
                 }
             }
@@ -152,9 +127,7 @@ struct TaskRowView: View {
                     .lineLimit(1)
 
                 HStack(spacing: 8) {
-                    if task.repeatType != .never {
-                        tagView(task.repeatType.displayName, color: .purple)
-                    }
+                    if task.repeatType != .never { tagView(task.repeatType.displayName, color: .purple) }
                     if let time = task.scheduledTime {
                         HStack(spacing: 3) {
                             Image(systemName: "clock").font(.caption2)
@@ -173,18 +146,11 @@ struct TaskRowView: View {
             }
 
             Spacer()
-
-            Circle()
-                .fill(priorityColor)
-                .frame(width: 8, height: 8)
+            Circle().fill(priorityColor).frame(width: 8, height: 8)
 
             if !task.isCompleted {
-                Button {
-                    selectedTask = task
-                } label: {
-                    Image(systemName: "timer")
-                        .font(.title3)
-                        .foregroundStyle(AppTheme.orange)
+                Button { selectedTask = task } label: {
+                    Image(systemName: "timer").font(.title3).foregroundStyle(AppTheme.orange)
                 }
                 .buttonStyle(.plain)
             }
@@ -202,11 +168,8 @@ struct TaskRowView: View {
     }
 
     private func tagView(_ text: String, color: Color) -> some View {
-        Text(text)
-            .font(.caption2.bold())
-            .foregroundStyle(color)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
+        Text(text).font(.caption2.bold()).foregroundStyle(color)
+            .padding(.horizontal, 8).padding(.vertical, 3)
             .background(Capsule().fill(color.opacity(0.15)))
     }
 }

@@ -1,8 +1,8 @@
 import SwiftUI
 
 struct AddTaskSheet: View {
-    @EnvironmentObject private var taskStore: TaskStore
-    @EnvironmentObject private var userStore: UserStore
+    @Environment(TaskStore.self) private var taskStore
+    @Environment(UserStore.self) private var userStore
     @Environment(\.dismiss) private var dismiss
 
     @State private var title = ""
@@ -12,8 +12,8 @@ struct AddTaskSheet: View {
     @State private var selectedTime = Date()
     @State private var repeatType: UserTask.RepeatType = .never
     @State private var priority: UserTask.Priority = .none
-    @State private var selectedCategory: String = ""
-    @State private var estimatedDuration: Int = 25
+    @State private var selectedCategory = ""
+    @State private var estimatedDuration = 25
     @State private var showRepeatPicker = false
     @State private var showPriorityPicker = false
     @State private var showCategoryPicker = false
@@ -24,85 +24,42 @@ struct AddTaskSheet: View {
         NavigationStack {
             List {
                 Section {
-                    TextField("Task Name", text: $title)
-                        .font(.body)
-                } header: {
-                    Text("Task Name")
-                        .textCase(nil)
-                }
+                    TextField("Task Name", text: $title).font(.body)
+                } header: { Text("Task Name").textCase(nil) }
 
                 Section {
-                    Toggle(isOn: $isDateEnabled.animation()) {
-                        Label("Date", systemImage: "calendar")
-                    }
-                    .tint(AppTheme.orange)
-
+                    Toggle(isOn: $isDateEnabled.animation()) { Label("Date", systemImage: "calendar") }.tint(AppTheme.orange)
                     if isDateEnabled {
                         DatePicker("", selection: $selectedDate, displayedComponents: .date)
-                            .datePickerStyle(.graphical)
-                            .tint(AppTheme.orange)
+                            .datePickerStyle(.graphical).tint(AppTheme.orange)
                     }
-
-                    Toggle(isOn: $isTimeEnabled.animation()) {
-                        Label("Time", systemImage: "clock")
-                    }
-                    .tint(AppTheme.orange)
-
+                    Toggle(isOn: $isTimeEnabled.animation()) { Label("Time", systemImage: "clock") }.tint(AppTheme.orange)
                     if isTimeEnabled {
                         DatePicker("", selection: $selectedTime, displayedComponents: .hourAndMinute)
-                            .datePickerStyle(.wheel)
-                            .tint(AppTheme.orange)
+                            .datePickerStyle(.wheel).tint(AppTheme.orange)
                     }
-                } header: {
-                    Text("Date & Time")
-                        .textCase(nil)
-                }
+                } header: { Text("Date & Time").textCase(nil) }
 
                 Section {
-                    pickerRow(
-                        icon: "arrow.2.circlepath",
-                        label: "Repeat",
-                        value: repeatType.displayName,
-                        action: { showRepeatPicker = true }
-                    )
-                } header: {
-                    Text("Repeat")
-                        .textCase(nil)
-                }
+                    pickerRow(icon: "arrow.2.circlepath", label: "Repeat", value: repeatType.displayName) { showRepeatPicker = true }
+                } header: { Text("Repeat").textCase(nil) }
 
                 Section {
-                    pickerRow(
-                        icon: "line.3.horizontal.decrease",
-                        label: "Priority",
-                        value: priority.displayName,
-                        action: { showPriorityPicker = true }
-                    )
-
-                    pickerRow(
-                        icon: "square.grid.2x2",
-                        label: "Category",
-                        value: selectedCategory.isEmpty ? "None" : selectedCategory,
-                        action: { showCategoryPicker = true }
-                    )
-
+                    pickerRow(icon: "line.3.horizontal.decrease", label: "Priority", value: priority.displayName) { showPriorityPicker = true }
+                    pickerRow(icon: "square.grid.2x2", label: "Category", value: selectedCategory.isEmpty ? "None" : selectedCategory) { showCategoryPicker = true }
                     HStack {
                         Label("Duration", systemImage: "timer")
                         Spacer()
-                        Stepper("\(estimatedDuration) min", value: $estimatedDuration, in: 5...240, step: 5)
-                            .fixedSize()
+                        Stepper("\(estimatedDuration) min", value: $estimatedDuration, in: 5...240, step: 5).fixedSize()
                     }
-                } header: {
-                    Text("More Options")
-                        .textCase(nil)
-                }
+                } header: { Text("More Options").textCase(nil) }
             }
             .listStyle(.insetGrouped)
             .navigationTitle("Add Task")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { dismiss() }
-                        .foregroundStyle(AppTheme.textSecondary)
+                    Button("Cancel") { dismiss() }.foregroundStyle(AppTheme.textSecondary)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Save") { saveTask() }
@@ -112,22 +69,16 @@ struct AddTaskSheet: View {
                 }
             }
             .confirmationDialog("Repeat", isPresented: $showRepeatPicker, titleVisibility: .visible) {
-                ForEach(UserTask.RepeatType.allCases, id: \.self) { type in
-                    Button(type.displayName) { repeatType = type }
-                }
+                ForEach(UserTask.RepeatType.allCases, id: \.self) { type in Button(type.displayName) { repeatType = type } }
                 Button("Cancel", role: .cancel) {}
             }
             .confirmationDialog("Priority", isPresented: $showPriorityPicker, titleVisibility: .visible) {
-                ForEach(UserTask.Priority.allCases, id: \.self) { p in
-                    Button(p.displayName) { priority = p }
-                }
+                ForEach(UserTask.Priority.allCases, id: \.self) { p in Button(p.displayName) { priority = p } }
                 Button("Cancel", role: .cancel) {}
             }
             .confirmationDialog("Category", isPresented: $showCategoryPicker, titleVisibility: .visible) {
                 Button("None") { selectedCategory = "" }
-                ForEach(categories, id: \.self) { cat in
-                    Button(cat) { selectedCategory = cat }
-                }
+                ForEach(categories, id: \.self) { cat in Button(cat) { selectedCategory = cat } }
                 Button("Cancel", role: .cancel) {}
             }
         }
@@ -138,14 +89,10 @@ struct AddTaskSheet: View {
     private func pickerRow(icon: String, label: String, value: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack {
-                Label(label, systemImage: icon)
-                    .foregroundStyle(AppTheme.textPrimary)
+                Label(label, systemImage: icon).foregroundStyle(AppTheme.textPrimary)
                 Spacer()
-                Text(value)
-                    .foregroundStyle(AppTheme.textSecondary)
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.caption)
-                    .foregroundStyle(AppTheme.textSecondary)
+                Text(value).foregroundStyle(AppTheme.textSecondary)
+                Image(systemName: "chevron.up.chevron.down").font(.caption).foregroundStyle(AppTheme.textSecondary)
             }
         }
         .buttonStyle(.plain)
@@ -153,9 +100,8 @@ struct AddTaskSheet: View {
 
     private func saveTask() {
         guard !title.isEmpty else { return }
-        let userId = userStore.currentUser?.id ?? DummyData.currentUser.id
         let task = UserTask(
-            userId: userId,
+            userId: userStore.currentUser?.id ?? DummyData.currentUser.id,
             categoryId: nil,
             title: title,
             scheduledDate: isDateEnabled ? selectedDate : Date(),

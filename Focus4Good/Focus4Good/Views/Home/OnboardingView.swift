@@ -50,10 +50,18 @@ struct OnboardingPageView: View {
                 .fill(Color(hex: "FFF3E8"))
                 .frame(width: 290, height: 290)
                 .overlay {
-                    Image(page.imageName)
-                        .resizable()
-                        .scaledToFit()
-                        .padding(24)
+                    if UIImage(named: page.imageName) != nil {
+                        Image(page.imageName)
+                            .resizable()
+                            .scaledToFit()
+                            .padding(24)
+                    } else {
+                        Image(systemName: fallbackIcon)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 110, height: 110)
+                            .foregroundStyle(AppTheme.orange)
+                    }
                 }
                 .padding(.bottom, 52)
 
@@ -88,6 +96,17 @@ struct OnboardingPageView: View {
             .padding(.bottom, 52)
         }
         .background(Color.white)
+    }
+
+    private var fallbackIcon: String {
+        switch pageIndex {
+        case 0: return "brain.head.profile"
+        case 1: return "camera.viewfinder"
+        case 2: return "building.columns.fill"
+        case 3: return "figure.mind.and.body"
+        case 4: return "person.3.fill"
+        default: return "star.fill"
+        }
     }
 
     private var pageIndicator: some View {

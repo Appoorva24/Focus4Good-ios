@@ -1,15 +1,15 @@
 import Foundation
-import Combine
 
+@Observable
 @MainActor
-final class UserStore: ObservableObject {
+final class UserStore {
 
     // MARK: - State
-    @Published var currentUser: User?
-    @Published var userSettings: UserSettings?
-    @Published var isAuthenticated: Bool = false
-    @Published var isLoading: Bool = false
-    @Published var errorMessage: String?
+    var currentUser: User?
+    var userSettings: UserSettings?
+    var isAuthenticated = false
+    var isLoading = false
+    var errorMessage: String?
 
     static let shared = UserStore()
     private init() {
@@ -58,9 +58,7 @@ final class UserStore: ObservableObject {
     func updateStreak(newStreak: Int) async {
         guard var user = currentUser else { return }
         user.currentStreak = newStreak
-        if newStreak > user.bestStreak {
-            user.bestStreak = newStreak
-        }
+        if newStreak > user.bestStreak { user.bestStreak = newStreak }
         currentUser = user
     }
 
@@ -72,7 +70,7 @@ final class UserStore: ObservableObject {
 
     // MARK: - Settings
     func fetchSettings() async {
-        guard currentUser?.id != nil else { return }
+        guard currentUser != nil else { return }
         isLoading = true
         isLoading = false
     }

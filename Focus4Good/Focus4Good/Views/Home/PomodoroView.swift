@@ -2,8 +2,9 @@ import SwiftUI
 
 struct PomodoroView: View {
     let task: UserTask
-    @EnvironmentObject private var taskStore: TaskStore
-    @EnvironmentObject private var userStore: UserStore
+    // Only the stores this view actually needs
+    @Environment(TaskStore.self) private var taskStore
+    @Environment(UserStore.self) private var userStore
     @Environment(\.dismiss) private var dismiss
 
     @State private var timeRemaining: Int
@@ -33,16 +34,13 @@ struct PomodoroView: View {
     }
 
     private var timeString: String {
-        let minutes = timeRemaining / 60
-        let seconds = timeRemaining % 60
-        return String(format: "%02d:%02d", minutes, seconds)
+        String(format: "%02d:%02d", timeRemaining / 60, timeRemaining % 60)
     }
 
     var body: some View {
         Group {
             if sessionComplete {
                 SessionCompleteView(
-                    task: task,
                     totalSessions: totalSessions,
                     totalFocusMinutes: totalFocusMinutes,
                     distractedCount: distractedCount,
@@ -69,17 +67,8 @@ struct PomodoroView: View {
     private var timerView: some View {
         ZStack {
             Color(.systemBackground).ignoresSafeArea()
-
             VStack(spacing: 0) {
-                Capsule()
-                    .fill(isBreak ? Color.green.opacity(0.15) : AppTheme.orange.opacity(0.15))
-                    .frame(width: 140, height: 32)
-                    .overlay(
-                        Text(isBreak ? "• BREAK TIME" : "• DEEP FOCUS")
-                            .font(.caption.bold())
-                            .foregroundStyle(isBreak ? .green : AppTheme.orange)
-                    )
-                    .padding(.top, 60)
+                modeBadge.padding(.top, 60)
 
                 Text(task.title)
                     .font(.title2.bold())
@@ -89,83 +78,83 @@ struct PomodoroView: View {
                     .padding(.top, 24)
 
                 Spacer()
-
-                ZStack {
-                    Circle()
-                        .stroke(AppTheme.orange.opacity(0.15), lineWidth: 16)
-                        .frame(width: 260, height: 260)
-
-                    Circle()
-                        .trim(from: 0, to: progress)
-                        .stroke(
-                            isBreak ? Color.green : AppTheme.orange,
-                            style: StrokeStyle(lineWidth: 16, lineCap: .round)
-                        )
-                        .frame(width: 260, height: 260)
-                        .rotationEffect(.degrees(-90))
-                        .animation(.linear(duration: 1), value: progress)
-
-                    Text(timeString)
-                        .font(.system(size: 56, weight: .bold, design: .rounded))
-                        .foregroundStyle(AppTheme.textPrimary)
-                }
-
+                timerRing
                 Spacer()
 
-                Text("SESSION \(currentSession) OF \(totalSessions)")
-                    .font(.caption.bold())
-                    .foregroundStyle(AppTheme.textSecondary)
-                    .kerning(1.2)
-                    .padding(.bottom, 12)
-
-                HStack(spacing: 6) {
-                    ForEach(0..<totalSessions, id: \.self) { index in
-                        Circle()
-                            .fill(index < currentSession ? AppTheme.orange : Color(.systemGray4))
-                            .frame(width: 8, height: 8)
-                    }
-                }
-                .padding(.bottom, 40)
+                sessionInfo
+                    .padding(.bottom, 40)
 
                 if !isBreak {
-                    Button {
-                        distractedCount += 1
-                        if distractedCount >= 5 {
-                            showOverwhelmedSheet = true
-                        }
-                    } label: {
-                        Text("Distracted")
-                            .font(.headline)
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 56)
-                            .background(Capsule().fill(AppTheme.orange))
-                    }
-                    .padding(.horizontal, 40)
-                    .padding(.bottom, 16)
+                    distractedButton.padding(.horizontal, 40).padding(.bottom, 16)
                 }
-
-                Button {
-                    showEndSessionAlert = true
-                } label: {
-                    Text("End Session")
-                        .font(.subheadline)
-                        .foregroundStyle(AppTheme.textSecondary)
-                }
-                .padding(.bottom, 48)
+                endSessionButton.padding(.bottom, 48)
             }
         }
         .onAppear { startTimer() }
         .navigationBarBackButtonHidden(true)
     }
 
+    private var modeBadge: some View {
+        Capsule()
+            .fill(isBreak ? Color.green.opacity(0.15) : AppTheme.orange.opacity(0.15))
+            .frame(width: 140, height: 32)
+            .overlay(
+                Text(isBreak ? "• BREAK TIME" : "• DEEP FOCUS")
+                    .font(.caption.bold())
+                    .foregroundStyle(isBreak ? .green : AppTheme.orange)
+            )
+    }
+
+    private var timerRing: some View {
+        ZStack {
+            Circle().stroke(AppTheme.orange.opacity(0.15), lineWidth: 16).frame(width: 260, height: 260)
+            Circle()
+                .trim(from: 0, to: progress)
+                .stroke(isBreak ? Color.green : AppTheme.orange, style: StrokeStyle(lineWidth: 16, lineCap: .round))
+                .frame(width: 260, height: 260)
+                .rotationEffect(.degrees(-90))
+                .animation(.linear(duration: 1), value: progress)
+            Text(timeString)
+                .font(.system(size: 56, weight: .bold, design: .rounded))
+                .foregroundStyle(AppTheme.textPrimary)
+        }
+    }
+
+    private var sessionInfo: some View {
+        VStack(spacing: 12) {
+            Text("SESSION \(currentSession) OF \(totalSessions)")
+                .font(.caption.bold()).foregroundStyle(AppTheme.textSecondary).kerning(1.2)
+            HStack(spacing: 6) {
+                ForEach(0..<totalSessions, id: \.self) { index in
+                    Circle()
+                        .fill(index < currentSession ? AppTheme.orange : Color(.systemGray4))
+                        .frame(width: 8, height: 8)
+                }
+            }
+        }
+    }
+
+    private var distractedButton: some View {
+        Button {
+            distractedCount += 1
+            if distractedCount >= 5 { showOverwhelmedSheet = true }
+        } label: {
+            Text("Distracted").font(.headline).foregroundStyle(.white)
+                .frame(maxWidth: .infinity).frame(height: 56)
+                .background(Capsule().fill(AppTheme.orange))
+        }
+    }
+
+    private var endSessionButton: some View {
+        Button { showEndSessionAlert = true } label: {
+            Text("End Session").font(.subheadline).foregroundStyle(AppTheme.textSecondary)
+        }
+    }
+
     private func startTimer() {
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
-            if timeRemaining > 0 {
-                timeRemaining -= 1
-            } else {
-                handleTimerEnd()
-            }
+            guard timeRemaining > 0 else { handleTimerEnd(); return }
+            timeRemaining -= 1
         }
     }
 
@@ -200,36 +189,25 @@ struct OverwhelmedSheet: View {
     var body: some View {
         VStack(spacing: 24) {
             Image(systemName: "figure.mind.and.body")
-                .font(.system(size: 52))
-                .foregroundStyle(AppTheme.orange)
-                .padding(.top, 32)
+                .font(.system(size: 52)).foregroundStyle(AppTheme.orange).padding(.top, 32)
 
             VStack(spacing: 8) {
-                Text("Feeling a little overwhelmed?")
-                    .font(.title3.bold())
-                    .multilineTextAlignment(.center)
+                Text("Feeling a little overwhelmed?").font(.title3.bold()).multilineTextAlignment(.center)
                 Text("You seem quite distracted right now. Would you like to take a short meditation break and reset your focus?")
-                    .font(.subheadline)
-                    .foregroundStyle(AppTheme.textSecondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 24)
+                    .font(.subheadline).foregroundStyle(AppTheme.textSecondary)
+                    .multilineTextAlignment(.center).padding(.horizontal, 24)
             }
 
             VStack(spacing: 12) {
+                // Disabled until Calm Centre tab is built
                 Text("Go to Calm Centre")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 52)
+                    .font(.headline).foregroundStyle(.white)
+                    .frame(maxWidth: .infinity).frame(height: 52)
                     .background(Capsule().fill(Color(.systemGray3)))
                     .padding(.horizontal, 32)
 
-                Button {
-                    dismiss()
-                } label: {
-                    Text("Stay in session")
-                        .font(.subheadline)
-                        .foregroundStyle(AppTheme.textSecondary)
+                Button { dismiss() } label: {
+                    Text("Stay in session").font(.subheadline).foregroundStyle(AppTheme.textSecondary)
                 }
             }
             .padding(.bottom, 32)
@@ -238,7 +216,6 @@ struct OverwhelmedSheet: View {
 }
 
 struct SessionCompleteView: View {
-    let task: UserTask
     let totalSessions: Int
     let totalFocusMinutes: Int
     let distractedCount: Int
@@ -251,86 +228,53 @@ struct SessionCompleteView: View {
     var body: some View {
         ZStack {
             Color(.systemBackground).ignoresSafeArea()
-
             VStack(spacing: 32) {
                 Spacer()
-
                 VStack(spacing: 8) {
-                    Text("Well Done")
-                        .font(.largeTitle.bold())
-                    Text("Focus session complete")
-                        .font(.subheadline)
-                        .foregroundStyle(AppTheme.textSecondary)
+                    Text("Well Done").font(.largeTitle.bold()).foregroundStyle(AppTheme.textPrimary)
+                    Text("Focus session complete").font(.subheadline).foregroundStyle(AppTheme.textSecondary)
                 }
 
                 ZStack {
                     Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [Color(hex: "FFD700"), Color(hex: "FFA500")],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
+                        .fill(LinearGradient(colors: [Color(hex: "FFD700"), Color(hex: "FFA500")], startPoint: .topLeading, endPoint: .bottomTrailing))
                         .frame(width: 160, height: 160)
                         .shadow(color: Color(hex: "FFD700").opacity(0.5), radius: 20)
-
                     VStack(spacing: 4) {
-                        Image(systemName: "trophy.fill")
-                            .font(.system(size: 32))
-                            .foregroundStyle(.white.opacity(0.9))
-                        Text("\(totalSessions) Session\(totalSessions > 1 ? "s" : "")")
-                            .font(.headline.bold())
-                            .foregroundStyle(.white)
-                        Text("COMPLETED")
-                            .font(.caption.bold())
-                            .foregroundStyle(.white.opacity(0.85))
-                            .kerning(1.2)
+                        Image(systemName: "trophy.fill").font(.system(size: 32)).foregroundStyle(.white.opacity(0.9))
+                        Text("\(totalSessions) Session\(totalSessions > 1 ? "s" : "")").font(.headline.bold()).foregroundStyle(.white)
+                        Text("COMPLETED").font(.caption.bold()).foregroundStyle(.white.opacity(0.85)).kerning(1.2)
                     }
                 }
 
                 HStack(spacing: 0) {
-                    statsItem(label: "TOTAL FOCUS", value: "\(totalFocusMinutes)m")
+                    statItem(label: "TOTAL FOCUS", value: "\(totalFocusMinutes)m")
                     Divider().frame(height: 40)
-                    statsItem(label: "DISTRACTIONS", value: "\(distractedCount)")
+                    statItem(label: "DISTRACTIONS", value: "\(distractedCount)")
                 }
                 .padding(.vertical, 20)
-                .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color(.secondarySystemBackground))
-                )
+                .background(RoundedRectangle(cornerRadius: 16).fill(Color(.secondarySystemBackground)))
                 .padding(.horizontal, 40)
 
-                Text("+ \(pointsEarned) Focus Points")
-                    .font(.title2.bold())
-                    .foregroundStyle(AppTheme.orange)
+                Text("+ \(pointsEarned) Focus Points").font(.title2.bold()).foregroundStyle(AppTheme.orange)
 
                 Spacer()
 
                 Button(action: onDismiss) {
-                    Text("Go to Planner")
-                        .font(.headline)
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 56)
+                    Text("Go to Planner").font(.headline).foregroundStyle(.white)
+                        .frame(maxWidth: .infinity).frame(height: 56)
                         .background(Capsule().fill(AppTheme.orange))
                 }
-                .padding(.horizontal, 32)
-                .padding(.bottom, 48)
+                .padding(.horizontal, 32).padding(.bottom, 48)
             }
         }
         .navigationBarBackButtonHidden(true)
     }
 
-    private func statsItem(label: String, value: String) -> some View {
+    private func statItem(label: String, value: String) -> some View {
         VStack(spacing: 4) {
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(AppTheme.textSecondary)
-                .kerning(0.5)
-            Text(value)
-                .font(.title3.bold())
-                .foregroundStyle(AppTheme.textPrimary)
+            Text(label).font(.caption).foregroundStyle(AppTheme.textSecondary).kerning(0.5)
+            Text(value).font(.title3.bold()).foregroundStyle(AppTheme.textPrimary)
         }
         .frame(maxWidth: .infinity)
     }

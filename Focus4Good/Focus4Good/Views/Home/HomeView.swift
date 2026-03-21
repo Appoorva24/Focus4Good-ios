@@ -7,9 +7,9 @@ enum HomeDestination: Hashable {
 }
 
 struct HomeView: View {
-    @EnvironmentObject private var taskStore: TaskStore
-    @EnvironmentObject private var userStore: UserStore
-    @EnvironmentObject private var volunteerStore: VolunteerStore
+    @Environment(UserStore.self) private var userStore
+    @Environment(TaskStore.self) private var taskStore
+    @Environment(VolunteerStore.self) private var volunteerStore
     @State private var navigationPath = NavigationPath()
 
     private var todayHighPriorityTasks: [UserTask] {
@@ -22,8 +22,7 @@ struct HomeView: View {
     private var todayGoalProgress: Double {
         let total = taskStore.todaysTasks.count
         guard total > 0 else { return 0 }
-        let completed = taskStore.todaysTasks.filter { $0.isCompleted }.count
-        return Double(completed) / Double(total)
+        return Double(taskStore.todaysTasks.filter { $0.isCompleted }.count) / Double(total)
     }
 
     private var focusPointsProgress: Double {
@@ -31,8 +30,7 @@ struct HomeView: View {
     }
 
     private var greetingText: String {
-        let hour = Calendar.current.component(.hour, from: Date())
-        switch hour {
+        switch Calendar.current.component(.hour, from: Date()) {
         case 0..<12: return "Good Morning"
         case 12..<17: return "Good Afternoon"
         default: return "Good Evening"
@@ -58,9 +56,7 @@ struct HomeView: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        navigationPath.append(HomeDestination.profile)
-                    } label: {
+                    Button { navigationPath.append(HomeDestination.profile) } label: {
                         Image(systemName: "person.circle.fill")
                             .font(.title2)
                             .foregroundStyle(.primary)
@@ -71,21 +67,11 @@ struct HomeView: View {
                 switch destination {
                 case .schedule:
                     ScheduleView()
-                        .environmentObject(taskStore)
-                        .environmentObject(userStore)
                 case .ngoList:
                     NGOListView()
-                        .environmentObject(volunteerStore)
-                        .environmentObject(userStore)
                 case .profile:
                     ProfileView()
-                        .environmentObject(userStore)
                 }
-            }
-            .navigationDestination(for: UserTask.self) { task in
-                PomodoroView(task: task)
-                    .environmentObject(taskStore)
-                    .environmentObject(userStore)
             }
         }
     }
@@ -93,21 +79,19 @@ struct HomeView: View {
     private var quoteSection: some View {
         Group {
             Text("\"You don't need to do everything. ")
-                .font(.headline)
+                .font(.subheadline)
                 .foregroundStyle(AppTheme.textSecondary)
             + Text("Just start with one thing.")
-                .font(.headline.bold())
+                .font(.subheadline.bold())
                 .foregroundStyle(AppTheme.orange)
             + Text("\"")
-                .font(.headline)
+                .font(.subheadline)
                 .foregroundStyle(AppTheme.textSecondary)
         }
     }
 
     private var plannerCard: some View {
-        Button {
-            navigationPath.append(HomeDestination.schedule)
-        } label: {
+        Button { navigationPath.append(HomeDestination.schedule) } label: {
             VStack(alignment: .leading, spacing: 16) {
                 Text("Today's Plan")
                     .font(.headline)
@@ -115,8 +99,7 @@ struct HomeView: View {
 
                 if todayHighPriorityTasks.isEmpty {
                     HStack(spacing: 10) {
-                        Image(systemName: "checkmark.circle")
-                            .foregroundStyle(AppTheme.orange)
+                        Image(systemName: "checkmark.circle").foregroundStyle(AppTheme.orange)
                         Text("No high priority tasks today")
                             .font(.subheadline)
                             .foregroundStyle(AppTheme.textSecondary)
@@ -147,11 +130,8 @@ struct HomeView: View {
                 }
 
                 HStack(spacing: 8) {
-                    Image(systemName: "plus.circle")
-                        .foregroundStyle(AppTheme.orange)
-                    Text("Add a new task")
-                        .font(.subheadline)
-                        .foregroundStyle(AppTheme.textSecondary)
+                    Image(systemName: "plus.circle").foregroundStyle(AppTheme.orange)
+                    Text("Add a new task").font(.subheadline).foregroundStyle(AppTheme.textSecondary)
                 }
                 .padding(.top, 2)
             }
@@ -160,10 +140,7 @@ struct HomeView: View {
             .background(
                 RoundedRectangle(cornerRadius: 20)
                     .fill(Color(hex: "FFF3E8"))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20)
-                            .stroke(AppTheme.orange.opacity(0.5), lineWidth: 2)
-                    )
+                    .overlay(RoundedRectangle(cornerRadius: 20).stroke(AppTheme.orange.opacity(0.25), lineWidth: 1))
             )
         }
         .buttonStyle(.plain)
@@ -193,90 +170,56 @@ struct HomeView: View {
                     .frame(height: 190)
                     .overlay {
                         Image("vc")
-                            .resizable()
-                            .scaledToFill()
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 190)
-                            .clipped()
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(Color.black.opacity(0.15))
-                            )
+                            .resizable().scaledToFill()
+                            .frame(maxWidth: .infinity).frame(height: 190).clipped()
+                            .overlay(RoundedRectangle(cornerRadius: 16).fill(Color.black.opacity(0.15)))
                     }
                     .clipShape(RoundedRectangle(cornerRadius: 16))
 
                 Image(systemName: "lock.fill")
-                    .font(.subheadline.bold())
-                    .foregroundStyle(.white)
-                    .padding(10)
-                    .background(Circle().fill(Color.black.opacity(0.55)))
+                    .font(.subheadline.bold()).foregroundStyle(.white)
+                    .padding(10).background(Circle().fill(Color.black.opacity(0.55)))
                     .padding(14)
             }
 
             HStack(alignment: .bottom) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Virtual Classroom")
-                        .font(.headline)
-                        .foregroundStyle(AppTheme.textPrimary)
-                    Text("Complete tasks and grow your virtual class")
-                        .font(.caption)
-                        .foregroundStyle(AppTheme.textSecondary)
+                    Text("Virtual Classroom").font(.headline).foregroundStyle(AppTheme.textPrimary)
+                    Text("Complete tasks and grow your virtual class").font(.caption).foregroundStyle(AppTheme.textSecondary)
                 }
                 Spacer()
                 Text("Coming Soon")
-                    .font(.caption.bold())
-                    .foregroundStyle(AppTheme.orange)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
+                    .font(.caption.bold()).foregroundStyle(AppTheme.orange)
+                    .padding(.horizontal, 14).padding(.vertical, 8)
                     .background(Capsule().fill(AppTheme.orange.opacity(0.15)))
             }
-            .padding(.top, 14)
-            .padding(.horizontal, 4)
+            .padding(.top, 14).padding(.horizontal, 4)
         }
         .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(Color(.secondarySystemBackground))
-        )
+        .background(RoundedRectangle(cornerRadius: 20).fill(Color(.secondarySystemBackground)))
     }
 
     private var ngoConnectCard: some View {
-        Button {
-            navigationPath.append(HomeDestination.ngoList)
-        } label: {
+        Button { navigationPath.append(HomeDestination.ngoList) } label: {
             VStack(alignment: .leading, spacing: 0) {
                 RoundedRectangle(cornerRadius: 16)
                     .fill(Color(.systemGray6))
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 190)
+                    .frame(maxWidth: .infinity).frame(height: 190)
                     .overlay {
                         Image("ngo")
-                            .resizable()
-                            .scaledToFill()
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 190)
-                            .clipped()
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(Color.black.opacity(0.2))
-                            )
+                            .resizable().scaledToFill()
+                            .frame(maxWidth: .infinity).frame(height: 190).clipped()
+                            .overlay(RoundedRectangle(cornerRadius: 16).fill(Color.black.opacity(0.2)))
                     }
                     .clipShape(RoundedRectangle(cornerRadius: 16))
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("NGO Connect")
-                        .font(.headline)
-                        .foregroundStyle(AppTheme.textPrimary)
-
-                    Text("Focus Points")
-                        .font(.caption)
-                        .foregroundStyle(AppTheme.textSecondary)
+                    Text("NGO Connect").font(.headline).foregroundStyle(AppTheme.textPrimary)
+                    Text("Focus Points").font(.caption).foregroundStyle(AppTheme.textSecondary)
 
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
-                            Capsule()
-                                .fill(Color(.systemGray5))
-                                .frame(height: 6)
+                            Capsule().fill(Color(.systemGray5)).frame(height: 6)
                             Capsule()
                                 .fill(AppTheme.orange)
                                 .frame(
@@ -288,23 +231,15 @@ struct HomeView: View {
                     .frame(height: 6)
 
                     HStack {
-                        Text("\(userStore.currentUser?.focusPoints ?? 0)")
-                            .font(.caption.bold())
-                            .foregroundStyle(AppTheme.orange)
+                        Text("\(userStore.currentUser?.focusPoints ?? 0)").font(.caption.bold()).foregroundStyle(AppTheme.orange)
                         Spacer()
-                        Text("10,000")
-                            .font(.caption)
-                            .foregroundStyle(AppTheme.textSecondary)
+                        Text("10,000").font(.caption).foregroundStyle(AppTheme.textSecondary)
                     }
                 }
-                .padding(.top, 14)
-                .padding(.horizontal, 4)
+                .padding(.top, 14).padding(.horizontal, 4)
             }
             .padding(16)
-            .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(Color(.secondarySystemBackground))
-            )
+            .background(RoundedRectangle(cornerRadius: 20).fill(Color(.secondarySystemBackground)))
         }
         .buttonStyle(.plain)
     }
@@ -313,44 +248,24 @@ struct HomeView: View {
 struct StatCard: View {
     let title: String
     let value: String
-    let progress: Double?
+    let progress: Double
 
     var body: some View {
         VStack(spacing: 14) {
             ZStack {
+                Circle().stroke(Color(.systemGray5), lineWidth: 9).frame(width: 86, height: 86)
                 Circle()
-                    .stroke(Color(.systemGray5), lineWidth: 9)
-                    .frame(width: 86, height: 86)
-
-                Circle()
-                    .trim(from: 0, to: progress ?? 0)
-                    .stroke(
-                        AppTheme.orange,
-                        style: StrokeStyle(lineWidth: 9, lineCap: .round)
-                    )
+                    .trim(from: 0, to: progress)
+                    .stroke(AppTheme.orange, style: StrokeStyle(lineWidth: 9, lineCap: .round))
                     .frame(width: 86, height: 86)
                     .rotationEffect(.degrees(-90))
                     .animation(.easeOut(duration: 0.8), value: progress)
-
-                Text(value)
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(AppTheme.textPrimary)
+                Text(value).font(.system(size: 17, weight: .bold)).foregroundStyle(AppTheme.textPrimary)
             }
-
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(AppTheme.textSecondary)
-                .multilineTextAlignment(.center)
+            Text(title).font(.caption).foregroundStyle(AppTheme.textSecondary).multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 24)
-        .background(
-            RoundedRectangle(cornerRadius: 18)
-                .fill(Color(.systemBackground))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(AppTheme.orange.opacity(0.5), lineWidth: 2)
-                )
-        )
+        .background(RoundedRectangle(cornerRadius: 18).fill(Color(.secondarySystemBackground)))
     }
 }

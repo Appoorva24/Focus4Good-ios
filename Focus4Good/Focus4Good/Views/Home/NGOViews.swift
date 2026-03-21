@@ -1,23 +1,20 @@
 import SwiftUI
 
 struct NGOListView: View {
-    @EnvironmentObject private var volunteerStore: VolunteerStore
-    @EnvironmentObject private var userStore: UserStore
-    @State private var selectedNGO: NGO? = nil
-    private let ngos: [NGO] = DummyData.ngos
+    @Environment(VolunteerStore.self) private var volunteerStore
+    @Environment(UserStore.self) private var userStore
+    @State private var selectedNGO: NGO?
+    private let ngos = DummyData.ngos
 
     var body: some View {
+        // No NavigationStack — lives inside HomeView's NavigationStack
         List {
             ForEach(ngos) { ngo in
-                Button {
-                    selectedNGO = ngo
-                } label: {
-                    NGORowView(ngo: ngo)
-                }
-                .buttonStyle(.plain)
-                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
+                Button { selectedNGO = ngo } label: { NGORowView(ngo: ngo) }
+                    .buttonStyle(.plain)
+                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
             }
         }
         .listStyle(.plain)
@@ -25,8 +22,6 @@ struct NGOListView: View {
         .navigationBarTitleDisplayMode(.large)
         .navigationDestination(item: $selectedNGO) { ngo in
             NGODetailView(ngo: ngo)
-                .environmentObject(volunteerStore)
-                .environmentObject(userStore)
         }
     }
 }
@@ -37,50 +32,31 @@ struct NGORowView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ZStack(alignment: .topLeading) {
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(Color(.systemGray6))
-                    .frame(height: 160)
+                RoundedRectangle(cornerRadius: 14).fill(Color(.systemGray6)).frame(height: 160)
                     .overlay {
-                        Image("ngo")
-                            .resizable()
-                            .scaledToFill()
-                            .frame(height: 160)
-                            .clipped()
+                        Image("ngo").resizable().scaledToFill().frame(height: 160).clipped()
                             .overlay(RoundedRectangle(cornerRadius: 14).fill(Color.black.opacity(0.1)))
                     }
                     .clipShape(RoundedRectangle(cornerRadius: 14))
 
                 if ngo.isVerified {
                     HStack(spacing: 4) {
-                        Image(systemName: "checkmark.seal.fill")
-                            .foregroundStyle(.white)
-                            .font(.caption)
-                        Text("Verified")
-                            .font(.caption.bold())
-                            .foregroundStyle(.white)
+                        Image(systemName: "checkmark.seal.fill").foregroundStyle(.white).font(.caption)
+                        Text("Verified").font(.caption.bold()).foregroundStyle(.white)
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, 10).padding(.vertical, 6)
                     .background(Capsule().fill(Color.green))
                     .padding(12)
                 }
             }
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(ngo.name)
-                    .font(.headline)
-                    .foregroundStyle(AppTheme.textPrimary)
-
+                Text(ngo.name).font(.headline).foregroundStyle(AppTheme.textPrimary)
                 HStack(spacing: 4) {
                     Image(systemName: "location.fill").font(.caption).foregroundStyle(AppTheme.orange)
                     Text(ngo.location).font(.caption).foregroundStyle(AppTheme.textSecondary)
                 }
-
-                Text(ngo.mission)
-                    .font(.caption)
-                    .foregroundStyle(AppTheme.textSecondary)
-                    .lineLimit(2)
-
+                Text(ngo.mission).font(.caption).foregroundStyle(AppTheme.textSecondary).lineLimit(2)
                 HStack(spacing: 24) {
                     ngoStat(value: "\(ngo.studentCount / 1000)K+", label: "Students")
                     ngoStat(value: "\(ngo.yearsActive)", label: "Years")
@@ -104,9 +80,9 @@ struct NGORowView: View {
 
 struct NGODetailView: View {
     let ngo: NGO
-    @EnvironmentObject private var volunteerStore: VolunteerStore
-    @EnvironmentObject private var userStore: UserStore
-    @State private var selectedEvent: VolunteerEvent? = nil
+    @Environment(VolunteerStore.self) private var volunteerStore
+    @Environment(UserStore.self) private var userStore
+    @State private var selectedEvent: VolunteerEvent?
     @State private var showRegistration = false
     private let events: [VolunteerEvent]
 
@@ -118,15 +94,9 @@ struct NGODetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(.systemGray6))
-                    .frame(height: 220)
+                RoundedRectangle(cornerRadius: 16).fill(Color(.systemGray6)).frame(height: 220)
                     .overlay {
-                        Image("ngo")
-                            .resizable()
-                            .scaledToFill()
-                            .frame(height: 220)
-                            .clipped()
+                        Image("ngo").resizable().scaledToFill().frame(height: 220).clipped()
                     }
                     .clipShape(RoundedRectangle(cornerRadius: 16))
                     .padding(.horizontal, 20)
@@ -157,9 +127,7 @@ struct NGODetailView: View {
 
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Our Mission").font(.headline)
-                        Text(ngo.mission)
-                            .font(.subheadline)
-                            .foregroundStyle(AppTheme.textSecondary)
+                        Text(ngo.mission).font(.subheadline).foregroundStyle(AppTheme.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
 
@@ -178,30 +146,20 @@ struct NGODetailView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Upcoming Events").font(.headline)
                             ForEach(events) { event in
-                                Button {
-                                    selectedEvent = event
-                                } label: {
-                                    EventRowView(event: event)
-                                }
-                                .buttonStyle(.plain)
+                                Button { selectedEvent = event } label: { EventRowView(event: event) }
+                                    .buttonStyle(.plain)
                             }
                         }
                     }
 
-                    Button {
-                        showRegistration = true
-                    } label: {
-                        Text("Register as Volunteer")
-                            .font(.headline)
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 56)
+                    Button { showRegistration = true } label: {
+                        Text("Register as Volunteer").font(.headline).foregroundStyle(.white)
+                            .frame(maxWidth: .infinity).frame(height: 56)
                             .background(Capsule().fill(AppTheme.orange))
                     }
                     .padding(.top, 8)
                 }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 40)
+                .padding(.horizontal, 20).padding(.bottom, 40)
             }
         }
         .navigationTitle(ngo.name)
@@ -211,8 +169,6 @@ struct NGODetailView: View {
         }
         .navigationDestination(isPresented: $showRegistration) {
             VolunteerRegistrationView(ngo: ngo)
-                .environmentObject(volunteerStore)
-                .environmentObject(userStore)
         }
     }
 
@@ -221,8 +177,7 @@ struct NGODetailView: View {
             Text(value).font(.subheadline.bold()).foregroundStyle(AppTheme.orange)
             Text(label).font(.caption2).foregroundStyle(AppTheme.textSecondary)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity).padding(.vertical, 14)
     }
 }
 
@@ -235,8 +190,7 @@ struct EventRowView: View {
                 Text(event.eventDate.formatted(.dateTime.day())).font(.title3.bold()).foregroundStyle(AppTheme.orange)
                 Text(event.eventDate.formatted(.dateTime.month(.abbreviated))).font(.caption.bold()).foregroundStyle(AppTheme.textSecondary)
             }
-            .frame(width: 44)
-            .padding(.vertical, 10)
+            .frame(width: 44).padding(.vertical, 10)
             .background(RoundedRectangle(cornerRadius: 10).fill(AppTheme.orange.opacity(0.1)))
 
             VStack(alignment: .leading, spacing: 4) {
@@ -266,15 +220,9 @@ struct EventDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(.systemGray6))
-                    .frame(height: 200)
+                RoundedRectangle(cornerRadius: 16).fill(Color(.systemGray6)).frame(height: 200)
                     .overlay {
-                        Image("ngo")
-                            .resizable()
-                            .scaledToFill()
-                            .frame(height: 200)
-                            .clipped()
+                        Image("ngo").resizable().scaledToFill().frame(height: 200).clipped()
                             .overlay(RoundedRectangle(cornerRadius: 16).fill(Color.black.opacity(0.15)))
                     }
                     .clipShape(RoundedRectangle(cornerRadius: 16))
@@ -301,34 +249,24 @@ struct EventDetailView: View {
 
                     VStack(alignment: .leading, spacing: 8) {
                         Text("About this Event").font(.headline)
-                        Text(event.description)
-                            .font(.subheadline)
-                            .foregroundStyle(AppTheme.textSecondary)
+                        Text(event.description).font(.subheadline).foregroundStyle(AppTheme.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
 
-                    Button {
-                        showConfirmation = true
-                    } label: {
-                        Text("Confirm Attendance")
-                            .font(.headline)
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 56)
+                    Button { showConfirmation = true } label: {
+                        Text("Confirm Attendance").font(.headline).foregroundStyle(.white)
+                            .frame(maxWidth: .infinity).frame(height: 56)
                             .background(Capsule().fill(AppTheme.orange))
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 40)
+                .padding(.horizontal, 20).padding(.bottom, 40)
             }
         }
         .navigationTitle("Event Details")
         .navigationBarTitleDisplayMode(.inline)
         .alert("Attendance Confirmed!", isPresented: $showConfirmation) {
             Button("Great!", role: .cancel) {}
-        } message: {
-            Text("You're registered for \(event.title). See you there!")
-        }
+        } message: { Text("You're registered for \(event.title). See you there!") }
     }
 
     private func infoRow(icon: String, label: String, value: String) -> some View {
@@ -343,8 +281,8 @@ struct EventDetailView: View {
 
 struct VolunteerRegistrationView: View {
     let ngo: NGO
-    @EnvironmentObject private var volunteerStore: VolunteerStore
-    @EnvironmentObject private var userStore: UserStore
+    @Environment(VolunteerStore.self) private var volunteerStore
+    @Environment(UserStore.self) private var userStore
     @Environment(\.dismiss) private var dismiss
 
     @State private var fullName = ""
@@ -361,11 +299,8 @@ struct VolunteerRegistrationView: View {
         List {
             Section {
                 formField("Full Name", text: $fullName, icon: "person.fill")
-                formField("Email", text: $email, icon: "envelope.fill")
-                    .keyboardType(.emailAddress)
-                    .autocapitalization(.none)
-                formField("Phone", text: $phone, icon: "phone.fill")
-                    .keyboardType(.phonePad)
+                formField("Email", text: $email, icon: "envelope.fill").keyboardType(.emailAddress).autocapitalization(.none)
+                formField("Phone", text: $phone, icon: "phone.fill").keyboardType(.phonePad)
             } header: { Text("Personal Details").textCase(nil) }
 
             Section {
@@ -375,24 +310,15 @@ struct VolunteerRegistrationView: View {
 
             Section {
                 VStack(alignment: .leading, spacing: 8) {
-                    Label("Past Experience", systemImage: "briefcase.fill")
-                        .font(.subheadline)
-                        .foregroundStyle(AppTheme.textSecondary)
-                    TextEditor(text: $pastExperience)
-                        .frame(minHeight: 80)
-                        .font(.subheadline)
+                    Label("Past Experience", systemImage: "briefcase.fill").font(.subheadline).foregroundStyle(AppTheme.textSecondary)
+                    TextEditor(text: $pastExperience).frame(minHeight: 80).font(.subheadline)
                 }
             } header: { Text("Experience").textCase(nil) }
 
             Section {
-                Button {
-                    submitRegistration()
-                } label: {
-                    Text("Submit Registration")
-                        .font(.headline)
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
+                Button { submitRegistration() } label: {
+                    Text("Submit Registration").font(.headline).foregroundStyle(.white)
+                        .frame(maxWidth: .infinity).frame(height: 52)
                         .background(Capsule().fill(isFormValid ? AppTheme.orange : Color(.systemGray3)))
                 }
                 .disabled(!isFormValid)
@@ -405,9 +331,7 @@ struct VolunteerRegistrationView: View {
         .navigationBarTitleDisplayMode(.inline)
         .alert("Registration Submitted!", isPresented: $showSuccess) {
             Button("Done") { dismiss() }
-        } message: {
-            Text("Thank you for registering with \(ngo.name). They will contact you soon.")
-        }
+        } message: { Text("Thank you for registering with \(ngo.name). They will contact you soon.") }
     }
 
     private func formField(_ placeholder: String, text: Binding<String>, icon: String) -> some View {
@@ -418,12 +342,11 @@ struct VolunteerRegistrationView: View {
     }
 
     private func submitRegistration() {
-        let userId = userStore.currentUser?.id ?? DummyData.currentUser.id
         Task {
             await volunteerStore.registerForNGO(
-                userId: userId, ngoId: ngo.id, fullName: fullName,
-                email: email, phone: phone, emergencyContact: emergencyContact,
-                availableDays: availableDays, pastExperience: pastExperience
+                userId: userStore.currentUser?.id ?? DummyData.currentUser.id,
+                ngoId: ngo.id, fullName: fullName, email: email, phone: phone,
+                emergencyContact: emergencyContact, availableDays: availableDays, pastExperience: pastExperience
             )
         }
         showSuccess = true

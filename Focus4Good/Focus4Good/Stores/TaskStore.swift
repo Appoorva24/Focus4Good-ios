@@ -1,14 +1,14 @@
 import Foundation
-import Combine
 
+@Observable
 @MainActor
-final class TaskStore: ObservableObject {
+final class TaskStore {
 
     // MARK: - State
-    @Published var tasks: [UserTask] = []
-    @Published var categories: [TaskCategory] = []
-    @Published var isLoading: Bool = false
-    @Published var errorMessage: String?
+    var tasks: [UserTask] = []
+    var categories: [TaskCategory] = []
+    var isLoading = false
+    var errorMessage: String?
 
     // MARK: - Computed
     var todaysTasks: [UserTask] {
@@ -55,8 +55,7 @@ final class TaskStore: ObservableObject {
         var updated = task
         updated.isCompleted.toggle()
         await updateTask(updated)
-        if updated.isCompleted {
-            guard let userId = UserStore.shared.currentUser?.id else { return }
+        if updated.isCompleted, let userId = UserStore.shared.currentUser?.id {
             await ProgressStore.shared.incrementTasksCompleted(userId: userId)
         }
     }
@@ -67,9 +66,7 @@ final class TaskStore: ObservableObject {
         isLoading = false
     }
 
-    func addCategory(_ category: TaskCategory) async {
-        categories.append(category)
-    }
+    func addCategory(_ category: TaskCategory) async { categories.append(category) }
 
     func updateCategory(_ category: TaskCategory) async {
         if let index = categories.firstIndex(where: { $0.id == category.id }) {
