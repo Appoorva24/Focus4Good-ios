@@ -7,11 +7,12 @@
 
 import SwiftUI
 
+@available(iOS 17.0, *)
 struct BraindumpEditorView: View {
 
     let folder: BrainDumpFolder
 
-    @ObservedObject private var store = CalmCentreStore.shared
+    private var store: CalmCentreStore { CalmCentreStore.shared }
     @Environment(\.dismiss) private var dismiss
     @FocusState private var isEditorFocused: Bool
 
@@ -105,6 +106,7 @@ struct BraindumpEditorView: View {
     }
 }
 
+@available(iOS 17.0, *)
 #Preview {
     NavigationStack {
         BraindumpEditorView(

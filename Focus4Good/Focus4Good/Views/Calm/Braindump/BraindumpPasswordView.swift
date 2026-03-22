@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+@available(iOS 17.0, *)
 struct BraindumpPasswordView: View {
 
     @State private var enteredPin = ""
@@ -220,6 +221,7 @@ struct BraindumpPasswordView: View {
     }
 }
 
+@available(iOS 17.0, *)
 #Preview {
     NavigationStack {
         BraindumpPasswordView()

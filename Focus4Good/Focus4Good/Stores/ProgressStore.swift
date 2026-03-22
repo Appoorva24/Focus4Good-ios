@@ -1,5 +1,6 @@
 import Foundation
 
+@available(iOS 17.0, *)
 @Observable
 @MainActor
 final class ProgressStore {

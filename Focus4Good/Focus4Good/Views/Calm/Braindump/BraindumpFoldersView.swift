@@ -7,10 +7,11 @@
 
 import SwiftUI
 
+@available(iOS 17.0, *)
 struct BraindumpFoldersView: View {
 
-    @ObservedObject private var store = CalmCentreStore.shared
-    @Environment(\.editMode) private var editMode
+    private var store: CalmCentreStore { CalmCentreStore.shared }
+    @State private var isEditing = false
 
     @State private var showNewFolderAlert = false
     @State private var newFolderName = ""
@@ -50,6 +51,7 @@ struct BraindumpFoldersView: View {
             }
         }
         .listStyle(.insetGrouped)
+        .environment(\.editMode, .constant(isEditing ? .active : .inactive))
         .tint(Color("CalmOrange"))
         .navigationTitle("Folders")
         .toolbar {
@@ -67,10 +69,10 @@ struct BraindumpFoldersView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
                         withAnimation {
-                            editMode?.wrappedValue = editMode?.wrappedValue == .active ? .inactive : .active
+                            isEditing.toggle()
                         }
                     } label: {
-                        Text(editMode?.wrappedValue == .active ? "Done" : "Edit")
+                        Text(isEditing ? "Done" : "Edit")
                             .foregroundStyle(Color("CalmOrange"))
                     }
                 }
@@ -81,9 +83,7 @@ struct BraindumpFoldersView: View {
             Button("Cancel", role: .cancel) {}
             Button("Create") {
                 guard !newFolderName.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-                Task {
-                    await store.addBrainDumpFolder(name: newFolderName, userId: userId)
-                }
+                store.addBrainDumpFolder(name: newFolderName, userId: userId)
             }
         } message: {
             Text("Enter a name for the new folder.")
@@ -110,13 +110,12 @@ struct BraindumpFoldersView: View {
     private func deleteFolder(at offsets: IndexSet) {
         for index in offsets {
             let folder = store.brainDumpFolders[index]
-            Task {
-                await store.deleteBrainDumpFolder(folder)
-            }
+            store.deleteBrainDumpFolder(folder)
         }
     }
 }
 
+@available(iOS 17.0, *)
 #Preview {
     NavigationStack {
         BraindumpFoldersView()

@@ -13,6 +13,7 @@ private let accentOrange = Color("CalmOrange")
 
 // MARK: - CalmCentreView
 
+@available(iOS 17.0, *)
 struct CalmCentreView: View {
     private let columns = [
         GridItem(.flexible(), spacing: 16),
@@ -43,6 +44,7 @@ struct CalmCentreView: View {
 
 // MARK: - Subviews
 
+@available(iOS 17.0, *)
 private extension CalmCentreView {
 
     // MARK: Braindump Featured Card
@@ -93,7 +95,13 @@ private extension CalmCentreView {
                 .fontWeight(.bold)
 
             LazyVGrid(columns: columns, spacing: 16) {
-                toolCard(icon: "wind", title: "Breathe", subtitle: "4-7-8 Technique")
+                NavigationLink {
+                    BreatheIntroView()
+                } label: {
+                    toolCard(icon: "wind", title: "Breathe", subtitle: "4-7-8 Technique")
+                }
+                .buttonStyle(.plain)
+
                 toolCard(icon: "figure.walk", title: "Unwind Body", subtitle: "JPMR Muscle Relax")
                 toolCard(icon: "speaker.wave.3", title: "Sensory Soothe", subtitle: "ASMR Sounds")
                 toolCard(icon: "leaf", title: "Deep Focus", subtitle: "Guided Meditation")
@@ -164,6 +172,7 @@ private extension CalmCentreView {
 
 // MARK: - Preview
 
+@available(iOS 17.0, *)
 #Preview {
     CalmCentreView()
 }

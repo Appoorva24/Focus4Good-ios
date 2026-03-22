@@ -7,11 +7,12 @@
 
 import SwiftUI
 
+@available(iOS 17.0, *)
 struct BraindumpEntriesView: View {
 
     let folder: BrainDumpFolder
 
-    @ObservedObject private var store = CalmCentreStore.shared
+    private var store: CalmCentreStore { CalmCentreStore.shared }
     @State private var selectedEntry: BrainDumpEntry?
 
     private var entries: [BrainDumpEntry] {
@@ -122,13 +123,12 @@ struct BraindumpEntriesView: View {
     private func deleteEntry(at offsets: IndexSet) {
         let entriesToDelete = offsets.map { entries[$0] }
         for entry in entriesToDelete {
-            Task {
-                await store.deleteBrainDumpEntry(entry)
-            }
+            store.deleteBrainDumpEntry(entry)
         }
     }
 }
 
+@available(iOS 17.0, *)
 #Preview {
     NavigationStack {
         BraindumpEntriesView(

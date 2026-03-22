@@ -1,5 +1,6 @@
 import Foundation
 
+@available(iOS 17.0, *)
 @Observable
 @MainActor
 final class TaskStore {
@@ -27,9 +28,7 @@ final class TaskStore {
     }
 
     static let shared = TaskStore()
-    private init() {
-        tasks = DummyData.tasks
-    }
+    private init() {}
 
     // MARK: - Tasks
     func fetchTasks(userId: UUID) async {
