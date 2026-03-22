@@ -7,23 +7,30 @@ struct ScheduleView: View {
     @State private var selectedTask: UserTask?
 
     private var repetitiveTasks: [UserTask] {
-        taskStore.tasks.filter { $0.repeatType != .never && !$0.isCompleted }
+        taskStore.tasks
+            .filter { $0.repeatType != .never && !$0.isCompleted }
+            .sorted { priorityOrder($0) < priorityOrder($1) }
     }
 
     private var todayTasks: [UserTask] {
         taskStore.todaysTasks
             .filter { $0.repeatType == .never }
-            .sorted {
-                let order: [UserTask.Priority] = [.high, .medium, .low, .none]
-                return (order.firstIndex(of: $0.priority) ?? 3) < (order.firstIndex(of: $1.priority) ?? 3)
-            }
+            .sorted { priorityOrder($0) < priorityOrder($1) }
+    }
+
+    private func priorityOrder(_ task: UserTask) -> Int {
+        switch task.priority {
+        case .high: return 0
+        case .medium: return 1
+        case .low: return 2
+        case .none: return 3
+        }
     }
 
     var body: some View {
-        // No NavigationStack here — lives inside HomeView's NavigationStack
         ZStack(alignment: .bottomTrailing) {
             Group {
-                if taskStore.todaysTasks.isEmpty && repetitiveTasks.isEmpty {
+                if taskStore.tasks.isEmpty {
                     emptyState
                 } else {
                     taskList
@@ -47,8 +54,9 @@ struct ScheduleView: View {
             Image(systemName: "calendar.badge.plus")
                 .resizable().scaledToFit().frame(width: 72, height: 72)
                 .foregroundStyle(AppTheme.orange.opacity(0.5))
-            Text("No tasks for today").font(.title3.bold())
-            Text("Tap + to add your first task").font(.subheadline).foregroundStyle(AppTheme.textSecondary)
+            Text("No tasks yet").font(.title3.bold())
+            Text("Tap + to add your first task")
+                .font(.subheadline).foregroundStyle(AppTheme.textSecondary)
             Spacer()
         }
         .frame(maxWidth: .infinity)
@@ -127,7 +135,9 @@ struct TaskRowView: View {
                     .lineLimit(1)
 
                 HStack(spacing: 8) {
-                    if task.repeatType != .never { tagView(task.repeatType.displayName, color: .purple) }
+                    if task.repeatType != .never {
+                        tagView(task.repeatType.displayName, color: .purple)
+                    }
                     if let time = task.scheduledTime {
                         HStack(spacing: 3) {
                             Image(systemName: "clock").font(.caption2)

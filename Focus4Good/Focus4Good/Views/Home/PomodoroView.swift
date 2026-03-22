@@ -2,7 +2,6 @@ import SwiftUI
 
 struct PomodoroView: View {
     let task: UserTask
-    // Only the stores this view actually needs
     @Environment(TaskStore.self) private var taskStore
     @Environment(UserStore.self) private var userStore
     @Environment(\.dismiss) private var dismiss
@@ -13,9 +12,11 @@ struct PomodoroView: View {
     @State private var distractedCount = 0
     @State private var showEndSessionAlert = false
     @State private var showOverwhelmedSheet = false
+    @State private var showBreakScreen = false
     @State private var sessionComplete = false
     @State private var timer: Timer?
     @State private var totalFocusMinutes = 0
+    @State private var breathePhase = false
 
     private let totalSessions: Int
     private let sessionDuration = 25 * 60
@@ -46,6 +47,8 @@ struct PomodoroView: View {
                     distractedCount: distractedCount,
                     onDismiss: { dismiss() }
                 )
+            } else if showBreakScreen {
+                breakView
             } else {
                 timerView
             }
@@ -64,6 +67,7 @@ struct PomodoroView: View {
         }
     }
 
+    // MARK: - Timer View
     private var timerView: some View {
         ZStack {
             Color(.systemBackground).ignoresSafeArea()
@@ -81,12 +85,9 @@ struct PomodoroView: View {
                 timerRing
                 Spacer()
 
-                sessionInfo
-                    .padding(.bottom, 40)
+                sessionInfo.padding(.bottom, 40)
 
-                if !isBreak {
-                    distractedButton.padding(.horizontal, 40).padding(.bottom, 16)
-                }
+                distractedButton.padding(.horizontal, 40).padding(.bottom, 16)
                 endSessionButton.padding(.bottom, 48)
             }
         }
@@ -94,14 +95,86 @@ struct PomodoroView: View {
         .navigationBarBackButtonHidden(true)
     }
 
+    // MARK: - Break View (Figma style)
+    private var breakView: some View {
+        ZStack {
+            Color(.systemBackground).ignoresSafeArea()
+            VStack(spacing: 0) {
+                Spacer()
+
+                // Breathing circle
+                ZStack {
+                    Circle()
+                        .fill(Color(hex: "FFF3E8"))
+                        .frame(width: 220, height: 220)
+                        .scaleEffect(breathePhase ? 1.1 : 1.0)
+                        .animation(.easeInOut(duration: 2).repeatForever(autoreverses: true), value: breathePhase)
+
+                    Circle()
+                        .stroke(AppTheme.orange.opacity(0.4), lineWidth: 1.5)
+                        .frame(width: 220, height: 220)
+
+                    VStack(spacing: 6) {
+                        Text(breathePhase ? "EXHALE" : "INHALE")
+                            .font(.system(size: 18, weight: .light, design: .serif))
+                            .foregroundStyle(AppTheme.orange)
+                            .kerning(3)
+                        Text("~")
+                            .font(.title2)
+                            .foregroundStyle(AppTheme.orange.opacity(0.6))
+                    }
+                }
+                .onAppear { breathePhase = true }
+
+                Spacer()
+
+                Text(timeString)
+                    .font(.system(size: 64, weight: .bold, design: .rounded))
+                    .foregroundStyle(AppTheme.orange)
+
+                Text("Relaxation Break")
+                    .font(.subheadline)
+                    .foregroundStyle(AppTheme.textSecondary)
+                    .padding(.top, 4)
+
+                Spacer()
+
+                Button { skipBreak() } label: {
+                    HStack(spacing: 8) {
+                        Text("Skip and start new session")
+                            .font(.headline)
+                        Image(systemName: "play.fill")
+                            .font(.subheadline)
+                    }
+                    .foregroundStyle(AppTheme.textPrimary)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 56)
+                    .background(Capsule().fill(AppTheme.orange.opacity(0.2)))
+                }
+                .padding(.horizontal, 40)
+                .padding(.bottom, 16)
+
+                Button { dismiss() } label: {
+                    Text("End Session")
+                        .font(.subheadline)
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
+                .padding(.bottom, 48)
+            }
+        }
+        .onAppear { startBreakTimer() }
+        .navigationBarBackButtonHidden(true)
+    }
+
+    // MARK: - Subviews
     private var modeBadge: some View {
         Capsule()
-            .fill(isBreak ? Color.green.opacity(0.15) : AppTheme.orange.opacity(0.15))
+            .fill(AppTheme.orange.opacity(0.15))
             .frame(width: 140, height: 32)
             .overlay(
-                Text(isBreak ? "• BREAK TIME" : "• DEEP FOCUS")
+                Text("• DEEP FOCUS")
                     .font(.caption.bold())
-                    .foregroundStyle(isBreak ? .green : AppTheme.orange)
+                    .foregroundStyle(AppTheme.orange)
             )
     }
 
@@ -110,7 +183,7 @@ struct PomodoroView: View {
             Circle().stroke(AppTheme.orange.opacity(0.15), lineWidth: 16).frame(width: 260, height: 260)
             Circle()
                 .trim(from: 0, to: progress)
-                .stroke(isBreak ? Color.green : AppTheme.orange, style: StrokeStyle(lineWidth: 16, lineCap: .round))
+                .stroke(AppTheme.orange, style: StrokeStyle(lineWidth: 16, lineCap: .round))
                 .frame(width: 260, height: 260)
                 .rotationEffect(.degrees(-90))
                 .animation(.linear(duration: 1), value: progress)
@@ -151,38 +224,61 @@ struct PomodoroView: View {
         }
     }
 
+    // MARK: - Timer Logic
     private func startTimer() {
+        timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
-            guard timeRemaining > 0 else { handleTimerEnd(); return }
+            guard timeRemaining > 0 else { handleSessionEnd(); return }
             timeRemaining -= 1
         }
     }
 
-    private func handleTimerEnd() {
+    private func startBreakTimer() {
+        timeRemaining = breakDuration
         timer?.invalidate()
-        if isBreak {
-            isBreak = false
-            timeRemaining = sessionDuration
-            startTimer()
-        } else {
-            totalFocusMinutes += 25
-            if currentSession >= totalSessions {
-                let points = max(0, (totalSessions * 25 * 2) - (distractedCount * 5))
-                Task {
-                    await taskStore.toggleCompletion(for: task)
-                    await userStore.updateFocusPoints(by: points)
-                }
-                sessionComplete = true
-            } else {
-                currentSession += 1
-                isBreak = true
-                timeRemaining = breakDuration
-                startTimer()
-            }
+        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
+            guard timeRemaining > 0 else { handleBreakEnd(); return }
+            timeRemaining -= 1
         }
+    }
+
+    private func handleSessionEnd() {
+        timer?.invalidate()
+        totalFocusMinutes += 25
+
+        if currentSession >= totalSessions {
+            // All sessions done — award points
+            let points = max(0, (totalSessions * 25 * 2) - (distractedCount * 5))
+            Task {
+                await taskStore.toggleCompletion(for: task)
+                await userStore.updateFocusPoints(by: points)
+            }
+            sessionComplete = true
+        } else {
+            // Show break screen before next session
+            showBreakScreen = true
+        }
+    }
+
+    private func handleBreakEnd() {
+        timer?.invalidate()
+        currentSession += 1
+        timeRemaining = sessionDuration
+        showBreakScreen = false
+        startTimer()
+    }
+
+    private func skipBreak() {
+        timer?.invalidate()
+        currentSession += 1
+        timeRemaining = sessionDuration
+        showBreakScreen = false
+        breathePhase = false
+        startTimer()
     }
 }
 
+// MARK: - Overwhelmed Sheet
 struct OverwhelmedSheet: View {
     @Environment(\.dismiss) private var dismiss
 
@@ -199,7 +295,6 @@ struct OverwhelmedSheet: View {
             }
 
             VStack(spacing: 12) {
-                // Disabled until Calm Centre tab is built
                 Text("Go to Calm Centre")
                     .font(.headline).foregroundStyle(.white)
                     .frame(maxWidth: .infinity).frame(height: 52)
@@ -215,6 +310,7 @@ struct OverwhelmedSheet: View {
     }
 }
 
+// MARK: - Session Complete
 struct SessionCompleteView: View {
     let totalSessions: Int
     let totalFocusMinutes: Int

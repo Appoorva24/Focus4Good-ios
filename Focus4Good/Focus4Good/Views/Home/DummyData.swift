@@ -9,66 +9,14 @@ struct DummyData {
         passwordHash: nil,
         profileImageUrl: nil,
         authProvider: "email",
-        focusPoints: 759,
-        currentLevel: 3,
-        bestStreak: 12,
-        currentStreak: 5
+        focusPoints: 0,
+        currentLevel: 1,
+        bestStreak: 0,
+        currentStreak: 0
     )
 
-    static let tasks: [UserTask] = [
-        UserTask(
-            id: UUID(),
-            userId: currentUser.id,
-            categoryId: nil,
-            title: "Deep focus: Design Phase",
-            scheduledDate: Date(),
-            scheduledTime: Calendar.current.date(bySettingHour: 10, minute: 0, second: 0, of: Date()),
-            repeatType: .never,
-            priority: .high,
-            isCompleted: false,
-            estimatedDuration: 50,
-            createdAt: Date()
-        ),
-        UserTask(
-            id: UUID(),
-            userId: currentUser.id,
-            categoryId: nil,
-            title: "Review community feedback",
-            scheduledDate: Date(),
-            scheduledTime: Calendar.current.date(bySettingHour: 11, minute: 30, second: 0, of: Date()),
-            repeatType: .never,
-            priority: .medium,
-            isCompleted: false,
-            estimatedDuration: 25,
-            createdAt: Date()
-        ),
-        UserTask(
-            id: UUID(),
-            userId: currentUser.id,
-            categoryId: nil,
-            title: "Weekly sync meeting",
-            scheduledDate: Date(),
-            scheduledTime: Calendar.current.date(bySettingHour: 14, minute: 0, second: 0, of: Date()),
-            repeatType: .weekly,
-            priority: .medium,
-            isCompleted: false,
-            estimatedDuration: 25,
-            createdAt: Date()
-        ),
-        UserTask(
-            id: UUID(),
-            userId: currentUser.id,
-            categoryId: nil,
-            title: "Read research paper",
-            scheduledDate: Date(),
-            scheduledTime: Calendar.current.date(bySettingHour: 16, minute: 0, second: 0, of: Date()),
-            repeatType: .never,
-            priority: .low,
-            isCompleted: true,
-            estimatedDuration: 25,
-            createdAt: Date()
-        )
-    ]
+    // No pre-loaded tasks — user adds their own
+    static let tasks: [UserTask] = []
 
     static let ngos: [NGO] = [
         NGO(
@@ -139,10 +87,10 @@ struct DummyData {
     )
 
     static let onboardingPages: [(title: String, subtitle: String, imageName: String)] = [
-        ("Struggling with ADHD?", "Easily distracted? Overwhelmed by simple tasks?\nDon't worry. We got you!", "onboarding1"),
-        ("Scan & Schedule", "Instantly convert your handwritten list into a smart schedule with automatic pomodoro slots", "onboarding2"),
-        ("Build Virtual Classroom", "Complete tasks to unlock upgrades and build a classroom that supports you better every day.", "onboarding3"),
-        ("Master Hyperactivity", "Access smart sensory tools, guided meditation and relaxation tools to help with your hyperactivity", "onboarding4"),
-        ("You Are Not Alone", "Connect with people who suffer from ADHD, and find your safe space", "onboarding5")
+        ("Struggling with ADHD?", "Easily distracted? Overwhelmed by simple tasks?\nDon't worry. We got you!", "o1"),
+        ("Scan & Schedule", "Instantly convert your handwritten list into a smart schedule with automatic pomodoro slots", "o2"),
+        ("Build Virtual Classroom", "Complete tasks to unlock upgrades and build a classroom that supports you better every day.", "o3"),
+        ("Master Hyperactivity", "Access smart sensory tools, guided meditation and relaxation tools to help with your hyperactivity", "o4"),
+        ("You Are Not Alone", "Connect with people who suffer from ADHD, and find your safe space", "o5")
     ]
 }

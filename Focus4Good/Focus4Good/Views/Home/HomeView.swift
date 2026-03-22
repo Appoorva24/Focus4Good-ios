@@ -3,7 +3,6 @@ import SwiftUI
 enum HomeDestination: Hashable {
     case schedule
     case ngoList
-    case profile
 }
 
 struct HomeView: View {
@@ -11,6 +10,7 @@ struct HomeView: View {
     @Environment(TaskStore.self) private var taskStore
     @Environment(VolunteerStore.self) private var volunteerStore
     @State private var navigationPath = NavigationPath()
+    @State private var showProfile = false
 
     private var todayHighPriorityTasks: [UserTask] {
         taskStore.todaysTasks
@@ -47,7 +47,7 @@ struct HomeView: View {
                     virtualClassroomCard
                     ngoConnectCard
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, 16)
                 .padding(.top, 8)
                 .padding(.bottom, 40)
             }
@@ -56,12 +56,17 @@ struct HomeView: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { navigationPath.append(HomeDestination.profile) } label: {
+                    Button {
+                        showProfile = true
+                    } label: {
                         Image(systemName: "person.circle.fill")
                             .font(.title2)
-                            .foregroundStyle(.primary)
+                            .foregroundStyle(AppTheme.textPrimary)
                     }
                 }
+            }
+            .sheet(isPresented: $showProfile) {
+                ProfileView()
             }
             .navigationDestination(for: HomeDestination.self) { destination in
                 switch destination {
@@ -69,48 +74,53 @@ struct HomeView: View {
                     ScheduleView()
                 case .ngoList:
                     NGOListView()
-                case .profile:
-                    ProfileView()
                 }
             }
         }
     }
 
+    // MARK: - Quote
     private var quoteSection: some View {
         Group {
             Text("\"You don't need to do everything. ")
-                .font(.subheadline)
                 .foregroundStyle(AppTheme.textSecondary)
             + Text("Just start with one thing.")
-                .font(.subheadline.bold())
                 .foregroundStyle(AppTheme.orange)
+                .bold()
             + Text("\"")
-                .font(.subheadline)
                 .foregroundStyle(AppTheme.textSecondary)
         }
+        .font(.subheadline)
     }
 
+    // MARK: - Planner Card
     private var plannerCard: some View {
         Button { navigationPath.append(HomeDestination.schedule) } label: {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Today's Plan")
-                    .font(.headline)
-                    .foregroundStyle(AppTheme.textPrimary)
+            VStack(spacing: 0) {
+                HStack {
+                    Text("Today's Plan")
+                        .font(.headline.bold())
+                        .foregroundStyle(.black)
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .background(AppTheme.orange)
 
-                if todayHighPriorityTasks.isEmpty {
-                    HStack(spacing: 10) {
-                        Image(systemName: "checkmark.circle").foregroundStyle(AppTheme.orange)
-                        Text("No high priority tasks today")
-                            .font(.subheadline)
-                            .foregroundStyle(AppTheme.textSecondary)
-                    }
-                    .padding(.vertical, 4)
-                } else {
-                    VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 14) {
+                    if todayHighPriorityTasks.isEmpty {
+                        HStack(spacing: 10) {
+                            Image(systemName: "checkmark.circle")
+                                .foregroundStyle(AppTheme.orange)
+                            Text("No high priority tasks today")
+                                .font(.subheadline)
+                                .foregroundStyle(.gray)
+                        }
+                    } else {
                         ForEach(todayHighPriorityTasks) { task in
                             HStack(spacing: 12) {
                                 RoundedRectangle(cornerRadius: 5)
-                                    .stroke(AppTheme.orange.opacity(0.7), lineWidth: 1.5)
+                                    .stroke(AppTheme.orange, lineWidth: 1.5)
                                     .frame(width: 22, height: 22)
                                     .overlay {
                                         if task.isCompleted {
@@ -121,31 +131,36 @@ struct HomeView: View {
                                     }
                                 Text(task.title)
                                     .font(.subheadline)
-                                    .foregroundStyle(AppTheme.textPrimary)
-                                    .lineLimit(1)
+                                    .foregroundStyle(.black)
                                 Spacer()
                             }
                         }
                     }
-                }
 
-                HStack(spacing: 8) {
-                    Image(systemName: "plus.circle").foregroundStyle(AppTheme.orange)
-                    Text("Add a new task").font(.subheadline).foregroundStyle(AppTheme.textSecondary)
+                    HStack {
+                        Image(systemName: "plus.circle")
+                        Text("Add a new task")
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(AppTheme.textSecondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(AppTheme.orange.opacity(0.5), style: StrokeStyle(lineWidth: 1.2, dash: [6]))
+                    )
+                    .padding(.top, 4)
                 }
-                .padding(.top, 2)
+                .padding(16)
+                .background(Color.white)
             }
-            .padding(20)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(Color(hex: "FFF3E8"))
-                    .overlay(RoundedRectangle(cornerRadius: 20).stroke(AppTheme.orange.opacity(0.25), lineWidth: 1))
-            )
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+            .overlay(RoundedRectangle(cornerRadius: 20).stroke(AppTheme.orange.opacity(0.4), lineWidth: 1))
         }
         .buttonStyle(.plain)
     }
 
+    // MARK: - Stats
     private var statsRow: some View {
         HStack(spacing: 16) {
             StatCard(
@@ -161,61 +176,74 @@ struct HomeView: View {
         }
     }
 
+    // MARK: - Virtual Classroom
     private var virtualClassroomCard: some View {
         VStack(alignment: .leading, spacing: 0) {
-            ZStack(alignment: .topLeading) {
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(.systemGray6))
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 190)
-                    .overlay {
-                        Image("vc")
-                            .resizable().scaledToFill()
-                            .frame(maxWidth: .infinity).frame(height: 190).clipped()
-                            .overlay(RoundedRectangle(cornerRadius: 16).fill(Color.black.opacity(0.15)))
+            Image("vc")
+                .resizable()
+                .scaledToFill()
+                .frame(maxWidth: .infinity)
+                .frame(height: 200)
+                .clipped()
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .bottom) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Virtual Classroom")
+                            .font(.headline)
+                            .foregroundStyle(AppTheme.textPrimary)
+                        Text("Complete tasks and grow your virtual class")
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.textSecondary)
                     }
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-
-                Image(systemName: "lock.fill")
-                    .font(.subheadline.bold()).foregroundStyle(.white)
-                    .padding(10).background(Circle().fill(Color.black.opacity(0.55)))
-                    .padding(14)
-            }
-
-            HStack(alignment: .bottom) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Virtual Classroom").font(.headline).foregroundStyle(AppTheme.textPrimary)
-                    Text("Complete tasks and grow your virtual class").font(.caption).foregroundStyle(AppTheme.textSecondary)
+                    Spacer()
+                    Text("Continue")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                        .background(Capsule().fill(AppTheme.orange))
                 }
-                Spacer()
-                Text("Coming Soon")
-                    .font(.caption.bold()).foregroundStyle(AppTheme.orange)
-                    .padding(.horizontal, 14).padding(.vertical, 8)
-                    .background(Capsule().fill(AppTheme.orange.opacity(0.15)))
             }
-            .padding(.top, 14).padding(.horizontal, 4)
+            .padding(.horizontal, 4)
+            .padding(.top, 12)
         }
         .padding(16)
-        .background(RoundedRectangle(cornerRadius: 20).fill(Color(.secondarySystemBackground)))
+        .background(Color(.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 2)
     }
 
+    // MARK: - NGO Connect
     private var ngoConnectCard: some View {
         Button { navigationPath.append(HomeDestination.ngoList) } label: {
             VStack(alignment: .leading, spacing: 0) {
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(.systemGray6))
-                    .frame(maxWidth: .infinity).frame(height: 190)
-                    .overlay {
-                        Image("ngo")
-                            .resizable().scaledToFill()
-                            .frame(maxWidth: .infinity).frame(height: 190).clipped()
-                            .overlay(RoundedRectangle(cornerRadius: 16).fill(Color.black.opacity(0.2)))
-                    }
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                ZStack(alignment: .topLeading) {
+                    Image("ngo")
+                        .resizable()
+                        .scaledToFill()
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 200)
+                        .clipped()
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+
+                    Image(systemName: "lock.fill")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.white)
+                        .padding(10)
+                        .background(Circle().fill(Color.black.opacity(0.55)))
+                        .padding(12)
+                }
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("NGO Connect").font(.headline).foregroundStyle(AppTheme.textPrimary)
-                    Text("Focus Points").font(.caption).foregroundStyle(AppTheme.textSecondary)
+                    Text("NGO Connect")
+                        .font(.headline)
+                        .foregroundStyle(AppTheme.textPrimary)
+
+                    Text("Focus Points")
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.textSecondary)
 
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
@@ -231,20 +259,28 @@ struct HomeView: View {
                     .frame(height: 6)
 
                     HStack {
-                        Text("\(userStore.currentUser?.focusPoints ?? 0)").font(.caption.bold()).foregroundStyle(AppTheme.orange)
+                        Text("\(userStore.currentUser?.focusPoints ?? 0)")
+                            .font(.caption.bold())
+                            .foregroundStyle(AppTheme.orange)
                         Spacer()
-                        Text("10,000").font(.caption).foregroundStyle(AppTheme.textSecondary)
+                        Text("10,000")
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.textSecondary)
                     }
                 }
-                .padding(.top, 14).padding(.horizontal, 4)
+                .padding(.horizontal, 4)
+                .padding(.top, 12)
             }
             .padding(16)
-            .background(RoundedRectangle(cornerRadius: 20).fill(Color(.secondarySystemBackground)))
+            .background(Color(.systemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+            .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 2)
         }
         .buttonStyle(.plain)
     }
 }
 
+// MARK: - Stat Card
 struct StatCard: View {
     let title: String
     let value: String
@@ -253,19 +289,30 @@ struct StatCard: View {
     var body: some View {
         VStack(spacing: 14) {
             ZStack {
-                Circle().stroke(Color(.systemGray5), lineWidth: 9).frame(width: 86, height: 86)
+                Circle()
+                    .stroke(Color(.systemGray5), lineWidth: 9)
                 Circle()
                     .trim(from: 0, to: progress)
                     .stroke(AppTheme.orange, style: StrokeStyle(lineWidth: 9, lineCap: .round))
-                    .frame(width: 86, height: 86)
                     .rotationEffect(.degrees(-90))
                     .animation(.easeOut(duration: 0.8), value: progress)
-                Text(value).font(.system(size: 17, weight: .bold)).foregroundStyle(AppTheme.textPrimary)
+                Text(value)
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(AppTheme.textPrimary)
             }
-            Text(title).font(.caption).foregroundStyle(AppTheme.textSecondary).multilineTextAlignment(.center)
+            .frame(width: 80, height: 80)
+
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(AppTheme.textSecondary)
+                .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 24)
-        .background(RoundedRectangle(cornerRadius: 18).fill(Color(.secondarySystemBackground)))
+        .padding(.vertical, 20)
+        .background(
+            RoundedRectangle(cornerRadius: 18)
+                .fill(Color(.systemBackground))
+                .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color(.systemGray4), lineWidth: 0.5))
+        )
     }
 }

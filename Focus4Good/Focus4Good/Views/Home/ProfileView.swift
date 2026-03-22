@@ -2,54 +2,74 @@ import SwiftUI
 
 struct ProfileView: View {
     @Environment(UserStore.self) private var userStore
+    @Environment(\.dismiss) private var dismiss
     @State private var showSignOutAlert = false
+    @State private var showEditProfile = false
     @State private var showNotificationsAlert = false
     @State private var showTimezoneAlert = false
-    @State private var showPrivacyAlert = false
 
     private var user: User { userStore.currentUser ?? DummyData.currentUser }
 
     var body: some View {
-        List {
-            Section {
-                HStack(spacing: 16) {
-                    ZStack {
-                        Circle().fill(AppTheme.orange.opacity(0.15)).frame(width: 72, height: 72)
-                        Image(systemName: "person.fill").font(.system(size: 32)).foregroundStyle(AppTheme.orange)
+        NavigationStack {
+            List {
+                // User Card
+                Section {
+                    HStack(spacing: 14) {
+                        ZStack {
+                            Circle().fill(AppTheme.orange.opacity(0.15)).frame(width: 56, height: 56)
+                            Image(systemName: "person.fill").font(.title2).foregroundStyle(AppTheme.orange)
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(user.fullName).font(.headline)
+                            Text(user.email).font(.caption).foregroundStyle(AppTheme.textSecondary)
+                        }
                     }
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(user.fullName).font(.title3.bold())
-                        Text(user.email).font(.subheadline).foregroundStyle(AppTheme.textSecondary)
+                    .padding(.vertical, 6)
+                }
+
+                // Profile Section
+                Section {
+                    settingsRow(icon: "person", label: "Edit Profile") {
+                        showEditProfile = true
+                    }
+                } header: { Text("Profile").textCase(nil) }
+
+                // App Settings Section
+                Section {
+                    settingsRow(icon: "bell", label: "Notifications") {
+                        showNotificationsAlert = true
+                    }
+                    settingsRow(icon: "globe", label: "Timezone") {
+                        showTimezoneAlert = true
+                    }
+                } header: { Text("App Settings").textCase(nil) }
+
+                // Sign Out
+                Section {
+                    Button(role: .destructive) {
+                        showSignOutAlert = true
+                    } label: {
+                        Text("Sign Out")
+                            .frame(maxWidth: .infinity, alignment: .center)
                     }
                 }
-                .padding(.vertical, 8)
             }
-
-            Section {
-                statRow(icon: "flame.fill", label: "Current Streak", value: "\(user.currentStreak) days", color: .orange)
-                statRow(icon: "star.fill", label: "Best Streak", value: "\(user.bestStreak) days", color: .yellow)
-                statRow(icon: "bolt.fill", label: "Focus Points", value: "\(user.focusPoints)", color: AppTheme.orange)
-                statRow(icon: "chart.bar.fill", label: "Level", value: "Level \(user.currentLevel)", color: .purple)
-            } header: { Text("Stats").textCase(nil) }
-
-            Section {
-                settingsRow(icon: "bell.fill", label: "Notifications", color: .red) { showNotificationsAlert = true }
-                settingsRow(icon: "globe", label: "Timezone", color: .blue) { showTimezoneAlert = true }
-                settingsRow(icon: "lock.fill", label: "Privacy", color: .gray) { showPrivacyAlert = true }
-            } header: { Text("Settings").textCase(nil) }
-
-            Section {
-                Button(role: .destructive) { showSignOutAlert = true } label: {
-                    HStack {
-                        Image(systemName: "rectangle.portrait.and.arrow.right")
-                        Text("Sign Out")
+            .listStyle(.insetGrouped)
+            .navigationTitle("Account")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(AppTheme.textSecondary)
                     }
                 }
             }
         }
-        .listStyle(.insetGrouped)
-        .navigationTitle("Profile")
-        .navigationBarTitleDisplayMode(.large)
         .alert("Sign Out?", isPresented: $showSignOutAlert) {
             Button("Cancel", role: .cancel) {}
             Button("Sign Out", role: .destructive) { userStore.signOut() }
@@ -60,31 +80,68 @@ struct ProfileView: View {
         .alert("Timezone", isPresented: $showTimezoneAlert) {
             Button("OK", role: .cancel) {}
         } message: { Text("Current timezone: New Delhi (IST)") }
-        .alert("Privacy", isPresented: $showPrivacyAlert) {
-            Button("OK", role: .cancel) {}
-        } message: { Text("Privacy settings will be available when backend is connected.") }
-    }
-
-    private func statRow(icon: String, label: String, value: String, color: Color) -> some View {
-        HStack {
-            Image(systemName: icon).foregroundStyle(color).frame(width: 24)
-            Text(label).font(.subheadline)
-            Spacer()
-            Text(value).font(.subheadline.bold()).foregroundStyle(AppTheme.textSecondary)
+        .sheet(isPresented: $showEditProfile) {
+            EditProfileView()
         }
     }
 
-    private func settingsRow(icon: String, label: String, color: Color, action: @escaping () -> Void) -> some View {
+    private func settingsRow(icon: String, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack {
-                Image(systemName: icon).foregroundStyle(.white)
+                Image(systemName: icon)
+                    .foregroundStyle(AppTheme.orange)
                     .frame(width: 28, height: 28)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(color))
                 Text(label).font(.subheadline).foregroundStyle(AppTheme.textPrimary)
                 Spacer()
                 Image(systemName: "chevron.right").font(.caption).foregroundStyle(AppTheme.textSecondary)
             }
         }
         .buttonStyle(.plain)
+    }
+}
+
+struct EditProfileView: View {
+    @Environment(UserStore.self) private var userStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var fullName = ""
+    @State private var email = ""
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    HStack(spacing: 12) {
+                        Image(systemName: "person").foregroundStyle(AppTheme.orange).frame(width: 20)
+                        TextField("Full Name", text: $fullName).font(.subheadline)
+                    }
+                    HStack(spacing: 12) {
+                        Image(systemName: "envelope").foregroundStyle(AppTheme.orange).frame(width: 20)
+                        TextField("Email", text: $email).font(.subheadline)
+                            .keyboardType(.emailAddress).autocapitalization(.none)
+                    }
+                } header: { Text("Personal Info").textCase(nil) }
+            }
+            .listStyle(.insetGrouped)
+            .navigationTitle("Edit Profile")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }.foregroundStyle(AppTheme.textSecondary)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Save") {
+                        Task {
+                            await userStore.updateProfile(fullName: fullName, profileImageUrl: nil)
+                        }
+                        dismiss()
+                    }
+                    .font(.headline).foregroundStyle(AppTheme.orange)
+                }
+            }
+            .onAppear {
+                fullName = userStore.currentUser?.fullName ?? ""
+                email = userStore.currentUser?.email ?? ""
+            }
+        }
     }
 }
