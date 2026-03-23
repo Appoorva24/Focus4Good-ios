@@ -20,16 +20,23 @@ struct CalmCentreView: View {
         GridItem(.flexible(), spacing: 16)
     ]
 
+    @State private var showBraindump = false
+    @State private var showBreathe = false
+    @State private var showJPMR = false
+    @State private var showASMR = false
+    @State private var showDeepFocus = false
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    NavigationLink {
-                        BraindumpPasswordView()
+                    Button {
+                        showBraindump = true
                     } label: {
                         braindumpCard
                     }
                     .buttonStyle(.plain)
+
                     relaxationToolsSection
                     dailyTipRow
                 }
@@ -38,6 +45,21 @@ struct CalmCentreView: View {
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Calm Centre")
+            .navigationDestination(isPresented: $showBraindump) {
+                BraindumpPasswordView()
+            }
+            .navigationDestination(isPresented: $showBreathe) {
+                BreatheIntroView()
+            }
+            .navigationDestination(isPresented: $showJPMR) {
+                JPMRIntroView()
+            }
+            .navigationDestination(isPresented: $showASMR) {
+                SensorySootheView()
+            }
+            .navigationDestination(isPresented: $showDeepFocus) {
+                DeepFocusBrowseView()
+            }
         }
     }
 }
@@ -95,16 +117,32 @@ private extension CalmCentreView {
                 .fontWeight(.bold)
 
             LazyVGrid(columns: columns, spacing: 16) {
-                NavigationLink {
-                    BreatheIntroView()
+                Button {
+                    showBreathe = true
                 } label: {
                     toolCard(icon: "wind", title: "Breathe", subtitle: "4-7-8 Technique")
                 }
                 .buttonStyle(.plain)
 
-                toolCard(icon: "figure.walk", title: "Unwind Body", subtitle: "JPMR Muscle Relax")
-                toolCard(icon: "speaker.wave.3", title: "Sensory Soothe", subtitle: "ASMR Sounds")
-                toolCard(icon: "leaf", title: "Deep Focus", subtitle: "Guided Meditation")
+                Button {
+                    showJPMR = true
+                } label: {
+                    toolCard(icon: "figure.walk", title: "Unwind Body", subtitle: "JPMR Muscle Relax")
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    showASMR = true
+                } label: {
+                    toolCard(icon: "speaker.wave.3", title: "Sensory Soothe", subtitle: "ASMR Sounds")
+                }
+                .buttonStyle(.plain)
+                Button {
+                    showDeepFocus = true
+                } label: {
+                    toolCard(icon: "leaf", title: "Deep Focus", subtitle: "Guided Meditation")
+                }
+                .buttonStyle(.plain)
             }
         }
     }

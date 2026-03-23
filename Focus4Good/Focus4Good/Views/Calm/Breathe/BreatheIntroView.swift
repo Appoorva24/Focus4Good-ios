@@ -12,6 +12,8 @@ private let accentOrange = Color("CalmOrange")
 @available(iOS 17.0, *)
 struct BreatheIntroView: View {
 
+    @State private var showSession = false
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
@@ -24,6 +26,9 @@ struct BreatheIntroView: View {
             .padding(.bottom, 32)
         }
         .background(Color(.systemGroupedBackground))
+        .navigationDestination(isPresented: $showSession) {
+            BreatheSessionView()
+        }
         .navigationTitle("Breathe")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -135,8 +140,8 @@ private extension BreatheIntroView {
     // MARK: Begin Button
 
     var beginButton: some View {
-        NavigationLink {
-            BreatheSessionView()
+        Button {
+            showSession = true
         } label: {
             Text("Begin")
                 .font(.headline)
