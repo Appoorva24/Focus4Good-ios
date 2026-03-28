@@ -4,6 +4,7 @@ struct ScheduleView: View {
     @Environment(TaskStore.self) private var taskStore
     @Environment(UserStore.self) private var userStore
     @State private var showAddTask = false
+    @State private var showScanner = false
     @State private var selectedTask: UserTask?
 
     private var repetitiveTasks: [UserTask] {
@@ -36,12 +37,19 @@ struct ScheduleView: View {
                     taskList
                 }
             }
-            floatingAddButton
+            
+            // Floating button sirf tab dikhega jab tasks honge
+            if !taskStore.tasks.isEmpty {
+                floatingAddButton
+            }
         }
         .navigationTitle("Schedule")
         .navigationBarTitleDisplayMode(.large)
         .sheet(isPresented: $showAddTask) {
             AddTaskSheet()
+        }
+        .sheet(isPresented: $showScanner) {
+            ScannerView()
         }
         .navigationDestination(item: $selectedTask) { task in
             PomodoroView(task: task)
@@ -49,14 +57,101 @@ struct ScheduleView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 24) {
             Spacer()
+            
             Image(systemName: "calendar.badge.plus")
-                .resizable().scaledToFit().frame(width: 72, height: 72)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 72, height: 72)
                 .foregroundStyle(AppTheme.orange.opacity(0.5))
-            Text("No tasks yet").font(.title3.bold())
-            Text("Tap + to add your first task")
-                .font(.subheadline).foregroundStyle(AppTheme.textSecondary)
+            
+            VStack(spacing: 8) {
+                Text("No tasks yet")
+                    .font(.title3.bold())
+                    .foregroundStyle(AppTheme.textPrimary)
+                
+                Text("Add your first task to get started")
+                    .font(.subheadline)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+            
+            VStack(spacing: 16) {
+                // Manual button - clickable
+                Button {
+                    showAddTask = true
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "pencil.circle.fill")
+                            .font(.title2)
+                            .foregroundStyle(AppTheme.orange)
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Add Manually")
+                                .font(.headline)
+                                .foregroundStyle(AppTheme.textPrimary)
+                            Text("Create tasks one by one")
+                                .font(.caption)
+                                .foregroundStyle(AppTheme.textSecondary)
+                        }
+                        
+                        Spacer()
+                        
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.textSecondary)
+                    }
+                    .padding(16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color(.systemBackground))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(AppTheme.orange.opacity(0.3), lineWidth: 1.5)
+                            )
+                    )
+                }
+                .buttonStyle(.plain)
+                
+                // Scan button - NOW ENABLED!
+                Button {
+                    showScanner = true
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "camera.circle.fill")
+                            .font(.title2)
+                            .foregroundStyle(AppTheme.orange)
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Scan Schedule")
+                                .font(.headline)
+                                .foregroundStyle(AppTheme.textPrimary)
+                            Text("Import from image or document")
+                                .font(.caption)
+                                .foregroundStyle(AppTheme.textSecondary)
+                        }
+                        
+                        Spacer()
+                        
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.textSecondary)
+                    }
+                    .padding(16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color(.systemBackground))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(AppTheme.orange.opacity(0.3), lineWidth: 1.5)
+                            )
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 16)
+            
             Spacer()
         }
         .frame(maxWidth: .infinity)

@@ -4,38 +4,68 @@ struct OnboardingView: View {
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
     @State private var currentPage = 0
 
-    var body: some View {
-        ZStack(alignment: .topTrailing) {
-            TabView(selection: $currentPage) {
-                ForEach(0..<DummyData.onboardingPages.count, id: \.self) { index in
-                    OnboardingPageView(
-                        page: DummyData.onboardingPages[index],
-                        pageIndex: index,
-                        totalPages: DummyData.onboardingPages.count,
-                        currentPage: $currentPage,
-                        hasSeenOnboarding: $hasSeenOnboarding
-                    )
-                    .tag(index)
-                }
-            }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            .ignoresSafeArea()
+    private let pages = DummyData.onboardingPages
 
-            Button("Skip") {
-                hasSeenOnboarding = true
+    var body: some View {
+        ZStack(alignment: .top) {
+            Color.white.ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                // ── Navigation bar ───────────────────────────────
+                HStack {
+                    // Back button (hidden on first page)
+                    Button {
+                        withAnimation { currentPage -= 1 }
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(AppTheme.textPrimary)
+                            .frame(width: 40, height: 40)
+                            .background(
+                                Circle()
+                                    .fill(Color(.systemGray6))
+                            )
+                    }
+                    .opacity(currentPage > 0 ? 1 : 0)
+                    .disabled(currentPage == 0)
+
+                    Spacer()
+
+                    // Skip button
+                    Button("Skip") {
+                        hasSeenOnboarding = true
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 9)
+                    .background(Capsule().fill(AppTheme.orange))
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+
+                // ── Page content ─────────────────────────────────
+                TabView(selection: $currentPage) {
+                    ForEach(0..<pages.count, id: \.self) { index in
+                        OnboardingPageContent(
+                            page: pages[index],
+                            pageIndex: index,
+                            totalPages: pages.count,
+                            currentPage: $currentPage,
+                            hasSeenOnboarding: $hasSeenOnboarding
+                        )
+                        .tag(index)
+                    }
+                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
             }
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 18)
-            .padding(.vertical, 9)
-            .background(Capsule().fill(AppTheme.orange))
-            .padding(.top, 60)
-            .padding(.trailing, 20)
         }
     }
 }
 
-struct OnboardingPageView: View {
+// MARK: - Single page content
+
+private struct OnboardingPageContent: View {
     let page: (title: String, subtitle: String, imageName: String)
     let pageIndex: Int
     let totalPages: Int
@@ -44,28 +74,28 @@ struct OnboardingPageView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Spacer()
+            Spacer().frame(height: 20)
 
-            RoundedRectangle(cornerRadius: 28)
-                .fill(Color(hex: "FFF3E8"))
-                .frame(width: 290, height: 290)
-                .overlay {
-                    if UIImage(named: page.imageName) != nil {
-                        Image(page.imageName)
-                            .resizable()
-                            .scaledToFit()
-                            .padding(24)
-                    } else {
-                        Image(systemName: fallbackIcon)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 110, height: 110)
-                            .foregroundStyle(AppTheme.orange)
-                    }
-                }
-                .padding(.bottom, 52)
+            // ── Image area ───────────────────────────────────
+            ZStack {
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(Color(hex: "FFF3E8"))
 
-            VStack(spacing: 14) {
+                Image(page.imageName)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
+                    .padding(12)
+            }
+            .frame(width: UIScreen.main.bounds.width - 120)
+            .aspectRatio(1.05, contentMode: .fit)
+            .clipShape(RoundedRectangle(cornerRadius: 24))
+
+            Spacer().frame(height: 32)
+
+            // ── Text area ────────────────────────────────────
+            VStack(spacing: 12) {
                 Text(page.title)
                     .font(.title2.bold())
                     .multilineTextAlignment(.center)
@@ -76,47 +106,34 @@ struct OnboardingPageView: View {
                     .foregroundStyle(AppTheme.textSecondary)
                     .multilineTextAlignment(.center)
                     .lineSpacing(4)
-                    .padding(.horizontal, 36)
+                    .padding(.horizontal, 40)
             }
 
             Spacer()
 
-            pageIndicator
-                .padding(.bottom, 28)
+            // ── Dots ─────────────────────────────────────────
+            HStack(spacing: 8) {
+                ForEach(0..<totalPages, id: \.self) { index in
+                    Circle()
+                        .fill(index == pageIndex
+                              ? AppTheme.textPrimary
+                              : Color(.systemGray4))
+                        .frame(width: 8, height: 8)
+                }
+            }
+            .padding(.bottom, 28)
 
+            // ── Next / Get Started button ────────────────────
             Button(action: handleNext) {
                 Text(pageIndex == totalPages - 1 ? "Get Started" : "Next")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(AppTheme.textPrimary)
                     .frame(maxWidth: .infinity)
                     .frame(height: 56)
-                    .background(Capsule().fill(AppTheme.orange))
+                    .background(Capsule().fill(AppTheme.orange.opacity(0.45)))
             }
             .padding(.horizontal, 28)
-            .padding(.bottom, 52)
-        }
-        .background(Color.white)
-    }
-
-    private var fallbackIcon: String {
-        switch pageIndex {
-        case 0: return "brain.head.profile"
-        case 1: return "camera.viewfinder"
-        case 2: return "building.columns.fill"
-        case 3: return "figure.mind.and.body"
-        case 4: return "person.3.fill"
-        default: return "star.fill"
-        }
-    }
-
-    private var pageIndicator: some View {
-        HStack(spacing: 8) {
-            ForEach(0..<totalPages, id: \.self) { index in
-                Capsule()
-                    .fill(index == pageIndex ? AppTheme.orange : Color(.systemGray4))
-                    .frame(width: index == pageIndex ? 28 : 8, height: 8)
-                    .animation(.spring(duration: 0.3), value: pageIndex)
-            }
+            .padding(.bottom, 40)
         }
     }
 

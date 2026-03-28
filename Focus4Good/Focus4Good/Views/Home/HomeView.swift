@@ -48,8 +48,7 @@ struct HomeView: View {
                     ngoConnectCard
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 8)
-                .padding(.bottom, 40)
+                .padding(.top, 8) 
             }
             .background(Color(.systemBackground))
             .navigationTitle(greetingText)
@@ -93,6 +92,7 @@ struct HomeView: View {
         .font(.subheadline)
     }
 
+    
     // MARK: - Planner Card
     private var plannerCard: some View {
         Button { navigationPath.append(HomeDestination.schedule) } label: {

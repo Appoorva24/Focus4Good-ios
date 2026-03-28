@@ -26,6 +26,17 @@ struct Focus4GoodApp: App {
                     .environment(gamificationStore)
                     .environment(calmCentreStore)
                     .environment(communityStore)
+                    .onAppear {
+                        // Request notification permissions on app launch
+                        Task {
+                            let granted = await NotificationManager.shared.requestPermission()
+                            if granted {
+                                print("✅ App has notification permissions")
+                            } else {
+                                print("⚠️ User denied notification permissions")
+                            }
+                        }
+                    }
             }
         }
     }

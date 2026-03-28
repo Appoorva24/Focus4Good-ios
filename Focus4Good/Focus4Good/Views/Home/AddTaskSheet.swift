@@ -59,8 +59,10 @@ struct AddTaskSheet: View {
                     }
                     HStack {
                         Label("Duration", systemImage: "timer")
+                            .foregroundStyle(.black)
                         Spacer()
-                        Stepper("\(estimatedDuration) min", value: $estimatedDuration, in: 5...240, step: 5).fixedSize()
+                        Stepper("\(estimatedDuration) min", value: $estimatedDuration, in: 5...240, step: 5)
+                            .fixedSize()
                     }
                 } header: { Text("More Options").textCase(nil) }
             }
@@ -98,10 +100,10 @@ struct AddTaskSheet: View {
     private func pickerRow(icon: String, label: String, value: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack {
-                Label(label, systemImage: icon).foregroundStyle(AppTheme.textPrimary)
+                Label(label, systemImage: icon).foregroundStyle(.black)
                 Spacer()
-                Text(value).foregroundStyle(AppTheme.textSecondary)
-                Image(systemName: "chevron.up.chevron.down").font(.caption).foregroundStyle(AppTheme.textSecondary)
+                Text(value).foregroundStyle(.black)
+                Image(systemName: "chevron.up.chevron.down").font(.caption).foregroundStyle(.black)
             }
         }
         .buttonStyle(.plain)
@@ -109,6 +111,7 @@ struct AddTaskSheet: View {
 
     private func saveTask() {
         guard !title.isEmpty else { return }
+        
         let task = UserTask(
             userId: userStore.currentUser?.id ?? DummyData.currentUser.id,
             categoryId: nil,
@@ -121,7 +124,16 @@ struct AddTaskSheet: View {
             estimatedDuration: estimatedDuration,
             createdAt: Date()
         )
-        Task { await taskStore.addTask(task) }
+        
+        Task {
+            await taskStore.addTask(task)
+            
+            // Schedule notification if time is set
+            if isTimeEnabled {
+                await NotificationManager.shared.scheduleNotification(for: task)
+            }
+        }
+        
         dismiss()
     }
 }

@@ -4,8 +4,8 @@ struct DummyData {
 
     static let currentUser = User(
         id: UUID(),
-        fullName: "Appoorva Singh",
-        email: "appoorva@example.com",
+        fullName: "Appoorva Khajuria",
+        email: "appoorva2025@gmail.com",
         passwordHash: nil,
         profileImageUrl: nil,
         authProvider: "email",
