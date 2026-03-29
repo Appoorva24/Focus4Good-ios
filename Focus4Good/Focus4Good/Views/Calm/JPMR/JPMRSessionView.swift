@@ -72,27 +72,7 @@ private let allSteps: [MuscleStep] = [
           releaseNote: "Let your mouth hang slightly open"),
 ]
 
-// MARK: - Group Metadata (for the selection menu)
 
-private struct GroupMeta {
-    let number: Int
-    let name: String
-    let icon: String
-}
-
-private let allGroupMetas: [GroupMeta] = [
-    .init(number: 1,  name: "Feet",             icon: "figure.walk"),
-    .init(number: 2,  name: "Calves",            icon: "figure.run"),
-    .init(number: 3,  name: "Thighs",            icon: "figure.strengthtraining.traditional"),
-    .init(number: 4,  name: "Hips & Buttocks",   icon: "figure.cooldown"),
-    .init(number: 5,  name: "Abdomen",           icon: "figure.core.training"),
-    .init(number: 6,  name: "Chest",             icon: "lungs.fill"),
-    .init(number: 7,  name: "Hands & Forearms",  icon: "hand.raised.fill"),
-    .init(number: 8,  name: "Upper Arms",        icon: "figure.arms.open"),
-    .init(number: 9,  name: "Shoulders",         icon: "figure.stand"),
-    .init(number: 10, name: "Neck",              icon: "person.crop.circle"),
-    .init(number: 11, name: "Face",              icon: "face.smiling"),
-]
 
 // MARK: - Presets
 
@@ -263,7 +243,10 @@ struct JPMRSessionView: View {
                 groupMenu
             }
         }
-        .onDisappear { stopTimer() }
+        .onDisappear {
+            stopTimer()
+            JPMRAudioService.shared.stopAll()
+        }
     }
 }
 
@@ -447,35 +430,14 @@ private extension JPMRSessionView {
 
     var groupMenu: some View {
         Menu {
-            // Presets section
-            Section("Presets") {
-                ForEach(SessionPreset.allCases, id: \.label) { preset in
-                    Button {
-                        selectedGroups = preset.groups
-                    } label: {
-                        HStack {
-                            Text("\(preset.label) — \(preset.detail)")
-                            if activePreset == preset {
-                                Image(systemName: "checkmark")
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Individual group toggles
-            Section("Muscle Groups") {
-                ForEach(allGroupMetas, id: \.number) { meta in
-                    Button {
-                        toggleGroup(meta.number)
-                    } label: {
-                        HStack {
-                            Image(systemName: meta.icon)
-                            Text(meta.name)
-                            if selectedGroups.contains(meta.number) {
-                                Spacer()
-                                Image(systemName: "checkmark")
-                            }
+            ForEach(SessionPreset.allCases, id: \.label) { preset in
+                Button {
+                    selectedGroups = preset.groups
+                } label: {
+                    HStack {
+                        Text("\(preset.label) — \(preset.detail)")
+                        if activePreset == preset {
+                            Image(systemName: "checkmark")
                         }
                     }
                 }
@@ -574,18 +536,6 @@ private extension JPMRSessionView {
 @available(iOS 17.0, *)
 private extension JPMRSessionView {
 
-    // MARK: Group Toggle
-
-    func toggleGroup(_ group: Int) {
-        if selectedGroups.contains(group) {
-            if selectedGroups.count > 1 {
-                selectedGroups.remove(group)
-            }
-        } else {
-            selectedGroups.insert(group)
-        }
-    }
-
     // MARK: Start / Stop
 
     func startSession() {
@@ -599,6 +549,7 @@ private extension JPMRSessionView {
 
     func stopSession() {
         stopTimer()
+        JPMRAudioService.shared.stopAll()
         stage = .idle
         countdown = 0
         isRunning = false
@@ -612,18 +563,21 @@ private extension JPMRSessionView {
     func enterPreparation() {
         stage = .preparation
         countdown = prepDuration
+        JPMRAudioService.shared.speakPreparation(groupCount: selectedGroups.count)
         startTimer()
     }
 
     func enterTense() {
         stage = .tensing
         countdown = tenseDuration
+        JPMRAudioService.shared.speakTense(muscleName: currentStep.name, instruction: currentStep.tenseInstruction)
         startTimer()
     }
 
     func enterRest() {
         stage = .resting
         countdown = restDuration
+        JPMRAudioService.shared.speakRest(muscleName: currentStep.name, releaseNote: currentStep.releaseNote)
         startTimer()
     }
 
@@ -635,6 +589,7 @@ private extension JPMRSessionView {
     func enterEndingStep() {
         stage = .ending
         countdown = currentEnding.duration
+        JPMRAudioService.shared.speakEndingStep(title: currentEnding.title, instruction: currentEnding.instruction)
         startTimer()
     }
 
@@ -677,8 +632,20 @@ private extension JPMRSessionView {
             if stepIndex >= activeSteps.count - 1 {
                 enterEnding()
             } else {
-                stepIndex += 1
-                enterTense()
+                stopTimer()
+                let nextIndex = stepIndex + 1
+                let nextStep = activeSteps[nextIndex]
+                let groupIndex = (activeGroupsSorted.firstIndex(of: nextStep.groupNumber) ?? 0) + 1
+                JPMRAudioService.shared.speakGroupTransition(
+                    nextName: nextStep.name,
+                    currentIndex: groupIndex,
+                    totalGroups: selectedGroups.count
+                )
+                stepIndex = nextIndex
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [self] in
+                    enterTense()
+                }
+                return
             }
 
         case .ending:
@@ -700,6 +667,8 @@ private extension JPMRSessionView {
         stopTimer()
         isRunning = false
         stage = .complete
+
+        JPMRAudioService.shared.speakCompletion(groupCount: selectedGroups.count)
 
         Task {
             await store.logJpmrSession(

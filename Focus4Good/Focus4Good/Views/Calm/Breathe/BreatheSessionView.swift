@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AVFoundation
 
 // MARK: - Breathing Phase
 
@@ -101,7 +102,10 @@ struct BreatheSessionView: View {
                 cycleMenu
             }
         }
-        .onDisappear { stopTimer() }
+        .onDisappear {
+            stopTimer()
+            BreatheAudioService.shared.stopAll()
+        }
     }
 }
 
@@ -279,12 +283,17 @@ private extension BreatheSessionView {
 
     func startSession() {
         currentCycle = 1
-        startPhase(.breatheIn)
-        isRunning = true
+        BreatheAudioService.shared.speakIntro(cycles: selectedCycles)
+        // Delay first phase slightly so intro can be heard
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [self] in
+            startPhase(.breatheIn)
+            isRunning = true
+        }
     }
 
     func stopSession() {
         stopTimer()
+        BreatheAudioService.shared.stopAll()
         phase = .idle
         countdown = 0
         isRunning = false
@@ -294,6 +303,9 @@ private extension BreatheSessionView {
     func startPhase(_ newPhase: BreathingPhase) {
         phase = newPhase
         countdown = newPhase.duration
+        BreatheAudioService.shared.speakPhase(
+            newPhase.rawValue, cycle: currentCycle, totalCycles: selectedCycles
+        )
         startTimer()
     }
 
@@ -323,10 +335,12 @@ private extension BreatheSessionView {
         // If we just finished exhale, that's one full cycle
         if phase == .breatheOut {
             if currentCycle >= selectedCycles {
-                // All cycles done
                 completeSession()
                 return
             }
+            BreatheAudioService.shared.speakCycleTransition(
+                currentCycle: currentCycle, totalCycles: selectedCycles
+            )
             currentCycle += 1
         }
 
@@ -336,6 +350,8 @@ private extension BreatheSessionView {
     func completeSession() {
         stopTimer()
         isRunning = false
+
+        BreatheAudioService.shared.speakCompletion(cycles: selectedCycles)
 
         let totalSeconds = selectedCycles * (4 + 7 + 8)
         Task {

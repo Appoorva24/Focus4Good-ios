@@ -72,24 +72,8 @@ final class CalmCentreStore {
     }
 
     // MARK: - ASMR
-    func playAsmrSound(_ sound: AsmrSound) {
-        activeAsmrSound = sound
-        ASMRAudioService.shared.play(soundName: sound.name)
-    }
-
-    func pauseAsmrSound() {
-        ASMRAudioService.shared.pause()
-    }
-
-    func resumeAsmrSound() {
-        guard activeAsmrSound != nil else { return }
-        ASMRAudioService.shared.resume()
-    }
-
-    func stopAsmrSound() {
-        activeAsmrSound = nil
-        ASMRAudioService.shared.stop()
-    }
+    func playAsmrSound(_ sound: AsmrSound) { activeAsmrSound = sound }
+    func stopAsmrSound() { activeAsmrSound = nil }
 
     func toggleAsmrFavourite(soundId: UUID, userId: UUID) {
         if favouriteAsmrSoundIds.contains(soundId) { favouriteAsmrSoundIds.remove(soundId) }

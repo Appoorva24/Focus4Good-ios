@@ -11,16 +11,6 @@ import SwiftUI
 
 private let accentOrange = Color("CalmOrange")
 
-private func iconForCategory(_ category: String) -> String {
-    switch category {
-    case "Nature":      return "leaf.fill"
-    case "Rain":        return "cloud.rain.fill"
-    case "Ambient":     return "flame.fill"
-    case "White Noise": return "waveform.path"
-    default:            return "speaker.wave.3.fill"
-    }
-}
-
 // MARK: - ASMRPlayerView
 
 @available(iOS 17.0, *)
@@ -31,43 +21,57 @@ struct ASMRPlayerView: View {
     let onToggleFavourite: () -> Void
 
     private var store: CalmCentreStore { CalmCentreStore.shared }
+    private var audioService: ASMRAudioService { ASMRAudioService.shared }
     @Environment(\.dismiss) private var dismiss
 
     @State private var isPlaying = false
-    @State private var elapsed = 0
+    @State private var currentTime: TimeInterval = 0
+    @State private var duration: TimeInterval = 0
     @State private var timer: Timer?
+    @State private var volume: Double = 0.5
+    @State private var isSeeking = false
+    @State private var isMuted = false
 
     var body: some View {
-        ZStack {
-            Color(.systemGroupedBackground).ignoresSafeArea()
+        VStack(spacing: 0) {
 
-            VStack(spacing: 0) {
-                Spacer()
-                iconArea
-                soundInfo
-                    .padding(.top, 28)
-                waveformBars
-                    .padding(.top, 32)
-                Spacer()
-                timeDisplay
-                    .padding(.bottom, 20)
-                controls
-                    .padding(.bottom, 48)
-            }
+            Spacer()
+
+            // 1 ── Artwork
+            artwork
+
+            Spacer().frame(height: 32)
+
+            // 2 ── Title + Favourite
+            titleRow
+                .padding(.horizontal, 28)
+
+            Spacer().frame(height: 20)
+
+            // 3 ── Progress bar + times
+            progressSection
+                .padding(.horizontal, 28)
+
+            Spacer().frame(height: 36)
+
+            // 4 ── Playback controls
+            playbackControls
+
+            Spacer().frame(height: 36)
+
+            // 5 ── Volume slider
+            volumeSlider
+                .padding(.horizontal, 28)
+
+            Spacer()
         }
-        .navigationTitle("Now Playing")
+        .background(Color(.systemBackground))
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button { onToggleFavourite() } label: {
-                    Image(systemName: isFavourite ? "heart.fill" : "heart")
-                        .foregroundStyle(isFavourite ? accentOrange : .secondary)
-                }
-            }
-        }
         .onAppear {
-            if store.activeAsmrSound?.id == sound.id, ASMRAudioService.shared.isPlaying {
+            if store.activeAsmrSound?.id == sound.id, audioService.isPlaying {
                 isPlaying = true
+                duration = audioService.duration
+                currentTime = audioService.currentTime
                 startTimer()
             } else {
                 startPlaying()
@@ -82,171 +86,143 @@ struct ASMRPlayerView: View {
 @available(iOS 17.0, *)
 private extension ASMRPlayerView {
 
-    // MARK: Icon
+    // MARK: Artwork
 
-    var iconArea: some View {
-        ZStack {
-            // Outer glow ring
-            Circle()
-                .stroke(accentOrange.opacity(0.12), lineWidth: 6)
-                .frame(width: 200, height: 200)
-
-            // Animated background
-            Circle()
-                .fill(accentOrange.opacity(0.15))
-                .frame(width: 160, height: 160)
-                .phaseAnimator([false, true]) { content, phase in
-                    content
-                        .scaleEffect(isPlaying ? (phase ? 1.08 : 0.95) : 1.0)
-                        .opacity(isPlaying ? (phase ? 0.25 : 0.12) : 0.15)
-                } animation: { _ in
-                    .easeInOut(duration: 3.0)
-                }
-
-            // Category icon
-            Image(systemName: iconForCategory(sound.category))
-                .font(.system(size: 48))
-                .foregroundStyle(accentOrange)
-        }
-        .frame(width: 220, height: 220)
+    var artwork: some View {
+        Image(sound.imageUrl.isEmpty ? "asmr_rain" : sound.imageUrl)
+            .resizable()
+            .aspectRatio(contentMode: .fill)
+            .frame(width: UIScreen.main.bounds.width - 56,
+                   height: UIScreen.main.bounds.width - 56)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .shadow(color: .black.opacity(0.15), radius: 12, x: 0, y: 6)
     }
 
-    // MARK: Sound Info
+    // MARK: Title Row
 
-    var soundInfo: some View {
-        VStack(spacing: 8) {
+    var titleRow: some View {
+        HStack(alignment: .center) {
             Text(sound.name)
                 .font(.title2)
                 .fontWeight(.bold)
+                .lineLimit(1)
 
-            Text(sound.description)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
+            Spacer()
 
-            Text(sound.category)
-                .font(.caption)
-                .fontWeight(.medium)
-                .foregroundStyle(accentOrange)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 4)
-                .background(
-                    Capsule()
-                        .fill(accentOrange.opacity(0.12))
-                )
-                .padding(.top, 4)
-        }
-    }
-
-    // MARK: Waveform Bars
-
-    var waveformBars: some View {
-        HStack(spacing: 5) {
-            ForEach(0..<7, id: \.self) { i in
-                let baseHeight: CGFloat = CGFloat([14, 22, 18, 28, 16, 24, 12][i])
-                let lowHeight: CGFloat = CGFloat([6, 8, 6, 10, 6, 8, 4][i])
-
-                RoundedRectangle(cornerRadius: 3)
-                    .fill(accentOrange.opacity(isPlaying ? 0.8 : 0.3))
-                    .frame(width: 6)
-                    .phaseAnimator([false, true]) { content, phase in
-                        content.frame(height: isPlaying
-                                      ? (phase ? baseHeight : lowHeight)
-                                      : lowHeight)
-                    } animation: { _ in
-                        .easeInOut(duration: 0.5 + Double(i) * 0.1)
-                    }
-            }
-        }
-        .frame(height: 36)
-    }
-
-    // MARK: Time Display
-
-    var timeDisplay: some View {
-        HStack {
-            Text(formatTime(elapsed))
-                .font(.system(.subheadline, design: .monospaced))
-                .foregroundStyle(.secondary)
-
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Color(.systemGray5))
-                        .frame(height: 4)
-
-                    Capsule()
-                        .fill(accentOrange)
-                        .frame(width: progressWidth(in: geo.size.width), height: 4)
-                }
-                .frame(maxHeight: .infinity, alignment: .center)
-            }
-            .frame(height: 20)
-
-            Text(formatTime(sound.durationSeconds))
-                .font(.system(.subheadline, design: .monospaced))
-                .foregroundStyle(.secondary)
-        }
-        .padding(.horizontal, 32)
-    }
-
-    func progressWidth(in totalWidth: CGFloat) -> CGFloat {
-        guard sound.durationSeconds > 0 else { return 0 }
-        let fraction = CGFloat(elapsed) / CGFloat(sound.durationSeconds)
-        return min(fraction, 1.0) * totalWidth
-    }
-
-    // MARK: Controls
-
-    var controls: some View {
-        HStack(spacing: 32) {
-            // Restart
-            Button {
-                elapsed = 0
-            } label: {
-                Image(systemName: "backward.end.fill")
+            Button { onToggleFavourite() } label: {
+                Image(systemName: isFavourite ? "heart.fill" : "heart")
                     .font(.title3)
-                    .foregroundStyle(.secondary)
-                    .frame(width: 48, height: 48)
+                    .foregroundStyle(isFavourite ? accentOrange : .secondary)
             }
+            .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: Progress Section (Interactive Seek Slider)
+
+    var progressSection: some View {
+        VStack(spacing: 6) {
+            Slider(
+                value: Binding(
+                    get: { currentTime },
+                    set: { newValue in
+                        currentTime = newValue
+                        audioService.seek(to: newValue)
+                    }
+                ),
+                in: 0...max(duration, 1)
+            ) { editing in
+                isSeeking = editing
+                if !editing {
+                    audioService.seek(to: currentTime)
+                }
+            }
+            .tint(Color(.systemGray))
+
+            // Time labels
+            HStack {
+                Text(formatTime(currentTime))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+
+                Spacer()
+
+                Text("-\(formatTime(max(0, duration - currentTime)))")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
+        }
+    }
+
+    // MARK: Playback Controls
+
+    var playbackControls: some View {
+        HStack(spacing: 44) {
+            // Sound icon – tap to mute/unmute
+            Button {
+                isMuted.toggle()
+                audioService.setVolume(isMuted ? 0 : Float(volume))
+            } label: {
+                Image(systemName: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                    .font(.title2)
+                    .foregroundStyle(.primary)
+            }
+            .buttonStyle(.plain)
 
             // Play / Pause
             Button {
-                if isPlaying {
-                    pausePlaying()
-                } else {
-                    resumePlaying()
-                }
+                if isPlaying { pausePlaying() }
+                else { resumePlaying() }
             } label: {
                 Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-                    .font(.title)
+                    .font(.title2)
                     .foregroundStyle(.white)
-                    .frame(width: 64, height: 64)
-                    .background(
-                        Circle()
-                            .fill(accentOrange)
-                    )
+                    .frame(width: 60, height: 60)
+                    .background(Circle().fill(accentOrange))
             }
+            .buttonStyle(.plain)
 
-            // Stop & dismiss
+            // Replay – reset to start
             Button {
-                stopPlaying()
-                dismiss()
+                currentTime = 0
+                audioService.seek(to: 0)
             } label: {
-                Image(systemName: "stop.fill")
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
-                    .frame(width: 48, height: 48)
+                Image(systemName: "arrow.counterclockwise")
+                    .font(.title2)
+                    .foregroundStyle(.primary)
             }
+            .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: Volume Slider
+
+    var volumeSlider: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "speaker.fill")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Slider(value: $volume, in: 0...1)
+                .tint(Color(.systemGray))
+                .onChange(of: volume) { _, newValue in
+                    audioService.setVolume(Float(newValue))
+                }
+
+            Image(systemName: "speaker.wave.3.fill")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 
     // MARK: Helpers
 
-    func formatTime(_ seconds: Int) -> String {
-        let m = seconds / 60
-        let s = seconds % 60
+    func formatTime(_ seconds: TimeInterval) -> String {
+        let totalSeconds = Int(seconds)
+        let m = totalSeconds / 60
+        let s = totalSeconds % 60
         return String(format: "%d:%02d", m, s)
     }
 }
@@ -258,38 +234,37 @@ private extension ASMRPlayerView {
 
     func startPlaying() {
         store.playAsmrSound(sound)
+        audioService.play(soundName: sound.name)
         isPlaying = true
-        elapsed = 0
+        // Get actual duration from the audio file
+        duration = audioService.duration
+        currentTime = 0
         startTimer()
     }
 
     func pausePlaying() {
-        store.pauseAsmrSound()
+        audioService.pause()
         isPlaying = false
         stopTimer()
     }
 
     func resumePlaying() {
-        store.resumeAsmrSound()
+        audioService.resume()
         isPlaying = true
         startTimer()
     }
 
-    func stopPlaying() {
-        stopTimer()
-        isPlaying = false
-        elapsed = 0
-        store.stopAsmrSound()
-    }
-
     func startTimer() {
         stopTimer()
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
-            guard elapsed < sound.durationSeconds else {
-                stopPlaying()
-                return
+        timer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { _ in
+            guard !isSeeking else { return }
+            currentTime = audioService.currentTime
+            duration = audioService.duration
+
+            // Stop at end of track
+            if currentTime >= duration, duration > 0 {
+                pausePlaying()
             }
-            elapsed += 1
         }
     }
 
@@ -306,12 +281,12 @@ private extension ASMRPlayerView {
     NavigationStack {
         ASMRPlayerView(
             sound: AsmrSound(
-                name: "Forest Rain",
-                description: "Gentle rain through a forest canopy",
+                name: "Nature & Calm",
+                description: "Recommended for Focus",
                 category: "Nature",
                 audioUrl: "",
-                imageUrl: "",
-                durationSeconds: 600
+                imageUrl: "asmr_hero",
+                durationSeconds: 300
             ),
             isFavourite: false,
             onToggleFavourite: {}

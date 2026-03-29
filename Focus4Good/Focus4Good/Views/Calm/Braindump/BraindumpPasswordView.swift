@@ -158,6 +158,7 @@ struct BraindumpPasswordView: View {
                                 .fill(Color(.systemGray6))
                         )
                 }
+                .buttonStyle(.plain)
             }
         }
     }

@@ -7,27 +7,7 @@
 
 import SwiftUI
 
-// MARK: - Intro Data
 
-private struct IntroGroup: Identifiable {
-    let id: Int
-    let name: String
-    let icon: String
-}
-
-private let introGroups: [IntroGroup] = [
-    .init(id: 1,  name: "Feet",            icon: "figure.walk"),
-    .init(id: 2,  name: "Calves",          icon: "figure.run"),
-    .init(id: 3,  name: "Thighs",          icon: "figure.strengthtraining.traditional"),
-    .init(id: 4,  name: "Hips & Buttocks", icon: "figure.cooldown"),
-    .init(id: 5,  name: "Abdomen",         icon: "figure.core.training"),
-    .init(id: 6,  name: "Chest",           icon: "lungs.fill"),
-    .init(id: 7,  name: "Hands & Forearms",icon: "hand.raised.fill"),
-    .init(id: 8,  name: "Upper Arms",      icon: "figure.arms.open"),
-    .init(id: 9,  name: "Shoulders",       icon: "figure.stand"),
-    .init(id: 10, name: "Neck",            icon: "person.crop.circle"),
-    .init(id: 11, name: "Face",            icon: "face.smiling"),
-]
 
 // MARK: - Constants
 
@@ -44,9 +24,7 @@ struct JPMRIntroView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
                 animatedHeaderSection
-                preparationSection
                 techniqueSection
-                muscleGroupsSection
                 benefitsSection
                 beginSection
             }
@@ -95,49 +73,6 @@ private extension JPMRIntroView {
         .padding(.vertical, 20)
     }
 
-    // MARK: Before You Begin
-
-    var preparationSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Before You Begin")
-                .font(.headline)
-
-            VStack(spacing: 0) {
-                prepTipRow(icon: "mappin.circle.fill",
-                           text: "Find a quiet, comfortable place")
-                Divider().padding(.leading, 52)
-                prepTipRow(icon: "tshirt.fill",
-                           text: "Wear loose, comfortable clothing")
-                Divider().padding(.leading, 52)
-                prepTipRow(icon: "clock.fill",
-                           text: "Allow 15–20 minutes without interruption")
-                Divider().padding(.leading, 52)
-                prepTipRow(icon: "eye.slash.fill",
-                           text: "Close your eyes and breathe deeply to settle in")
-            }
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color(.systemBackground))
-            )
-        }
-    }
-
-    func prepTipRow(icon: String, text: String) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.subheadline)
-                .foregroundStyle(accentOrange)
-                .frame(width: 28)
-
-            Text(text)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-
-            Spacer()
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-    }
 
     // MARK: The Technique
 
@@ -188,53 +123,6 @@ private extension JPMRIntroView {
         .padding()
     }
 
-    // MARK: Muscle Groups
-
-    var muscleGroupsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("11 Muscle Groups")
-                .font(.headline)
-
-            VStack(spacing: 0) {
-                ForEach(Array(introGroups.enumerated()), id: \.element.id) { index, group in
-                    HStack(spacing: 12) {
-                        Text("\(group.id)")
-                            .font(.caption2)
-                            .fontWeight(.bold)
-                            .foregroundStyle(.white)
-                            .frame(width: 22, height: 22)
-                            .background(Circle().fill(accentOrange))
-
-                        Image(systemName: group.icon)
-                            .font(.subheadline)
-                            .foregroundStyle(accentOrange)
-                            .frame(width: 24)
-
-                        Text(group.name)
-                            .font(.subheadline)
-
-                        if group.id == 11 {
-                            Text("Forehead · Eyes · Jaw")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        Spacer()
-                    }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-
-                    if index < introGroups.count - 1 {
-                        Divider().padding(.leading, 52)
-                    }
-                }
-            }
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color(.systemBackground))
-            )
-        }
-    }
 
     // MARK: Benefits
 

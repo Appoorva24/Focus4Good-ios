@@ -7,16 +7,7 @@
 
 import SwiftUI
 
-// MARK: - Meditation Type
-
-private struct MeditationType: Identifiable {
-    let id = UUID()
-    let name: String
-    let subtitle: String
-    let description: String
-    let icon: String
-    let phases: [MeditationPhaseData]
-}
+// MARK: - Meditation Phase
 
 struct MeditationPhaseData: Identifiable {
     let id = UUID()
@@ -25,113 +16,112 @@ struct MeditationPhaseData: Identifiable {
     let durationSeconds: Int
 }
 
-// MARK: - Sample Meditations
+// MARK: - 5-Minute Guided Meditation Phases
 
-private let meditationTypes: [MeditationType] = [
-    .init(name: "Breath Awareness",
-          subtitle: "Anchor your attention",
-          description: "Focus on the natural rhythm of your breathing. When your mind wanders, gently return to the breath.",
-          icon: "wind",
-          phases: [
-              .init(title: "Settle In", instruction: "Close your eyes.\nTake three deep breaths to arrive.", durationSeconds: 15),
-              .init(title: "Notice", instruction: "Feel the air entering your nostrils.\nNotice the gentle rise of your chest.", durationSeconds: 30),
-              .init(title: "Follow", instruction: "Follow each breath from inhale to exhale.\nDon't try to control it — just observe.", durationSeconds: 45),
-              .init(title: "Refocus", instruction: "If your mind wanders, that's okay.\nGently guide your attention back to your breath.", durationSeconds: 45),
-              .init(title: "Deepen", instruction: "Sink deeper into stillness.\nLet each exhale release a little more tension.", durationSeconds: 45),
-              .init(title: "Return", instruction: "Slowly bring awareness to the room.\nWiggle your fingers and open your eyes.", durationSeconds: 15),
-          ]),
-    .init(name: "Body Scan",
-          subtitle: "Release hidden tension",
-          description: "Systematically move your attention through each part of your body, noticing and releasing any tension.",
-          icon: "figure.mind.and.body",
-          phases: [
-              .init(title: "Ground", instruction: "Close your eyes and feel\nthe weight of your body.", durationSeconds: 15),
-              .init(title: "Feet & Legs", instruction: "Bring awareness to your feet.\nNotice any warmth, tingling, or tension.", durationSeconds: 35),
-              .init(title: "Torso", instruction: "Move attention to your stomach and chest.\nLet your belly soften with each exhale.", durationSeconds: 35),
-              .init(title: "Hands & Arms", instruction: "Feel your hands resting.\nLet your arms become heavy and relaxed.", durationSeconds: 30),
-              .init(title: "Neck & Head", instruction: "Release your jaw. Soften your forehead.\nLet your whole face relax.", durationSeconds: 30),
-              .init(title: "Whole Body", instruction: "Feel your entire body as one.\nBreathe in calm, breathe out tension.", durationSeconds: 35),
-              .init(title: "Return", instruction: "Gently wiggle your toes and fingers.\nOpen your eyes when you're ready.", durationSeconds: 15),
-          ]),
-    .init(name: "Visualization",
-          subtitle: "Find your peaceful place",
-          description: "Imagine a calm, safe place in your mind. Let it surround you with warmth and peace.",
-          icon: "sparkles",
-          phases: [
-              .init(title: "Breathe", instruction: "Close your eyes.\nTake five slow, deep breaths.", durationSeconds: 20),
-              .init(title: "Imagine", instruction: "Picture a place that feels safe and calm.\nA beach, a forest, a quiet room.", durationSeconds: 30),
-              .init(title: "See", instruction: "Notice the colours and shapes around you.\nThe light, the sky, the details.", durationSeconds: 35),
-              .init(title: "Hear", instruction: "Listen to the sounds in your place.\nWaves, birds, wind, or gentle silence.", durationSeconds: 35),
-              .init(title: "Feel", instruction: "Feel the warmth of this place.\nLet it wrap around you like a blanket.", durationSeconds: 35),
-              .init(title: "Rest", instruction: "Stay here. You are safe.\nThere is nothing you need to do.", durationSeconds: 30),
-              .init(title: "Return", instruction: "Slowly let the image fade.\nBring the calm feeling back with you.", durationSeconds: 15),
-          ]),
-    .init(name: "Focus Anchor",
-          subtitle: "Train your attention",
-          description: "Perfect for ADHD minds — gently train your focus by anchoring attention to a single point.",
-          icon: "scope",
-          phases: [
-              .init(title: "Center", instruction: "Sit comfortably.\nSoften your gaze on the circle above.", durationSeconds: 15),
-              .init(title: "Anchor", instruction: "Keep your attention on one point.\nWhen it drifts, bring it back gently.", durationSeconds: 40),
-              .init(title: "Breathe & Focus", instruction: "Pair your focus with your breath.\nInhale — focus in. Exhale — soften.", durationSeconds: 40),
-              .init(title: "Expand", instruction: "Widen your awareness slightly.\nNotice the edges of your vision.", durationSeconds: 35),
-              .init(title: "Narrow", instruction: "Bring your focus back to the center.\nSharp, gentle, steady.", durationSeconds: 35),
-              .init(title: "Release", instruction: "Let go of the focus point.\nClose your eyes and breathe freely.", durationSeconds: 15),
-          ]),
-    .init(name: "Loving Kindness",
-          subtitle: "Cultivate self-compassion",
-          description: "Send warmth and kindness to yourself and others. A powerful practice for calming the inner critic.",
-          icon: "heart.circle",
-          phases: [
-              .init(title: "Settle", instruction: "Close your eyes.\nPlace a hand on your heart.", durationSeconds: 15),
-              .init(title: "Self", instruction: "Silently repeat:\n\"May I be happy.\nMay I be peaceful.\nMay I be safe.\"", durationSeconds: 40),
-              .init(title: "Loved One", instruction: "Think of someone you love.\n\"May you be happy.\nMay you be peaceful.\"", durationSeconds: 35),
-              .init(title: "Neutral", instruction: "Think of someone you barely know.\nSend them the same gentle wishes.", durationSeconds: 35),
-              .init(title: "All Beings", instruction: "Expand to everyone, everywhere.\n\"May all beings be happy and free.\"", durationSeconds: 35),
-              .init(title: "Return", instruction: "Feel the warmth in your chest.\nCarry it with you as you open your eyes.", durationSeconds: 15),
-          ]),
+private let guidedPhases: [MeditationPhaseData] = [
+    .init(title: "Welcome",   instruction: "Find a comfortable position and close your eyes",  durationSeconds: 30),
+    .init(title: "Settle",    instruction: "Take three deep breaths to arrive in this moment",  durationSeconds: 35),
+    .init(title: "Breathe",   instruction: "Let your racing thoughts give a pause",             durationSeconds: 40),
+    .init(title: "Notice",    instruction: "Feel the air entering your nostrils gently",         durationSeconds: 45),
+    .init(title: "Follow",    instruction: "Follow each breath from inhale to exhale",           durationSeconds: 45),
+    .init(title: "Deepen",    instruction: "Sink deeper into stillness with each exhale",        durationSeconds: 40),
+    .init(title: "Rest",      instruction: "You are safe. There is nothing you need to do",      durationSeconds: 35),
+    .init(title: "Return",    instruction: "Slowly bring awareness back to the room",            durationSeconds: 30),
 ]
-
-// MARK: - Duration Options
-
-private let durationOptions = [3, 5, 10, 15]
 
 // MARK: - Constants
 
 private let accentOrange = Color("CalmOrange")
+private let totalSessionSeconds = 300 // 5 minutes
 
-// MARK: - DeepFocusBrowseView
+// MARK: - DeepFocusBrowseView (Single Screen)
 
 @available(iOS 17.0, *)
 struct DeepFocusBrowseView: View {
 
-    @State private var selectedMeditation: MeditationType?
-    @State private var selectedDuration = 5
-    @State private var showSession = false
+    private var store: CalmCentreStore { CalmCentreStore.shared }
+    private var voiceService: MeditationAudioService { MeditationAudioService.shared }
+    @Environment(\.dismiss) private var dismiss
+
+    // Session state
+    @State private var isPlaying = false
+    @State private var hasStarted = false
+    @State private var elapsed: TimeInterval = 0
+    @State private var timer: Timer?
+    @State private var isMuted = false
+    @State private var showCompletion = false
+    @State private var currentPhaseIndex = 0
+
+    private let userId = UUID()
+
+    // Scale phases to fit 5 minutes exactly
+    private var scaledPhases: [(phase: MeditationPhaseData, duration: Int)] {
+        let originalTotal = guidedPhases.reduce(0) { $0 + $1.durationSeconds }
+        guard originalTotal > 0 else { return [] }
+        let scale = Double(totalSessionSeconds) / Double(originalTotal)
+        return guidedPhases.map { ($0, max(Int(Double($0.durationSeconds) * scale), 5)) }
+    }
+
+    private var currentInstruction: String {
+        guard currentPhaseIndex < scaledPhases.count else {
+            return "Session complete"
+        }
+        return scaledPhases[currentPhaseIndex].phase.instruction
+    }
+
+    private var remaining: TimeInterval {
+        max(0, Double(totalSessionSeconds) - elapsed)
+    }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                headerSection
-                durationPicker
-                meditationCards
+        ZStack {
+            Color(.systemBackground).ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                Spacer()
+
+                // Orange circle with meditation icon
+                meditationOrb
+
+                Spacer().frame(height: 40)
+
+                // Guided instruction text
+                Text(hasStarted ? currentInstruction : "Tap play to begin your guided meditation")
+                    .font(.body)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.primary)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(4)
+                    .padding(.horizontal, 32)
+                    .contentTransition(.opacity)
+                    .animation(.easeInOut(duration: 0.5), value: currentPhaseIndex)
+
+                Spacer().frame(height: 40)
+
+                // Progress slider + times
+                progressSection
+                    .padding(.horizontal, 28)
+
+                Spacer().frame(height: 40)
+
+                // Playback controls
+                playbackControls
+
+                Spacer()
             }
-            .padding(.horizontal)
-            .padding(.bottom, 32)
-        }
-        .background(Color(.systemGroupedBackground))
-        .navigationDestination(isPresented: $showSession) {
-            if let meditation = selectedMeditation {
-                DeepFocusSessionView(
-                    meditationName: meditation.name,
-                    icon: meditation.icon,
-                    phases: meditation.phases,
-                    totalMinutes: selectedDuration
-                )
+
+            if showCompletion {
+                completionOverlay
+                    .transition(.scale.combined(with: .opacity))
             }
         }
-        .navigationTitle("Deep Focus")
-        .navigationBarTitleDisplayMode(.inline)
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: showCompletion)
+        .navigationTitle("Guided Meditation")
+        .navigationBarTitleDisplayMode(.large)
+        .onDisappear {
+            stopTimer()
+            voiceService.stopAll()
+        }
     }
 }
 
@@ -140,123 +130,307 @@ struct DeepFocusBrowseView: View {
 @available(iOS 17.0, *)
 private extension DeepFocusBrowseView {
 
-    // MARK: Header
+    // MARK: Meditation Orb
 
-    var headerSection: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "leaf.fill")
-                .font(.system(size: 44))
-                .foregroundStyle(accentOrange)
+    var meditationOrb: some View {
+        ZStack {
+            // Soft glow behind
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [accentOrange.opacity(0.25), accentOrange.opacity(0.0)],
+                        center: .center,
+                        startRadius: 70,
+                        endRadius: 160
+                    )
+                )
+                .frame(width: 280, height: 280)
                 .phaseAnimator([false, true]) { content, phase in
                     content
-                        .scaleEffect(phase ? 1.06 : 1.0)
-                        .opacity(phase ? 1.0 : 0.8)
-                        .rotationEffect(.degrees(phase ? 3 : -3))
+                        .scaleEffect(isPlaying ? (phase ? 1.08 : 0.95) : 1.0)
                 } animation: { _ in
-                    .easeInOut(duration: 3.0)
+                    .easeInOut(duration: 4.0)
                 }
 
-            Text("Guided Meditation")
-                .font(.title2)
-                .fontWeight(.bold)
+            // Main orange circle
+            Circle()
+                .fill(accentOrange.opacity(0.85))
+                .frame(width: 180, height: 180)
+                .shadow(color: accentOrange.opacity(0.25), radius: 20, x: 0, y: 8)
+                .phaseAnimator([false, true]) { content, phase in
+                    content
+                        .scaleEffect(isPlaying ? (phase ? 1.04 : 0.96) : 1.0)
+                } animation: { _ in
+                    .easeInOut(duration: 4.0)
+                }
 
-            Text("Short, guided sessions designed for restless minds. Pick a style and duration that fits your moment.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+            // Meditation icon
+            Image(systemName: "figure.mind.and.body")
+                .font(.system(size: 44))
+                .foregroundStyle(.white)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
     }
 
-    // MARK: Duration Picker
+    // MARK: Progress Section
 
-    var durationPicker: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Duration")
-                .font(.headline)
+    var progressSection: some View {
+        VStack(spacing: 6) {
+            Slider(
+                value: Binding(
+                    get: { elapsed },
+                    set: { _ in }  // Read-only for meditation
+                ),
+                in: 0...Double(totalSessionSeconds)
+            )
+            .tint(Color(.systemGray))
+            .disabled(true)
 
-            HStack(spacing: 10) {
-                ForEach(durationOptions, id: \.self) { mins in
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            selectedDuration = mins
-                        }
-                    } label: {
-                        Text("\(mins) min")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .foregroundStyle(selectedDuration == mins ? .white : .primary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
-                            .background(
-                                Capsule()
-                                    .fill(selectedDuration == mins
-                                          ? accentOrange
-                                          : accentOrange.opacity(0.12))
-                            )
-                    }
-                    .buttonStyle(.plain)
-                }
+            // Time labels
+            HStack {
+                Text(formatTime(elapsed))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+
+                Spacer()
+
+                Text("-\(formatTime(remaining))")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
             }
         }
     }
 
-    // MARK: Meditation Cards
+    // MARK: Playback Controls
 
-    var meditationCards: some View {
-        VStack(spacing: 14) {
-            ForEach(meditationTypes) { meditation in
-                Button {
-                    selectedMeditation = meditation
-                    showSession = true
-                } label: {
-                    meditationCard(meditation)
+    var playbackControls: some View {
+        HStack(spacing: 44) {
+            // Sound icon – mute/unmute
+            Button {
+                isMuted.toggle()
+                if isMuted {
+                    voiceService.stopAll()
                 }
-                .buttonStyle(.plain)
+            } label: {
+                Image(systemName: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                    .font(.title2)
+                    .foregroundStyle(isMuted ? .secondary : accentOrange)
             }
+            .buttonStyle(.plain)
+
+            // Play / Pause
+            Button {
+                if isPlaying {
+                    pauseSession()
+                } else if hasStarted {
+                    resumeSession()
+                } else {
+                    startSession()
+                }
+            } label: {
+                Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                    .font(.title2)
+                    .foregroundStyle(.white)
+                    .frame(width: 60, height: 60)
+                    .background(Circle().fill(accentOrange))
+                    .shadow(color: accentOrange.opacity(0.3), radius: 8, x: 0, y: 4)
+            }
+            .buttonStyle(.plain)
+
+            // Reset
+            Button {
+                resetSession()
+            } label: {
+                Image(systemName: "arrow.counterclockwise")
+                    .font(.title2)
+                    .foregroundStyle(accentOrange)
+            }
+            .buttonStyle(.plain)
         }
     }
 
-    func meditationCard(_ meditation: MeditationType) -> some View {
-        HStack(spacing: 14) {
-            Image(systemName: meditation.icon)
-                .font(.title2)
-                .foregroundStyle(accentOrange)
-                .frame(width: 48, height: 48)
-                .background(
-                    Circle()
-                        .fill(accentOrange.opacity(0.12))
-                )
+    // MARK: Completion Overlay
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(meditation.name)
-                    .font(.subheadline)
-                    .fontWeight(.bold)
-                    .foregroundStyle(.primary)
+    var completionOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.4)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    showCompletion = false
+                    dismiss()
+                }
 
-                Text(meditation.subtitle)
-                    .font(.caption)
+            VStack(spacing: 20) {
+                Image(systemName: "checkmark.seal.fill")
+                    .font(.system(size: 64))
                     .foregroundStyle(accentOrange)
 
-                Text(meditation.description)
-                    .font(.caption)
+                Text("Namaste 🙏")
+                    .font(.title2)
+                    .fontWeight(.bold)
+
+                Text("You completed a 5-minute\nGuided Meditation session")
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
-                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+
+                Text("+ 50 Focus Points")
+                    .font(.headline)
+                    .foregroundStyle(accentOrange)
+
+                Button {
+                    showCompletion = false
+                    dismiss()
+                } label: {
+                    Text("Done")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 48)
+                        .background(
+                            Capsule()
+                                .fill(accentOrange)
+                                .shadow(color: accentOrange.opacity(0.3), radius: 8, x: 0, y: 4)
+                        )
+                }
+                .padding(.top, 8)
             }
-
-            Spacer()
-
-            Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundStyle(.quaternary)
+            .padding(32)
+            .background(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(Color(.systemBackground))
+                    .shadow(color: .black.opacity(0.15), radius: 20, x: 0, y: 10)
+            )
+            .padding(.horizontal, 40)
         }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
-        )
+    }
+
+    // MARK: Helpers
+
+    func formatTime(_ seconds: TimeInterval) -> String {
+        let total = Int(seconds)
+        let m = total / 60
+        let s = total % 60
+        return String(format: "%d:%02d", m, s)
+    }
+}
+
+// MARK: - Session Logic
+
+@available(iOS 17.0, *)
+private extension DeepFocusBrowseView {
+
+    func startSession() {
+        elapsed = 0
+        currentPhaseIndex = 0
+        hasStarted = true
+        isPlaying = true
+
+        // AI voice welcome
+        if !isMuted {
+            voiceService.speakWelcome(meditationName: "Guided Meditation", durationMinutes: 5)
+            // Speak first phase after a short delay for welcome
+            DispatchQueue.main.asyncAfter(deadline: .now() + 6) {
+                if isPlaying && !isMuted && currentPhaseIndex < scaledPhases.count {
+                    voiceService.speakPhase(
+                        title: scaledPhases[currentPhaseIndex].phase.title,
+                        instruction: scaledPhases[currentPhaseIndex].phase.instruction
+                    )
+                }
+            }
+        }
+
+        startTimer()
+    }
+
+    func pauseSession() {
+        isPlaying = false
+        stopTimer()
+        if !isMuted {
+            voiceService.stopAll()
+        }
+    }
+
+    func resumeSession() {
+        isPlaying = true
+        startTimer()
+
+        if !isMuted && currentPhaseIndex < scaledPhases.count {
+            voiceService.speakPhase(
+                title: scaledPhases[currentPhaseIndex].phase.title,
+                instruction: scaledPhases[currentPhaseIndex].phase.instruction
+            )
+        }
+    }
+
+    func resetSession() {
+        stopTimer()
+        voiceService.stopAll()
+        elapsed = 0
+        currentPhaseIndex = 0
+        hasStarted = false
+        isPlaying = false
+    }
+
+    func startTimer() {
+        stopTimer()
+        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
+            tick()
+        }
+    }
+
+    func stopTimer() {
+        timer?.invalidate()
+        timer = nil
+    }
+
+    func tick() {
+        elapsed += 1
+
+        // Check if we need to advance to the next phase
+        var cumulativeTime = 0
+        for (index, scaled) in scaledPhases.enumerated() {
+            cumulativeTime += scaled.duration
+            if Int(elapsed) < cumulativeTime {
+                if index != currentPhaseIndex {
+                    currentPhaseIndex = index
+                    // Speak new phase
+                    if !isMuted {
+                        voiceService.speakPhase(
+                            title: scaled.phase.title,
+                            instruction: scaled.phase.instruction
+                        )
+                    }
+                }
+                break
+            }
+        }
+
+        // Check if session is complete
+        if Int(elapsed) >= totalSessionSeconds {
+            completeSession()
+        }
+    }
+
+    func completeSession() {
+        stopTimer()
+        isPlaying = false
+        hasStarted = false
+
+        if !isMuted {
+            voiceService.speakCompletion(meditationName: "Guided Meditation", durationMinutes: 5)
+        }
+
+        Task {
+            await store.logGuidedMeditationSession(
+                userId: userId,
+                meditationName: "Guided Meditation",
+                durationSeconds: totalSessionSeconds
+            )
+        }
+
+        showCompletion = true
     }
 }
 

@@ -49,10 +49,10 @@ struct CalmCentreView: View {
                 BraindumpPasswordView()
             }
             .navigationDestination(isPresented: $showBreathe) {
-                BreatheIntroView()
+                BreatheSessionView()
             }
             .navigationDestination(isPresented: $showJPMR) {
-                JPMRIntroView()
+                JPMRSessionView()
             }
             .navigationDestination(isPresented: $showASMR) {
                 SensorySootheView()
