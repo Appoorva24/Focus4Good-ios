@@ -1,5 +1,6 @@
 import Foundation
 
+@available(iOS 17.0, *)
 @Observable
 @MainActor
 final class UserStore {
@@ -12,10 +13,7 @@ final class UserStore {
     var errorMessage: String?
 
     static let shared = UserStore()
-    private init() {
-        currentUser = DummyData.currentUser
-        isAuthenticated = true
-    }
+    private init() {}
 
     // MARK: - Auth
     func signIn(email: String, password: String) async {

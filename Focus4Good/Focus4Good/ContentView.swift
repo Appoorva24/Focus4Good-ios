@@ -7,11 +7,13 @@
 
 import SwiftUI
 
+@available(iOS 17.0, *)
 struct ContentView: View {
     @State private var selectedTab: AppTab = .progress
 
     var body: some View {
         TabView(selection: $selectedTab) {
+            
             Tab("Home", systemImage: "house", value: .home) {
                 Text("Home")
                     .font(.title2)
@@ -23,9 +25,7 @@ struct ContentView: View {
             }
 
             Tab("Meditate", systemImage: "brain.head.profile", value: .meditate) {
-                Text("Meditate")
-                    .font(.title2)
-                    .foregroundStyle(.secondary)
+                CalmCentreView()   // 🔥 Shreya ka feature integrate
             }
 
             Tab("Community", systemImage: "person.3", value: .community) {
