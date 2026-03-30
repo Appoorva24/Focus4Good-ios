@@ -36,7 +36,6 @@ private let totalSessionSeconds = 300 // 5 minutes
 
 // MARK: - DeepFocusBrowseView (Single Screen)
 
-@available(iOS 17.0, *)
 struct DeepFocusBrowseView: View {
 
     private var store: CalmCentreStore { CalmCentreStore.shared }
@@ -127,7 +126,6 @@ struct DeepFocusBrowseView: View {
 
 // MARK: - Subviews
 
-@available(iOS 17.0, *)
 private extension DeepFocusBrowseView {
 
     // MARK: Meditation Orb
@@ -318,7 +316,6 @@ private extension DeepFocusBrowseView {
 
 // MARK: - Session Logic
 
-@available(iOS 17.0, *)
 private extension DeepFocusBrowseView {
 
     func startSession() {
@@ -436,7 +433,6 @@ private extension DeepFocusBrowseView {
 
 // MARK: - Preview
 
-@available(iOS 17.0, *)
 #Preview {
     NavigationStack {
         DeepFocusBrowseView()

@@ -1,8 +1,6 @@
 import Foundation
 
-@available(iOS 17.0, *)
 @Observable
-@MainActor
 final class UserStore {
 
     // MARK: - State
@@ -13,7 +11,10 @@ final class UserStore {
     var errorMessage: String?
 
     static let shared = UserStore()
-    private init() {}
+    private init() {
+        // Initialize with dummy user so the app works without a backend
+        currentUser = DummyData.currentUser
+    }
 
     // MARK: - Auth
     func signIn(email: String, password: String) async {

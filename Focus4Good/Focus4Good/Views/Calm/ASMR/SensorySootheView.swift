@@ -30,7 +30,6 @@ private let soundEntries: [ASMRSoundEntry] = [
 
 // MARK: - SensorySootheView
 
-@available(iOS 17.0, *)
 struct SensorySootheView: View {
 
     private var store: CalmCentreStore { CalmCentreStore.shared }
@@ -88,7 +87,6 @@ struct SensorySootheView: View {
 
 // MARK: - Subviews
 
-@available(iOS 17.0, *)
 private extension SensorySootheView {
 
     // MARK: Hero Banner (Tappable)
@@ -201,7 +199,6 @@ private extension SensorySootheView {
 
 // MARK: - Preview
 
-@available(iOS 17.0, *)
 #Preview {
     NavigationStack {
         SensorySootheView()

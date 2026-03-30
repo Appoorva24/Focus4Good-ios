@@ -1,8 +1,6 @@
 import Foundation
 
-@available(iOS 17.0, *)
 @Observable
-@MainActor
 final class VolunteerStore {
 
     // MARK: - State
@@ -24,7 +22,14 @@ final class VolunteerStore {
     func userAttendances(userId: UUID) -> [EventAttendance] { eventAttendances.filter { $0.userId == userId } }
 
     static let shared = VolunteerStore()
-    private init() {}
+    private init() {
+        // Seed with dummy NGOs so the NGO list is populated
+        ngos = DummyData.ngos
+        // Seed volunteer events for each NGO
+        for ngo in ngos {
+            volunteerEvents.append(contentsOf: DummyData.volunteerEvents(for: ngo.id))
+        }
+    }
 
     // MARK: - Fetch
     func fetchNGOs() async { isLoading = true; isLoading = false }

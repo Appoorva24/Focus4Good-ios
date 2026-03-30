@@ -7,7 +7,6 @@
 
 import SwiftUI
 
-@available(iOS 17.0, *)
 struct BraindumpFoldersView: View {
 
     private var store: CalmCentreStore { CalmCentreStore.shared }
@@ -115,7 +114,6 @@ struct BraindumpFoldersView: View {
     }
 }
 
-@available(iOS 17.0, *)
 #Preview {
     NavigationStack {
         BraindumpFoldersView()

@@ -1,8 +1,6 @@
 import Foundation
 
-@available(iOS 17.0, *)
 @Observable
-@MainActor
 final class TaskStore {
 
     // MARK: - State
@@ -38,7 +36,7 @@ final class TaskStore {
 
     func addTask(_ task: UserTask) async {
         tasks.append(task)
-        
+
         // Schedule notification if task has time
         if task.scheduledTime != nil {
             await NotificationManager.shared.scheduleNotification(for: task)
@@ -52,10 +50,10 @@ final class TaskStore {
         if let index = tasks.firstIndex(where: { $0.id == task.id }) {
             // Cancel old notification
             await NotificationManager.shared.cancelNotification(for: task.id)
-            
+
             // Update task
             tasks[index] = task
-            
+
             // Schedule new notification if task has time
             if task.scheduledTime != nil {
                 await NotificationManager.shared.scheduleNotification(for: task)
@@ -69,10 +67,10 @@ final class TaskStore {
     func deleteTask(_ task: UserTask) async {
         // Cancel notification first
         await NotificationManager.shared.cancelNotification(for: task.id)
-        
+
         // Remove task
         tasks.removeAll { $0.id == task.id }
-        
+
         print("✅ Task deleted and notification cancelled: \(task.title)")
     }
 

@@ -7,7 +7,6 @@
 
 import SwiftUI
 
-@available(iOS 17.0, *)
 struct BraindumpEntriesView: View {
 
     let folder: BrainDumpFolder
@@ -128,7 +127,6 @@ struct BraindumpEntriesView: View {
     }
 }
 
-@available(iOS 17.0, *)
 #Preview {
     NavigationStack {
         BraindumpEntriesView(

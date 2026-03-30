@@ -1,8 +1,6 @@
 import Foundation
 
-@available(iOS 17.0, *)
 @Observable
-@MainActor
 final class GamificationStore {
 
     // MARK: - State
@@ -42,7 +40,9 @@ final class GamificationStore {
     var achievedMilestones: [UserMilestone] { userMilestones.filter { $0.achievedAt != nil } }
 
     static let shared = GamificationStore()
-    private init() {}
+    private init() {
+        dailyTip = DummyData.dailyTip
+    }
 
     func fetchLevels() async { isLoading = true; isLoading = false }
     func fetchMilestones() async { isLoading = true; isLoading = false }

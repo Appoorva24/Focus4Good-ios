@@ -13,7 +13,6 @@ private let accentOrange = Color("CalmOrange")
 
 // MARK: - ASMRPlayerView
 
-@available(iOS 17.0, *)
 struct ASMRPlayerView: View {
 
     let sound: AsmrSound
@@ -83,7 +82,6 @@ struct ASMRPlayerView: View {
 
 // MARK: - Subviews
 
-@available(iOS 17.0, *)
 private extension ASMRPlayerView {
 
     // MARK: Artwork
@@ -229,7 +227,6 @@ private extension ASMRPlayerView {
 
 // MARK: - Playback Logic
 
-@available(iOS 17.0, *)
 private extension ASMRPlayerView {
 
     func startPlaying() {
@@ -276,7 +273,6 @@ private extension ASMRPlayerView {
 
 // MARK: - Preview
 
-@available(iOS 17.0, *)
 #Preview {
     NavigationStack {
         ASMRPlayerView(

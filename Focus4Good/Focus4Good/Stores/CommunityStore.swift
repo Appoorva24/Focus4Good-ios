@@ -1,8 +1,6 @@
 import Foundation
 
-@available(iOS 17.0, *)
 @Observable
-@MainActor
 final class CommunityStore {
 
     // MARK: - State
@@ -28,7 +26,45 @@ final class CommunityStore {
     func memberRole(communityId: UUID, userId: UUID) -> String? { communityMembers.first { $0.communityId == communityId && $0.userId == userId }?.role }
 
     static let shared = CommunityStore()
-    private init() {}
+    private init() {
+        // Seed with dummy data so the tab isn't empty
+        communities = [
+            Community(
+                creatorId: UUID(),
+                name: "ADHD Support",
+                description: "A safe space for people with ADHD to connect and share experiences.",
+                isPrivate: false,
+                memberCount: 128,
+                createdAt: Date()
+            ),
+            Community(
+                creatorId: UUID(),
+                name: "Focus Warriors",
+                description: "Tips, tricks, and accountability for staying focused.",
+                isPrivate: false,
+                memberCount: 64,
+                createdAt: Date()
+            )
+        ]
+        posts = [
+            Post(
+                authorId: UUID(),
+                communityId: communities[0].id,
+                content: "Just completed my first full Pomodoro session without distractions! 🎉",
+                hashtag: "ADHD",
+                likeCount: 42,
+                createdAt: Date()
+            ),
+            Post(
+                authorId: UUID(),
+                communityId: communities[0].id,
+                content: "The breathing exercises in the Calm Centre really help me reset during study breaks.",
+                hashtag: "Focus",
+                likeCount: 23,
+                createdAt: Calendar.current.date(byAdding: .hour, value: -3, to: Date()) ?? Date()
+            )
+        ]
+    }
 
     // MARK: - Fetch
     func fetchCommunities() async { isLoading = true; isLoading = false }

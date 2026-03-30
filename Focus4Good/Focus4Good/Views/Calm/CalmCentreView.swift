@@ -7,13 +7,8 @@
 
 import SwiftUI
 
-// MARK: - Constants
-
-private let accentOrange = Color("CalmOrange")
-
 // MARK: - CalmCentreView
 
-@available(iOS 17.0, *)
 struct CalmCentreView: View {
     private let columns = [
         GridItem(.flexible(), spacing: 16),
@@ -66,7 +61,6 @@ struct CalmCentreView: View {
 
 // MARK: - Subviews
 
-@available(iOS 17.0, *)
 private extension CalmCentreView {
 
     // MARK: Braindump Featured Card
@@ -76,19 +70,19 @@ private extension CalmCentreView {
             HStack {
                 Image(systemName: "pencil.and.list.clipboard")
                     .font(.title2)
-                    .foregroundStyle(accentOrange)
+                    .foregroundStyle(AppTheme.orange)
 
                 Spacer()
 
                 Text("Top Choice")
                     .font(.caption)
                     .fontWeight(.semibold)
-                    .foregroundStyle(accentOrange)
+                    .foregroundStyle(AppTheme.orange)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 5)
                     .background(
                         Capsule()
-                            .fill(accentOrange.opacity(0.15))
+                            .fill(AppTheme.orange.opacity(0.15))
                     )
             }
 
@@ -153,11 +147,11 @@ private extension CalmCentreView {
         VStack(spacing: 10) {
             Image(systemName: icon)
                 .font(.title2)
-                .foregroundStyle(accentOrange)
+                .foregroundStyle(AppTheme.orange)
                 .frame(width: 44, height: 44)
                 .background(
                     Circle()
-                        .fill(accentOrange.opacity(0.12))
+                        .fill(AppTheme.orange.opacity(0.12))
                 )
 
             Text(title)
@@ -185,7 +179,7 @@ private extension CalmCentreView {
         HStack(spacing: 14) {
             Image(systemName: "lightbulb.fill")
                 .font(.title2)
-                .foregroundStyle(accentOrange)
+                .foregroundStyle(AppTheme.orange)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("Daily Tip")
@@ -210,7 +204,6 @@ private extension CalmCentreView {
 
 // MARK: - Preview
 
-@available(iOS 17.0, *)
 #Preview {
     CalmCentreView()
 }

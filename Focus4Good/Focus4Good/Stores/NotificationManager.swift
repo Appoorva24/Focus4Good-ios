@@ -2,7 +2,6 @@ import Foundation
 import UserNotifications
 
 /// Notification Manager - Handles all task notifications
-@MainActor
 final class NotificationManager {
     
     static let shared = NotificationManager()

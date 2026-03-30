@@ -9,7 +9,6 @@ import SwiftUI
 
 private let accentOrange = Color("CalmOrange")
 
-@available(iOS 17.0, *)
 struct BreatheIntroView: View {
 
     @State private var showSession = false
@@ -36,7 +35,6 @@ struct BreatheIntroView: View {
 
 // MARK: - Subviews
 
-@available(iOS 17.0, *)
 private extension BreatheIntroView {
 
     // MARK: Header
@@ -158,7 +156,6 @@ private extension BreatheIntroView {
 
 // MARK: - Preview
 
-@available(iOS 17.0, *)
 #Preview {
     NavigationStack {
         BreatheIntroView()

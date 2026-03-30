@@ -53,7 +53,6 @@ private let defaultCycles = 4
 
 // MARK: - BreatheSessionView
 
-@available(iOS 17.0, *)
 struct BreatheSessionView: View {
 
     private var store: CalmCentreStore { CalmCentreStore.shared }
@@ -111,7 +110,6 @@ struct BreatheSessionView: View {
 
 // MARK: - Subviews
 
-@available(iOS 17.0, *)
 private extension BreatheSessionView {
 
     // MARK: Breathing Circle
@@ -278,7 +276,6 @@ private extension BreatheSessionView {
 
 // MARK: - Session Logic
 
-@available(iOS 17.0, *)
 private extension BreatheSessionView {
 
     func startSession() {
@@ -369,7 +366,6 @@ private extension BreatheSessionView {
 
 // MARK: - Preview
 
-@available(iOS 17.0, *)
 #Preview {
     NavigationStack {
         BreatheSessionView()

@@ -17,9 +17,10 @@ struct AddCommunityView: View {
         NavigationStack {
                 VStack() {
                     VStack{
-                        Image("PersonImage")
+                        Image(systemName: "photo.on.rectangle.angled")
                             .resizable()
                             .scaledToFit()
+                            .foregroundStyle(AppTheme.orange.opacity(0.5))
                         
                             .frame(width: 100, height: 100)
                         

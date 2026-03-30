@@ -169,7 +169,6 @@ private let prepDuration   = 20
 
 // MARK: - JPMRSessionView
 
-@available(iOS 17.0, *)
 struct JPMRSessionView: View {
 
     private var store: CalmCentreStore { CalmCentreStore.shared }
@@ -252,7 +251,6 @@ struct JPMRSessionView: View {
 
 // MARK: - Display Helpers
 
-@available(iOS 17.0, *)
 private extension JPMRSessionView {
 
     var displayIcon: String {
@@ -315,7 +313,6 @@ private extension JPMRSessionView {
 
 // MARK: - Subviews
 
-@available(iOS 17.0, *)
 private extension JPMRSessionView {
 
     // MARK: Circle
@@ -533,7 +530,6 @@ private extension JPMRSessionView {
 
 // MARK: - Session Logic
 
-@available(iOS 17.0, *)
 private extension JPMRSessionView {
 
     // MARK: Start / Stop
@@ -683,7 +679,6 @@ private extension JPMRSessionView {
 
 // MARK: - Preview
 
-@available(iOS 17.0, *)
 #Preview {
     NavigationStack {
         JPMRSessionView()

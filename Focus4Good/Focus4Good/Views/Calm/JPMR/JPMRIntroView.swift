@@ -15,7 +15,6 @@ private let accentOrange = Color("CalmOrange")
 
 // MARK: - JPMRIntroView
 
-@available(iOS 17.0, *)
 struct JPMRIntroView: View {
 
     @State private var showSession = false
@@ -42,7 +41,6 @@ struct JPMRIntroView: View {
 
 // MARK: - Subviews
 
-@available(iOS 17.0, *)
 private extension JPMRIntroView {
 
     // MARK: Animated Header
@@ -186,7 +184,6 @@ private extension JPMRIntroView {
 
 // MARK: - Preview
 
-@available(iOS 17.0, *)
 #Preview {
     NavigationStack {
         JPMRIntroView()
