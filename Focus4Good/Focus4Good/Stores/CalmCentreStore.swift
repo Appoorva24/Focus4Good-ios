@@ -45,9 +45,9 @@ class CalmCentreStore {
     func fetchBrainDumpEntries(userId: UUID) async { isLoading = true; isLoading = false }
 
     // MARK: - Log Sessions
-    func logBreathingSession(userId: UUID, techniqueName: String, cyclesCompleted: Int, durationSeconds: Int) async {
+    func logBreathingSession(userId: UUID, cyclesCompleted: Int, durationSeconds: Int) async {
         let points = cyclesCompleted * 10
-        breathingSessions.append(BreathingSession(userId: userId, techniqueName: techniqueName, cyclesCompleted: cyclesCompleted, durationSeconds: durationSeconds, pointsEarned: points, completedAt: Date()))
+        breathingSessions.append(BreathingSession(userId: userId, cyclesCompleted: cyclesCompleted, durationSeconds: durationSeconds, pointsEarned: points, completedAt: Date()))
         await UserStore.shared.updateFocusPoints(by: points)
         await ProgressStore.shared.addCalmCentreTime(minutes: durationSeconds / 60, userId: userId)
         await ProgressStore.shared.addPointsEarned(points: points, userId: userId)

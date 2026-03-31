@@ -1,10 +1,11 @@
-import AVFoundation
+@preconcurrency import AVFoundation
 
 // MARK: - JPMRAudioService
 
 /// Provides guided voice instructions throughout a JPMR session
 /// using AVSpeechSynthesizer with a gentle, calming female voice.
 
+@MainActor
 class JPMRAudioService: NSObject, AVSpeechSynthesizerDelegate {
 
     static let shared = JPMRAudioService()

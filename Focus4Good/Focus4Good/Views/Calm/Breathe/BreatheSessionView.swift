@@ -295,7 +295,6 @@ struct BreatheSessionView: View {
         Task {
             await store.logBreathingSession(
                 userId: userId,
-                techniqueName: "4-7-8 Breathing",
                 cyclesCompleted: selectedCycles,
                 durationSeconds: totalSeconds
             )

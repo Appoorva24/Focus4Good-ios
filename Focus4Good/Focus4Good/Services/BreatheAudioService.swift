@@ -1,10 +1,11 @@
-import AVFoundation
+@preconcurrency import AVFoundation
 
 // MARK: - BreatheAudioService
 
 /// Provides a full guided breathing experience using AVSpeechSynthesizer
 /// with a gentle, calming female voice.
 
+@MainActor
 class BreatheAudioService: NSObject, AVSpeechSynthesizerDelegate {
 
     static let shared = BreatheAudioService()

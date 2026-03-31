@@ -1,10 +1,9 @@
 import Foundation
 
 //BreathingSession
-struct BreathingSession: Identifiable, Codable, Hashable {
+struct BreathingSession: Codable, Hashable {
     var id: UUID = UUID()
     var userId: UUID
-    var techniqueName: String
     var cyclesCompleted: Int
     var durationSeconds: Int
     var pointsEarned: Int
@@ -12,7 +11,7 @@ struct BreathingSession: Identifiable, Codable, Hashable {
 }
 
 //JpmrSession
-struct JpmrSession: Identifiable, Codable, Hashable {
+struct JpmrSession: Codable, Hashable {
     var id: UUID = UUID()
     var userId: UUID
     var durationSeconds: Int
@@ -21,7 +20,7 @@ struct JpmrSession: Identifiable, Codable, Hashable {
 }
 
 //GuidedMeditationSession
-struct GuidedMeditationSession: Identifiable, Codable, Hashable {
+struct GuidedMeditationSession: Codable, Hashable {
     var id: UUID = UUID()
     var userId: UUID
     var meditationName: String
