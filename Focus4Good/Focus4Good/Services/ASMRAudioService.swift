@@ -1,6 +1,6 @@
 import AVFoundation
 
-// MARK: - Sound-to-File Mapping
+//Sound-to-File Mapping
 
 /// Maps display names to their actual bundle file names (without extension).
 private let soundFileMapping: [String: String] = [
@@ -17,6 +17,8 @@ private let soundFileMapping: [String: String] = [
 
 class ASMRAudioService: @unchecked Sendable {
 
+
+    //prevents two different sounds from playing at the same time
     static let shared = ASMRAudioService()
 
     private var audioPlayer: AVAudioPlayer?
@@ -24,7 +26,6 @@ class ASMRAudioService: @unchecked Sendable {
 
     private init() {}
 
-    // MARK: Playback Controls
 
     func play(soundName: String) {
         stop()
@@ -43,6 +44,8 @@ class ASMRAudioService: @unchecked Sendable {
             return
         }
 
+
+        //starting the player
         do {
             audioPlayer = try AVAudioPlayer(contentsOf: url)
             audioPlayer?.numberOfLoops = 0  // Play once (timer controls end)
@@ -72,7 +75,7 @@ class ASMRAudioService: @unchecked Sendable {
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 
-    // MARK: Duration & Current Time
+    //Duration & Current Time
 
     /// Total duration of the loaded audio in seconds.
     var duration: TimeInterval {

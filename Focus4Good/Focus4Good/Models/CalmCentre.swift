@@ -1,7 +1,7 @@
 import Foundation
 
 //BreathingSession
-struct BreathingSession: Codable, Hashable {
+struct BreathingSession: Codable {
     var id: UUID = UUID()
     var userId: UUID
     var cyclesCompleted: Int
@@ -11,7 +11,7 @@ struct BreathingSession: Codable, Hashable {
 }
 
 //JpmrSession
-struct JpmrSession: Codable, Hashable {
+struct JpmrSession: Codable {
     var id: UUID = UUID()
     var userId: UUID
     var durationSeconds: Int
@@ -20,7 +20,7 @@ struct JpmrSession: Codable, Hashable {
 }
 
 //GuidedMeditationSession
-struct GuidedMeditationSession: Codable, Hashable {
+struct GuidedMeditationSession: Codable {
     var id: UUID = UUID()
     var userId: UUID
     var meditationName: String
@@ -60,7 +60,7 @@ struct BrainDumpFolder: Identifiable, Codable, Hashable {
 struct BrainDumpEntry: Identifiable, Codable, Hashable {
     var id: UUID = UUID()
     var userId: UUID
-    var folderId: UUID?
+    var folderId: UUID?  
     var content: String
     var pointsEarned: Int
     var createdAt: Date

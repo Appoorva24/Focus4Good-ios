@@ -12,6 +12,8 @@ class BreatheAudioService: NSObject, AVSpeechSynthesizerDelegate {
 
     // MARK: - Private State
 
+
+    //synthesizer - takes any text and convert that into speech
     private let synthesizer = AVSpeechSynthesizer()
     private var selectedVoice: AVSpeechSynthesisVoice?
 
@@ -138,6 +140,8 @@ class BreatheAudioService: NSObject, AVSpeechSynthesizerDelegate {
         synthesizer.speak(utterance)
     }
 
+
+    // managing phone's volume
     private func configureAudioSession() {
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.playback, mode: .default, options: [.duckOthers])
