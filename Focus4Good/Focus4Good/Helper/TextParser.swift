@@ -11,7 +11,7 @@ struct ParsedTask: Identifiable {
 }
 
 /// Text Parser - Extracts tasks and times from scanned text
-final class TextParser {
+class TextParser {
     
     // MARK: - Main Parsing Function
     

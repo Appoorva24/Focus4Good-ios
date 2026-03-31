@@ -22,14 +22,14 @@ private let soundFileMapping: [String: String] = [
 
 // MARK: - ASMRAudioService
 
-final class ASMRAudioService: @unchecked Sendable {
+class ASMRAudioService: @unchecked Sendable {
 
     static let shared = ASMRAudioService()
 
     private var audioPlayer: AVAudioPlayer?
     private(set) var isPlaying = false
 
-    private init() {}
+    init() {}
 
     // MARK: Playback Controls
 

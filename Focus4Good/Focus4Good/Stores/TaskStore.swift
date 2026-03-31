@@ -1,7 +1,7 @@
 import Foundation
 
 @Observable
-final class TaskStore {
+class TaskStore {
 
     // MARK: - State
     var tasks: [UserTask] = []

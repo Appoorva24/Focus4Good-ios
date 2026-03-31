@@ -1,7 +1,7 @@
 import Foundation
 
 @Observable
-final class CalmCentreStore {
+class CalmCentreStore {
 
     // MARK: - State
     var breathingSessions: [BreathingSession] = []

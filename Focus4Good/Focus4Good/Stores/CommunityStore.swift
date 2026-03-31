@@ -1,7 +1,7 @@
 import Foundation
 
 @Observable
-final class CommunityStore {
+class CommunityStore {
 
     // MARK: - State
     var communities: [Community] = []

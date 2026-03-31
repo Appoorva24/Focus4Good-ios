@@ -1,7 +1,7 @@
 import Foundation
 
 @Observable
-final class UserStore {
+class UserStore {
 
     // MARK: - State
     var currentUser: User?

@@ -1,7 +1,7 @@
 import Foundation
 
 @Observable
-final class FocusStore {
+class FocusStore {
 
     // MARK: - State
     var sessions: [FocusSession] = []

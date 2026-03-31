@@ -12,7 +12,7 @@ import AVFoundation
 /// Provides guided voice instructions throughout a JPMR session
 /// using AVSpeechSynthesizer with a gentle, calming female voice.
 
-final class JPMRAudioService: NSObject, AVSpeechSynthesizerDelegate {
+class JPMRAudioService: NSObject, AVSpeechSynthesizerDelegate {
 
     static let shared = JPMRAudioService()
 
@@ -21,7 +21,7 @@ final class JPMRAudioService: NSObject, AVSpeechSynthesizerDelegate {
     private let synthesizer = AVSpeechSynthesizer()
     private var selectedVoice: AVSpeechSynthesisVoice?
 
-    private override init() {
+    override init() {
         super.init()
         synthesizer.delegate = self
         selectedVoice = pickFemaleVoice()

@@ -1,7 +1,7 @@
 import Foundation
 
 @Observable
-final class GamificationStore {
+class GamificationStore {
 
     // MARK: - State
     var levels: [Level] = []

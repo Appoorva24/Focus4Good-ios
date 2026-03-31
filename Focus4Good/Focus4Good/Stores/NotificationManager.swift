@@ -2,10 +2,10 @@ import Foundation
 import UserNotifications
 
 /// Notification Manager - Handles all task notifications
-final class NotificationManager {
+class NotificationManager {
     
     static let shared = NotificationManager()
-    private init() {}
+    init() {}
     
     // MARK: - Permission Handling
     

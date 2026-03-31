@@ -1,7 +1,7 @@
 import Foundation
 
 @Observable
-final class VolunteerStore {
+class VolunteerStore {
 
     // MARK: - State
     var ngos: [NGO] = []

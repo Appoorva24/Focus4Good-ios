@@ -1,7 +1,7 @@
 import Foundation
 
 @Observable
-final class ProgressStore {
+class ProgressStore {
 
     // MARK: - State
     var progressRecords: [UserProgress] = []

@@ -12,7 +12,7 @@ import AVFoundation
 /// Provides a full guided breathing experience using AVSpeechSynthesizer
 /// with a gentle, calming female voice.
 
-final class BreatheAudioService: NSObject, AVSpeechSynthesizerDelegate {
+class BreatheAudioService: NSObject, AVSpeechSynthesizerDelegate {
 
     static let shared = BreatheAudioService()
 
@@ -21,7 +21,7 @@ final class BreatheAudioService: NSObject, AVSpeechSynthesizerDelegate {
     private let synthesizer = AVSpeechSynthesizer()
     private var selectedVoice: AVSpeechSynthesisVoice?
 
-    private override init() {
+    override init() {
         super.init()
         synthesizer.delegate = self
         selectedVoice = pickFemaleVoice()

@@ -12,7 +12,7 @@ import AVFoundation
 /// Provides AI-generated guided meditation voice using AVSpeechSynthesizer
 /// with a calm, gentle delivery — similar to BreatheAudioService.
 
-final class MeditationAudioService: NSObject, AVSpeechSynthesizerDelegate {
+class MeditationAudioService: NSObject, AVSpeechSynthesizerDelegate {
 
     static let shared = MeditationAudioService()
 
@@ -22,7 +22,7 @@ final class MeditationAudioService: NSObject, AVSpeechSynthesizerDelegate {
     private var selectedVoice: AVSpeechSynthesisVoice?
     private(set) var isSpeaking = false
 
-    private override init() {
+    override init() {
         super.init()
         synthesizer.delegate = self
         selectedVoice = pickCalmVoice()
