@@ -1,8 +1,8 @@
-import AVFoundation
+@preconcurrency import AVFoundation
 
 //Sound-to-File Mapping
 
-/// Maps display names to their actual bundle file names (without extension).
+// Maps display names to their actual bundle file names (without extension).
 private let soundFileMapping: [String: String] = [
     "Soft Rain":       "soft_rain_asmr",
     "Typing":          "keyboard_typing_asmr",
@@ -13,9 +13,10 @@ private let soundFileMapping: [String: String] = [
     "Nature & Calm":   "nature_and_calm",
 ]
 
-// MARK: - ASMRAudioService
+// ASMRAudioService
 
-class ASMRAudioService: @unchecked Sendable {
+@MainActor
+class ASMRAudioService {
 
 
     //prevents two different sounds from playing at the same time
