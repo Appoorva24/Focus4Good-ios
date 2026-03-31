@@ -1,28 +1,21 @@
-//
-//  ASMRAudioService.swift
-//  Focus4Good
-//
-//  Created by Shreya on 23/03/26.
-//
-
 import AVFoundation
 
 // MARK: - Sound-to-File Mapping
 
 /// Maps display names to their actual bundle file names (without extension).
 private let soundFileMapping: [String: String] = [
-    "Soft Rain":       "softrainasmr",
-    "Typing":          "Keyboardtypingasmr",
+    "Soft Rain":       "soft_rain_asmr",
+    "Typing":          "keyboard_typing_asmr",
     "Crinkling":       "crinkling",
     "Tapping":         "tapping",
-    "White Noise":     "whitenoise",
-    "Forest":          "Forest",
-    "Nature & Calm":   "natureAndCalm",
+    "White Noise":     "white_noise",
+    "Forest":          "forest",
+    "Nature & Calm":   "nature_and_calm",
 ]
 
 // MARK: - ASMRAudioService
 
-final class ASMRAudioService: @unchecked Sendable {
+class ASMRAudioService: @unchecked Sendable {
 
     static let shared = ASMRAudioService()
 

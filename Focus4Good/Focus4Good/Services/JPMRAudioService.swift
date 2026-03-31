@@ -1,10 +1,3 @@
-//
-//  JPMRAudioService.swift
-//  Focus4Good
-//
-//  Created by Shreya on 24/03/26.
-//
-
 import AVFoundation
 
 // MARK: - JPMRAudioService
@@ -12,7 +5,7 @@ import AVFoundation
 /// Provides guided voice instructions throughout a JPMR session
 /// using AVSpeechSynthesizer with a gentle, calming female voice.
 
-final class JPMRAudioService: NSObject, AVSpeechSynthesizerDelegate {
+class JPMRAudioService: NSObject, AVSpeechSynthesizerDelegate {
 
     static let shared = JPMRAudioService()
 

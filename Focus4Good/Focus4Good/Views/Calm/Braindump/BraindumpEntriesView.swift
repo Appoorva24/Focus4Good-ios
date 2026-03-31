@@ -1,18 +1,10 @@
-//
-//  BraindumpEntriesView.swift
-//  Focus4Good
-//
-//  Created by Shreya on 20/03/26.
-//
-
 import SwiftUI
 
-@available(iOS 17.0, *)
 struct BraindumpEntriesView: View {
 
     let folder: BrainDumpFolder
 
-    private var store: CalmCentreStore { CalmCentreStore.shared }
+    @Environment(CalmCentreStore.self) private var store
     @State private var selectedEntry: BrainDumpEntry?
 
     private var entries: [BrainDumpEntry] {
@@ -23,9 +15,7 @@ struct BraindumpEntriesView: View {
         List {
             Section {
                 ForEach(entries) { entry in
-                    Button {
-                        selectedEntry = entry
-                    } label: {
+                    Button { selectedEntry = entry } label: {
                         Label {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(entry.content)
@@ -39,7 +29,7 @@ struct BraindumpEntriesView: View {
                             }
                         } icon: {
                             Image(systemName: "doc.text.fill")
-                                .foregroundStyle(Color("CalmOrange"))
+                                .foregroundStyle(Color.accentColor)
                         }
                     }
                     .tint(.primary)
@@ -55,12 +45,11 @@ struct BraindumpEntriesView: View {
         .navigationTitle(folder.name)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                // Compose new entry
                 NavigationLink {
                     BraindumpEditorView(folder: folder)
                 } label: {
                     Image(systemName: "square.and.pencil")
-                        .foregroundStyle(Color("CalmOrange"))
+                        .foregroundStyle(Color.accentColor)
                 }
             }
 
@@ -89,8 +78,6 @@ struct BraindumpEntriesView: View {
         }
     }
 
-    // MARK: - Detail Sheet
-
     private func entryDetailSheet(_ entry: BrainDumpEntry) -> some View {
         NavigationStack {
             ScrollView {
@@ -109,30 +96,25 @@ struct BraindumpEntriesView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") {
-                        selectedEntry = nil
-                    }
-                    .fontWeight(.semibold)
+                    Button("Done") { selectedEntry = nil }
+                        .fontWeight(.semibold)
                 }
             }
         }
     }
 
-    // MARK: - Delete
-
     private func deleteEntry(at offsets: IndexSet) {
-        let entriesToDelete = offsets.map { entries[$0] }
-        for entry in entriesToDelete {
+        for entry in offsets.map({ entries[$0] }) {
             store.deleteBrainDumpEntry(entry)
         }
     }
 }
 
-@available(iOS 17.0, *)
 #Preview {
     NavigationStack {
         BraindumpEntriesView(
             folder: BrainDumpFolder(userId: UUID(), name: "Random Thoughts", entryCount: 2)
         )
+        .environment(CalmCentreStore.shared)
     }
 }

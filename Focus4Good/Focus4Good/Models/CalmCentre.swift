@@ -1,6 +1,6 @@
 import Foundation
 
-// MARK: - BreathingSession
+//BreathingSession
 struct BreathingSession: Identifiable, Codable, Hashable {
     var id: UUID = UUID()
     var userId: UUID
@@ -11,7 +11,7 @@ struct BreathingSession: Identifiable, Codable, Hashable {
     var completedAt: Date
 }
 
-// MARK: - JpmrSession
+//JpmrSession
 struct JpmrSession: Identifiable, Codable, Hashable {
     var id: UUID = UUID()
     var userId: UUID
@@ -20,7 +20,7 @@ struct JpmrSession: Identifiable, Codable, Hashable {
     var completedAt: Date
 }
 
-// MARK: - GuidedMeditationSession
+//GuidedMeditationSession
 struct GuidedMeditationSession: Identifiable, Codable, Hashable {
     var id: UUID = UUID()
     var userId: UUID
@@ -30,7 +30,7 @@ struct GuidedMeditationSession: Identifiable, Codable, Hashable {
     var completedAt: Date
 }
 
-// MARK: - AsmrSound
+//AsmrSound
 struct AsmrSound: Identifiable, Codable, Hashable {
     var id: UUID = UUID()
     var name: String
@@ -41,7 +41,7 @@ struct AsmrSound: Identifiable, Codable, Hashable {
     var durationSeconds: Int
 }
 
-// MARK: - UserFavouriteAsmrSound
+//UserFavouriteAsmrSound
 struct UserFavouriteAsmrSound: Identifiable, Codable, Hashable {
     var id: UUID = UUID()
     var userId: UUID
@@ -49,7 +49,7 @@ struct UserFavouriteAsmrSound: Identifiable, Codable, Hashable {
     var savedAt: Date
 }
 
-// MARK: - BrainDumpFolder
+//BrainDumpFolder
 struct BrainDumpFolder: Identifiable, Codable, Hashable {
     var id: UUID = UUID()
     var userId: UUID
@@ -57,7 +57,7 @@ struct BrainDumpFolder: Identifiable, Codable, Hashable {
     var entryCount: Int
 }
 
-// MARK: - BrainDumpEntry
+//BrainDumpEntry
 struct BrainDumpEntry: Identifiable, Codable, Hashable {
     var id: UUID = UUID()
     var userId: UUID

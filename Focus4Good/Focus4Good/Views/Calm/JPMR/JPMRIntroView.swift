@@ -1,21 +1,11 @@
-//
-//  JPMRIntroView.swift
-//  Focus4Good
-//
-//  Created by Shreya on 23/03/26.
-//
-
 import SwiftUI
-
-
 
 // MARK: - Constants
 
-private let accentOrange = Color("CalmOrange")
+private let accentOrange = Color.accentColor
 
 // MARK: - JPMRIntroView
 
-@available(iOS 17.0, *)
 struct JPMRIntroView: View {
 
     @State private var showSession = false
@@ -32,26 +22,18 @@ struct JPMRIntroView: View {
             .padding(.bottom, 32)
         }
         .background(Color(.systemGroupedBackground))
-        .navigationDestination(isPresented: $showSession) {
-            JPMRSessionView()
-        }
+        .navigationDestination(isPresented: $showSession) { JPMRSessionView() }
         .navigationTitle("Unwind Body")
         .navigationBarTitleDisplayMode(.inline)
     }
-}
 
-// MARK: - Subviews
+    // MARK: - Subviews
 
-@available(iOS 17.0, *)
-private extension JPMRIntroView {
-
-    // MARK: Animated Header
-
-    var animatedHeaderSection: some View {
+    private var animatedHeaderSection: some View {
         VStack(spacing: 14) {
             Image(systemName: "figure.mind.and.body")
                 .font(.system(size: 52))
-                .foregroundStyle(accentOrange)
+                .foregroundStyle(Color.accentColor)
                 .phaseAnimator([false, true]) { content, phase in
                     content
                         .scaleEffect(phase ? 1.08 : 1.0)
@@ -73,10 +55,7 @@ private extension JPMRIntroView {
         .padding(.vertical, 20)
     }
 
-
-    // MARK: The Technique
-
-    var techniqueSection: some View {
+    private var techniqueSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("The Technique")
                 .font(.headline)
@@ -101,11 +80,11 @@ private extension JPMRIntroView {
         }
     }
 
-    func stepRow(title: String, detail: String, icon: String) -> some View {
+    private func stepRow(title: String, detail: String, icon: String) -> some View {
         HStack(spacing: 14) {
             Image(systemName: icon)
                 .font(.title2)
-                .foregroundStyle(accentOrange)
+                .foregroundStyle(Color.accentColor)
                 .frame(width: 36)
 
             VStack(alignment: .leading, spacing: 2) {
@@ -123,10 +102,7 @@ private extension JPMRIntroView {
         .padding()
     }
 
-
-    // MARK: Benefits
-
-    var benefitsSection: some View {
+    private var benefitsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Benefits")
                 .font(.headline)
@@ -146,10 +122,10 @@ private extension JPMRIntroView {
         }
     }
 
-    func benefitRow(_ text: String) -> some View {
+    private func benefitRow(_ text: String) -> some View {
         HStack(spacing: 10) {
             Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(accentOrange)
+                .foregroundStyle(Color.accentColor)
                 .font(.subheadline)
 
             Text(text)
@@ -158,35 +134,25 @@ private extension JPMRIntroView {
         }
     }
 
-    // MARK: Begin
-
-    var beginSection: some View {
+    private var beginSection: some View {
         VStack(spacing: 10) {
             Text("~15 min session  ·  11 muscle groups  ·  Feet → Face")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
 
-            Button {
-                showSession = true
-            } label: {
+            Button { showSession = true } label: {
                 Text("Begin")
                     .font(.headline)
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .frame(height: 52)
-                    .background(
-                        Capsule()
-                            .fill(accentOrange)
-                    )
+                    .background(Capsule().fill(Color.accentColor))
             }
         }
     }
 }
 
-// MARK: - Preview
-
-@available(iOS 17.0, *)
 #Preview {
     NavigationStack {
         JPMRIntroView()

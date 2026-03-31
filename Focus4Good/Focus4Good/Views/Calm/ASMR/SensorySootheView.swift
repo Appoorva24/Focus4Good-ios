@@ -1,39 +1,30 @@
-//
-//  SensorySootheView.swift
-//  Focus4Good
-//
-//  Created by Shreya on 23/03/26.
-//
-
 import SwiftUI
 
 // MARK: - Sound Card Data
 
-/// Local data for each ASMR card – pairs a display image with sound metadata.
 private struct ASMRSoundEntry: Identifiable {
     let id = UUID()
     let name: String
     let subtitle: String
-    let imageName: String         // Asset catalog image name
-    let category: String          // Maps to NoiseProfile in ASMRAudioService
+    let imageName: String
+    let category: String
     let durationSeconds: Int
 }
 
 private let soundEntries: [ASMRSoundEntry] = [
-    .init(name: "Soft Rain",    subtitle: "Light Drizzle",         imageName: "asmr_softrain",    category: "Rain",        durationSeconds: 600),
-    .init(name: "Typing",       subtitle: "Mechanical clicks",    imageName: "asmr_typing",      category: "Ambient",     durationSeconds: 600),
-    .init(name: "Crinkling",    subtitle: "Crisp and dry sounds", imageName: "asmr_crinkling",   category: "Nature",      durationSeconds: 600),
-    .init(name: "Tapping",      subtitle: "Gentle surface touch", imageName: "asmr_tapping",     category: "Ambient",     durationSeconds: 600),
-    .init(name: "White Noise",  subtitle: "Background hum",       imageName: "asmr_whitenoise",  category: "White Noise", durationSeconds: 600),
-    .init(name: "Forest",       subtitle: "Rustling leaves",      imageName: "asmr_forest",      category: "Nature",      durationSeconds: 600),
+    .init(name: "Soft Rain",   subtitle: "Light Drizzle",         imageName: "asmr_softrain",   category: "Rain",        durationSeconds: 600),
+    .init(name: "Typing",      subtitle: "Mechanical clicks",     imageName: "asmr_typing",     category: "Ambient",     durationSeconds: 600),
+    .init(name: "Crinkling",   subtitle: "Crisp and dry sounds",  imageName: "asmr_crinkling",  category: "Nature",      durationSeconds: 600),
+    .init(name: "Tapping",     subtitle: "Gentle surface touch",  imageName: "asmr_tapping",    category: "Ambient",     durationSeconds: 600),
+    .init(name: "White Noise", subtitle: "Background hum",        imageName: "asmr_whitenoise", category: "White Noise", durationSeconds: 600),
+    .init(name: "Forest",      subtitle: "Rustling leaves",       imageName: "asmr_forest",     category: "Nature",      durationSeconds: 600),
 ]
 
 // MARK: - SensorySootheView
 
-@available(iOS 17.0, *)
 struct SensorySootheView: View {
 
-    private var store: CalmCentreStore { CalmCentreStore.shared }
+    @Environment(CalmCentreStore.self) private var store
 
     @State private var showPlayer = false
     @State private var selectedSound: AsmrSound?
@@ -60,15 +51,11 @@ struct SensorySootheView: View {
                 ASMRPlayerView(
                     sound: sound,
                     isFavourite: favouriteNames.contains(sound.name),
-                    onToggleFavourite: {
-                        toggleFavourite(sound.name)
-                    }
+                    onToggleFavourite: { toggleFavourite(sound.name) }
                 )
             }
         }
     }
-
-    // MARK: - Local Favourite Persistence
 
     private func loadFavourites() {
         if let saved = UserDefaults.standard.stringArray(forKey: Self.favouritesKey) {
@@ -84,16 +71,10 @@ struct SensorySootheView: View {
         }
         UserDefaults.standard.set(Array(favouriteNames), forKey: Self.favouritesKey)
     }
-}
 
-// MARK: - Subviews
+    // MARK: - Subviews
 
-@available(iOS 17.0, *)
-private extension SensorySootheView {
-
-    // MARK: Hero Banner (Tappable)
-
-    var heroBanner: some View {
+    private var heroBanner: some View {
         Button {
             selectedSound = AsmrSound(
                 name: "Nature & Calm",
@@ -112,7 +93,6 @@ private extension SensorySootheView {
                     .frame(height: 180)
                     .clipped()
 
-                // Gradient for text legibility
                 LinearGradient(
                     colors: [.clear, .black.opacity(0.5)],
                     startPoint: .center,
@@ -137,9 +117,7 @@ private extension SensorySootheView {
         .buttonStyle(.plain)
     }
 
-    // MARK: Sound List (Vertical, like Apple Music)
-
-    var soundList: some View {
+    private var soundList: some View {
         VStack(spacing: 12) {
             ForEach(soundEntries) { entry in
                 soundRow(entry)
@@ -147,9 +125,7 @@ private extension SensorySootheView {
         }
     }
 
-    // MARK: Sound Row
-
-    func soundRow(_ entry: ASMRSoundEntry) -> some View {
+    private func soundRow(_ entry: ASMRSoundEntry) -> some View {
         Button {
             selectedSound = AsmrSound(
                 name: entry.name,
@@ -162,14 +138,12 @@ private extension SensorySootheView {
             showPlayer = true
         } label: {
             HStack(spacing: 14) {
-                // Thumbnail
                 Image(entry.imageName)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
                     .frame(width: 60, height: 60)
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 
-                // Text
                 VStack(alignment: .leading, spacing: 3) {
                     Text(entry.name)
                         .font(.body)
@@ -183,7 +157,6 @@ private extension SensorySootheView {
 
                 Spacer()
 
-                // Chevron
                 Image(systemName: "chevron.right")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
@@ -199,11 +172,9 @@ private extension SensorySootheView {
     }
 }
 
-// MARK: - Preview
-
-@available(iOS 17.0, *)
 #Preview {
     NavigationStack {
         SensorySootheView()
+            .environment(CalmCentreStore.shared)
     }
 }

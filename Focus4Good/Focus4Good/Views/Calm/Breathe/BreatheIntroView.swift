@@ -1,15 +1,5 @@
-//
-//  BreatheIntroView.swift
-//  Focus4Good
-//
-//  Created by Shreya on 22/03/26.
-//
-
 import SwiftUI
 
-private let accentOrange = Color("CalmOrange")
-
-@available(iOS 17.0, *)
 struct BreatheIntroView: View {
 
     @State private var showSession = false
@@ -26,26 +16,18 @@ struct BreatheIntroView: View {
             .padding(.bottom, 32)
         }
         .background(Color(.systemGroupedBackground))
-        .navigationDestination(isPresented: $showSession) {
-            BreatheSessionView()
-        }
+        .navigationDestination(isPresented: $showSession) { BreatheSessionView() }
         .navigationTitle("Breathe")
         .navigationBarTitleDisplayMode(.inline)
     }
-}
 
-// MARK: - Subviews
+    // MARK: - Subviews
 
-@available(iOS 17.0, *)
-private extension BreatheIntroView {
-
-    // MARK: Header
-
-    var headerSection: some View {
+    private var headerSection: some View {
         VStack(spacing: 14) {
             Image(systemName: "wind")
                 .font(.system(size: 48))
-                .foregroundStyle(accentOrange)
+                .foregroundStyle(Color.accentColor)
 
             Text("4-7-8 Breathing")
                 .font(.title2)
@@ -60,9 +42,7 @@ private extension BreatheIntroView {
         .padding(.vertical, 20)
     }
 
-    // MARK: Steps
-
-    var stepsSection: some View {
+    private var stepsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("How It Works")
                 .font(.headline)
@@ -81,11 +61,11 @@ private extension BreatheIntroView {
         }
     }
 
-    func stepRow(title: String, duration: String, icon: String) -> some View {
+    private func stepRow(title: String, duration: String, icon: String) -> some View {
         HStack(spacing: 14) {
             Image(systemName: icon)
                 .font(.title2)
-                .foregroundStyle(accentOrange)
+                .foregroundStyle(Color.accentColor)
                 .frame(width: 36)
 
             VStack(alignment: .leading, spacing: 2) {
@@ -103,9 +83,7 @@ private extension BreatheIntroView {
         .padding()
     }
 
-    // MARK: Benefits
-
-    var benefitsSection: some View {
+    private var benefitsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Benefits")
                 .font(.headline)
@@ -125,10 +103,10 @@ private extension BreatheIntroView {
         }
     }
 
-    func benefitRow(_ text: String) -> some View {
+    private func benefitRow(_ text: String) -> some View {
         HStack(spacing: 10) {
             Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(accentOrange)
+                .foregroundStyle(Color.accentColor)
                 .font(.subheadline)
 
             Text(text)
@@ -137,28 +115,18 @@ private extension BreatheIntroView {
         }
     }
 
-    // MARK: Begin Button
-
-    var beginButton: some View {
-        Button {
-            showSession = true
-        } label: {
+    private var beginButton: some View {
+        Button { showSession = true } label: {
             Text("Begin")
                 .font(.headline)
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .frame(height: 52)
-                .background(
-                    Capsule()
-                        .fill(accentOrange)
-                )
+                .background(Capsule().fill(Color.accentColor))
         }
     }
 }
 
-// MARK: - Preview
-
-@available(iOS 17.0, *)
 #Preview {
     NavigationStack {
         BreatheIntroView()

@@ -1,10 +1,3 @@
-//
-//  BreatheAudioService.swift
-//  Focus4Good
-//
-//  Created by Shreya on 24/03/26.
-//
-
 import AVFoundation
 
 // MARK: - BreatheAudioService
@@ -12,7 +5,7 @@ import AVFoundation
 /// Provides a full guided breathing experience using AVSpeechSynthesizer
 /// with a gentle, calming female voice.
 
-final class BreatheAudioService: NSObject, AVSpeechSynthesizerDelegate {
+class BreatheAudioService: NSObject, AVSpeechSynthesizerDelegate {
 
     static let shared = BreatheAudioService()
 
