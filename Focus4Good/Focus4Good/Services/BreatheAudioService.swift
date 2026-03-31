@@ -1,27 +1,23 @@
-//
-//  BreatheAudioService.swift
-//  Focus4Good
-//
-//  Created by Shreya on 24/03/26.
-//
-
-import AVFoundation
+@preconcurrency import AVFoundation
 
 // MARK: - BreatheAudioService
 
 /// Provides a full guided breathing experience using AVSpeechSynthesizer
 /// with a gentle, calming female voice.
 
+@MainActor
 class BreatheAudioService: NSObject, AVSpeechSynthesizerDelegate {
 
     static let shared = BreatheAudioService()
 
     // MARK: - Private State
 
+
+    //synthesizer - takes any text and convert that into speech
     private let synthesizer = AVSpeechSynthesizer()
     private var selectedVoice: AVSpeechSynthesisVoice?
 
-    override init() {
+    private override init() {
         super.init()
         synthesizer.delegate = self
         selectedVoice = pickFemaleVoice()
@@ -144,6 +140,8 @@ class BreatheAudioService: NSObject, AVSpeechSynthesizerDelegate {
         synthesizer.speak(utterance)
     }
 
+
+    // managing phone's volume
     private func configureAudioSession() {
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.playback, mode: .default, options: [.duckOthers])

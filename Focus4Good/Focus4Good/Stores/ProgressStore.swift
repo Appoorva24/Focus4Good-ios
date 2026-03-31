@@ -22,32 +22,8 @@ class ProgressStore {
     }
 
     static let shared = ProgressStore()
-    private init() {
-        // Seed with sample data so the Progress tab isn't empty
-        let userId = DummyData.currentUser.id
-        progressRecords = [
-            UserProgress(
-                userId: userId,
-                periodType: "weekly",
-                periodStart: Calendar.current.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date(),
-                tasksCompleted: 12,
-                focusTimeMinutes: 145,
-                calmCentreMinutes: 45,
-                focusPointsEarned: 320,
-                taskGoal: 30
-            ),
-            UserProgress(
-                userId: userId,
-                periodType: "monthly",
-                periodStart: Calendar.current.dateInterval(of: .month, for: Date())?.start ?? Date(),
-                tasksCompleted: 48,
-                focusTimeMinutes: 580,
-                calmCentreMinutes: 120,
-                focusPointsEarned: 1280,
-                taskGoal: 120
-            )
-        ]
-    }
+    private init() {}
+
 
     // MARK: - Fetch
     func fetchProgress(userId: UUID) async {

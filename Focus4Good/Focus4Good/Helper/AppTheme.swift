@@ -3,8 +3,18 @@ import SwiftUI
 // MARK: - App Theme
 
 enum AppTheme {
-    static let orange = Color(red: 0.91, green: 0.57, blue: 0.23)
-    static let textPrimary = Color(.label)
+    /// Brand accent — #FBB17C
+    static let orange      = Color(hex: "FBB17C")
+    /// 15 % tint of the accent, used for icon backgrounds and subtle fills
+    static let accentLight = Color(hex: "FBB17C").opacity(0.15)
+    /// Standard card background (adapts to light / dark mode)
+    static let cardBg      = Color(.systemBackground)
+    /// Subtle drop-shadow colour
+    static let shadow      = Color.black.opacity(0.05)
+    /// Default corner radius for cards
+    static let cornerRadius: CGFloat = 16
+
+    static let textPrimary   = Color(.label)
     static let textSecondary = Color(.secondaryLabel)
 }
 

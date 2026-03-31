@@ -1,18 +1,17 @@
 import Foundation
 
-// MARK: - BreathingSession
-struct BreathingSession: Identifiable, Codable, Hashable {
+//BreathingSession
+struct BreathingSession: Codable {
     var id: UUID = UUID()
     var userId: UUID
-    var techniqueName: String
     var cyclesCompleted: Int
     var durationSeconds: Int
     var pointsEarned: Int
     var completedAt: Date
 }
 
-// MARK: - JpmrSession
-struct JpmrSession: Identifiable, Codable, Hashable {
+//JpmrSession
+struct JpmrSession: Codable {
     var id: UUID = UUID()
     var userId: UUID
     var durationSeconds: Int
@@ -20,8 +19,8 @@ struct JpmrSession: Identifiable, Codable, Hashable {
     var completedAt: Date
 }
 
-// MARK: - GuidedMeditationSession
-struct GuidedMeditationSession: Identifiable, Codable, Hashable {
+//GuidedMeditationSession
+struct GuidedMeditationSession: Codable {
     var id: UUID = UUID()
     var userId: UUID
     var meditationName: String
@@ -30,7 +29,7 @@ struct GuidedMeditationSession: Identifiable, Codable, Hashable {
     var completedAt: Date
 }
 
-// MARK: - AsmrSound
+//AsmrSound
 struct AsmrSound: Identifiable, Codable, Hashable {
     var id: UUID = UUID()
     var name: String
@@ -41,7 +40,7 @@ struct AsmrSound: Identifiable, Codable, Hashable {
     var durationSeconds: Int
 }
 
-// MARK: - UserFavouriteAsmrSound
+//UserFavouriteAsmrSound
 struct UserFavouriteAsmrSound: Identifiable, Codable, Hashable {
     var id: UUID = UUID()
     var userId: UUID
@@ -49,7 +48,7 @@ struct UserFavouriteAsmrSound: Identifiable, Codable, Hashable {
     var savedAt: Date
 }
 
-// MARK: - BrainDumpFolder
+//BrainDumpFolder
 struct BrainDumpFolder: Identifiable, Codable, Hashable {
     var id: UUID = UUID()
     var userId: UUID
@@ -57,11 +56,11 @@ struct BrainDumpFolder: Identifiable, Codable, Hashable {
     var entryCount: Int
 }
 
-// MARK: - BrainDumpEntry
+//BrainDumpEntry
 struct BrainDumpEntry: Identifiable, Codable, Hashable {
     var id: UUID = UUID()
     var userId: UUID
-    var folderId: UUID?
+    var folderId: UUID?  
     var content: String
     var pointsEarned: Int
     var createdAt: Date

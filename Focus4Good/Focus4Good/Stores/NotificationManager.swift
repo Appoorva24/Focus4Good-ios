@@ -17,14 +17,14 @@ class NotificationManager {
             )
             
             if granted {
-                print("✅ Notification permission granted")
+                print("Notification permission granted")
             } else {
-                print("❌ Notification permission denied")
+                print("Notification permission denied")
             }
             
             return granted
         } catch {
-            print("❌ Error requesting notification permission: \(error)")
+            print("Error requesting notification permission: \(error)")
             return false
         }
     }

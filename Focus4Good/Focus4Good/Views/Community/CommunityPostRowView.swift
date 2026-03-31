@@ -10,84 +10,91 @@ import SwiftUI
 struct CommunityPostRowView: View {
     var post: Post
     @State private var isLiked: Bool = false
-    @State private var isComment: Bool = false
+    @State private var isCommented: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            // Header
+
+            // ── Author Header ──
             HStack {
-                Image(systemName: "person.circle.fill")
+                Image(post.authorImageUrl ?? "profilePic")
                     .resizable()
-                    .scaledToFit()
+                    .scaledToFill()
                     .frame(width: 40, height: 40)
-                    .foregroundStyle(AppTheme.orange.opacity(0.6))
+                    .clipShape(Circle())
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Community Member")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(AppTheme.textPrimary)
-                    Text(post.createdAt.formatted(.relative(presentation: .named)))
+                    Text(post.authorName)
+                        .font(.subheadline.bold())
+
+                    Text(post.createdAt, style: .relative)
                         .font(.caption)
-                        .foregroundStyle(AppTheme.textSecondary)
+                        .foregroundStyle(.gray)
                 }
+
                 Spacer()
 
                 if let hashtag = post.hashtag {
                     Text("#\(hashtag)")
-                        .font(.caption.bold())
-                        .foregroundStyle(AppTheme.orange)
+                        .font(.caption)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)
-                        .background(Capsule().fill(AppTheme.orange.opacity(0.12)))
+                        .foregroundStyle(.blue)
+                        .background(Color.blue.opacity(0.12))
+                        .cornerRadius(10)
                 }
             }
 
-            // Content
+            // ── Content ──
             Text(post.content)
-                .font(.subheadline)
-                .foregroundStyle(AppTheme.textPrimary)
-                .lineSpacing(3)
+                .font(.callout)
 
-            // Actions
-            HStack(spacing: 20) {
+            // ── Post Image ──
+            if let postImage = post.postImageName {
+                Image(postImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 220)
+                    .clipped()
+                    .cornerRadius(16)
+            }
+
+            // ── Like & Comment Bar ──
+            HStack(spacing: 4) {
                 Button {
                     isLiked.toggle()
                 } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: isLiked ? "heart.fill" : "heart")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundStyle(isLiked ? AppTheme.orange : AppTheme.textSecondary)
-                        Text("\(post.likeCount + (isLiked ? 1 : 0))")
-                            .font(.caption.bold())
-                            .foregroundStyle(isLiked ? AppTheme.orange : AppTheme.textSecondary)
-                    }
+                    Image(systemName: isLiked ? "heart.fill" : "heart")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(isLiked ? AppTheme.orange : AppTheme.orange.opacity(0.5))
                 }
-                .buttonStyle(.plain)
+
+                Text("\(post.likeCount + (isLiked ? 1 : 0))")
+                    .foregroundStyle(isLiked ? AppTheme.orange : AppTheme.orange.opacity(0.5))
+
+                Spacer().frame(width: 12)
 
                 Button {
-                    isComment.toggle()
+                    isCommented.toggle()
                 } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: isComment ? "message.fill" : "message")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundStyle(isComment ? AppTheme.orange : AppTheme.textSecondary)
-                        Text("Reply")
-                            .font(.caption.bold())
-                            .foregroundStyle(isComment ? AppTheme.orange : AppTheme.textSecondary)
-                    }
+                    Image(systemName: isCommented ? "message.fill" : "message")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(isCommented ? AppTheme.orange : AppTheme.orange.opacity(0.5))
                 }
-                .buttonStyle(.plain)
 
                 Spacer()
             }
             .padding(.top, 4)
         }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 18)
-                .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 2)
+        .padding()
+        .background(Color(.systemBackground))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(Color.black.opacity(0.12), lineWidth: 0.5)
         )
+        .cornerRadius(20)
+        .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
         .padding(.horizontal, 16)
     }
 }
@@ -95,11 +102,16 @@ struct CommunityPostRowView: View {
 #Preview {
     let post = Post(
         authorId: UUID(),
+        authorName: "Alex Johnson",
+        authorImageUrl: "profilePic",
         communityId: UUID(),
-        content: "Just completed my first Pomodoro session without distractions! 🎉",
+        content: "This is the community for ADHD where people can connect, share, and do work that will help people with ADHD.",
+        postImageName: "FirstPost",
         hashtag: "ADHD",
-        likeCount: 42,
+        likeCount: 1023,
         createdAt: Date()
     )
     CommunityPostRowView(post: post)
 }
+
+

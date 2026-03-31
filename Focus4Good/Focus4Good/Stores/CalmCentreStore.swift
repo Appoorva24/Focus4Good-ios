@@ -6,30 +6,30 @@ class CalmCentreStore {
     // MARK: - State
     var breathingSessions: [BreathingSession] = []
     var jpmrSessions: [JpmrSession] = []
-    var meditationSessions: [GuidedMeditationSession] = []
+    var guidedMeditationSessions: [GuidedMeditationSession] = []
     var asmrSounds: [AsmrSound] = []
-    var favouriteAsmrSounds: [UserFavouriteAsmrSound] = []
+    var favouriteAsmrSoundIds: Set<UUID> = []
     var brainDumpFolders: [BrainDumpFolder] = []
-    var dumpEntries: [BrainDumpEntry] = []
+    var brainDumpEntries: [BrainDumpEntry] = []
     var activeAsmrSound: AsmrSound?
     var isLoading = false
     var errorMessage: String?
 
     // MARK: - Computed
-    var totalCalmMinutes: Int {
-        let breathe = breathingSessions.reduce(0) { $0 + $1.durationSeconds }
-        let jpmr = jpmrSessions.reduce(0) { $0 + $1.durationSeconds }
-        let meditation = meditationSessions.reduce(0) { $0 + $1.durationSeconds }
-        return (breathe + jpmr + meditation) / 60
+    var favouriteAsmrSounds: [AsmrSound] { asmrSounds.filter { favouriteAsmrSoundIds.contains($0.id) } }
+    var asmrSoundsByCategory: [String: [AsmrSound]] { Dictionary(grouping: asmrSounds, by: { $0.category }) }
+    var recentBrainDumpEntries: [BrainDumpEntry] { brainDumpEntries.sorted { $0.createdAt > $1.createdAt } }
+
+    var totalCalmMinutesToday: Int {
+        let cal = Calendar.current
+        let b = breathingSessions.filter { cal.isDateInToday($0.completedAt) }.reduce(0) { $0 + $1.durationSeconds / 60 }
+        let j = jpmrSessions.filter { cal.isDateInToday($0.completedAt) }.reduce(0) { $0 + $1.durationSeconds / 60 }
+        let m = guidedMeditationSessions.filter { cal.isDateInToday($0.completedAt) }.reduce(0) { $0 + $1.durationSeconds / 60 }
+        return b + j + m
     }
 
-    func entries(in folder: BrainDumpFolder) -> [BrainDumpEntry] {
-        dumpEntries.filter { $0.folderId == folder.id }
-            .sorted { $0.createdAt > $1.createdAt }
-    }
-
-    func isFavourite(soundId: UUID, userId: UUID) -> Bool {
-        favouriteAsmrSounds.contains { $0.soundId == soundId && $0.userId == userId }
+    func brainDumpEntries(in folder: BrainDumpFolder) -> [BrainDumpEntry] {
+        brainDumpEntries.filter { $0.folderId == folder.id }
     }
 
     static let shared = CalmCentreStore()
@@ -38,111 +38,77 @@ class CalmCentreStore {
     // MARK: - Fetch
     func fetchBreathingSessions(userId: UUID) async { isLoading = true; isLoading = false }
     func fetchJpmrSessions(userId: UUID) async { isLoading = true; isLoading = false }
-    func fetchMeditationSessions(userId: UUID) async { isLoading = true; isLoading = false }
+    func fetchGuidedMeditationSessions(userId: UUID) async { isLoading = true; isLoading = false }
     func fetchAsmrSounds() async { isLoading = true; isLoading = false }
+    func fetchFavouriteAsmrSounds(userId: UUID) async { isLoading = true; isLoading = false }
     func fetchBrainDumpFolders(userId: UUID) async { isLoading = true; isLoading = false }
     func fetchBrainDumpEntries(userId: UUID) async { isLoading = true; isLoading = false }
 
-    // MARK: - Breathing
-    func recordBreathingSession(userId: UUID, technique: String, cycles: Int, duration: Int, points: Int) async {
-        breathingSessions.append(BreathingSession(
-            userId: userId, techniqueName: technique,
-            cyclesCompleted: cycles, durationSeconds: duration,
-            pointsEarned: points, completedAt: Date()
-        ))
-    }
-
-    /// Convenience used by BreatheSessionView at session completion.
-    func logBreathingSession(userId: UUID, techniqueName: String, cyclesCompleted: Int, durationSeconds: Int) async {
+    // MARK: - Log Sessions
+    func logBreathingSession(userId: UUID, cyclesCompleted: Int, durationSeconds: Int) async {
         let points = cyclesCompleted * 10
-        await recordBreathingSession(userId: userId, technique: techniqueName, cycles: cyclesCompleted, duration: durationSeconds, points: points)
+        breathingSessions.append(BreathingSession(userId: userId, cyclesCompleted: cyclesCompleted, durationSeconds: durationSeconds, pointsEarned: points, completedAt: Date()))
+        await UserStore.shared.updateFocusPoints(by: points)
+        await ProgressStore.shared.addCalmCentreTime(minutes: durationSeconds / 60, userId: userId)
+        await ProgressStore.shared.addPointsEarned(points: points, userId: userId)
     }
 
-    // MARK: - JPMR
-    func recordJpmrSession(userId: UUID, duration: Int, points: Int) async {
-        jpmrSessions.append(JpmrSession(
-            userId: userId, durationSeconds: duration,
-            pointsEarned: points, completedAt: Date()
-        ))
-    }
-
-    /// Convenience used by JPMRSessionView at session completion.
     func logJpmrSession(userId: UUID, durationSeconds: Int) async {
-        let points = max(1, durationSeconds / 60) * 10
-        await recordJpmrSession(userId: userId, duration: durationSeconds, points: points)
+        let points = 30
+        jpmrSessions.append(JpmrSession(userId: userId, durationSeconds: durationSeconds, pointsEarned: points, completedAt: Date()))
+        await UserStore.shared.updateFocusPoints(by: points)
+        await ProgressStore.shared.addCalmCentreTime(minutes: durationSeconds / 60, userId: userId)
+        await ProgressStore.shared.addPointsEarned(points: points, userId: userId)
     }
 
-    // MARK: - Meditation
-    func recordMeditationSession(userId: UUID, name: String, duration: Int, points: Int) async {
-        meditationSessions.append(GuidedMeditationSession(
-            userId: userId, meditationName: name,
-            durationSeconds: duration, pointsEarned: points,
-            completedAt: Date()
-        ))
-    }
-
-    /// Convenience used by DeepFocusBrowseView at session completion.
     func logGuidedMeditationSession(userId: UUID, meditationName: String, durationSeconds: Int) async {
-        let points = max(1, durationSeconds / 60) * 10
-        await recordMeditationSession(userId: userId, name: meditationName, duration: durationSeconds, points: points)
+        let points = 50
+        guidedMeditationSessions.append(GuidedMeditationSession(userId: userId, meditationName: meditationName, durationSeconds: durationSeconds, pointsEarned: points, completedAt: Date()))
+        await UserStore.shared.updateFocusPoints(by: points)
+        await ProgressStore.shared.addCalmCentreTime(minutes: durationSeconds / 60, userId: userId)
+        await ProgressStore.shared.addPointsEarned(points: points, userId: userId)
     }
 
-    // MARK: - Brain Dump
+    // MARK: - ASMR
+    func playAsmrSound(_ sound: AsmrSound) { activeAsmrSound = sound }
+    func stopAsmrSound() { activeAsmrSound = nil }
 
-    /// Returns entries in a specific folder (called by BraindumpEntriesView + BraindumpFoldersView).
-    func brainDumpEntries(in folder: BrainDumpFolder) -> [BrainDumpEntry] {
-        dumpEntries.filter { $0.folderId == folder.id }
-            .sorted { $0.createdAt > $1.createdAt }
+    func toggleAsmrFavourite(soundId: UUID, userId: UUID) {
+        if favouriteAsmrSoundIds.contains(soundId) { favouriteAsmrSoundIds.remove(soundId) }
+        else { favouriteAsmrSoundIds.insert(soundId) }
     }
 
-    /// Called by BraindumpFoldersView (synchronous).
+    // MARK: - Brain Dump Folders
     func addBrainDumpFolder(name: String, userId: UUID) {
-        brainDumpFolders.append(BrainDumpFolder(
-            userId: userId, name: name, entryCount: 0
-        ))
+        brainDumpFolders.append(BrainDumpFolder(userId: userId, name: name, entryCount: 0))
     }
 
-    /// Called by BraindumpFoldersView (synchronous).
+    func updateBrainDumpFolder(_ folder: BrainDumpFolder) {
+        if let index = brainDumpFolders.firstIndex(where: { $0.id == folder.id }) { brainDumpFolders[index] = folder }
+    }
+
     func deleteBrainDumpFolder(_ folder: BrainDumpFolder) {
-        // Also delete all entries in this folder
-        dumpEntries.removeAll { $0.folderId == folder.id }
         brainDumpFolders.removeAll { $0.id == folder.id }
+        for i in brainDumpEntries.indices where brainDumpEntries[i].folderId == folder.id { brainDumpEntries[i].folderId = nil }
     }
 
-    /// Called by BraindumpEditorView (async, different param order).
-    func addBrainDumpEntry(content: String, userId: UUID, folderId: UUID?) async {
-        dumpEntries.append(BrainDumpEntry(
-            userId: userId, folderId: folderId,
-            content: content, pointsEarned: 10, createdAt: Date()
-        ))
-        if let folderId,
-           let index = brainDumpFolders.firstIndex(where: { $0.id == folderId }) {
-            brainDumpFolders[index].entryCount += 1
-        }
+    // MARK: - Brain Dump Entries
+    func addBrainDumpEntry(content: String, userId: UUID, folderId: UUID? = nil) async {
+        let points = 10
+        brainDumpEntries.append(BrainDumpEntry(userId: userId, folderId: folderId, content: content, pointsEarned: points, createdAt: Date()))
+        if let folderId, let index = brainDumpFolders.firstIndex(where: { $0.id == folderId }) { brainDumpFolders[index].entryCount += 1 }
+        await UserStore.shared.updateFocusPoints(by: points)
+        await ProgressStore.shared.addPointsEarned(points: points, userId: userId)
     }
 
-    /// Called by BraindumpEntriesView (synchronous).
+    func updateBrainDumpEntry(_ entry: BrainDumpEntry) {
+        if let index = brainDumpEntries.firstIndex(where: { $0.id == entry.id }) { brainDumpEntries[index] = entry }
+    }
+
     func deleteBrainDumpEntry(_ entry: BrainDumpEntry) {
-        if let folderId = entry.folderId,
-           let index = brainDumpFolders.firstIndex(where: { $0.id == folderId }) {
+        brainDumpEntries.removeAll { $0.id == entry.id }
+        if let folderId = entry.folderId, let index = brainDumpFolders.firstIndex(where: { $0.id == folderId }) {
             brainDumpFolders[index].entryCount = max(0, brainDumpFolders[index].entryCount - 1)
-        }
-        dumpEntries.removeAll { $0.id == entry.id }
-    }
-
-    // MARK: - ASMR Playback
-    func playAsmrSound(_ sound: AsmrSound) {
-        activeAsmrSound = sound
-    }
-
-    // MARK: - ASMR Favourites
-    func toggleFavourite(soundId: UUID, userId: UUID) async {
-        if let index = favouriteAsmrSounds.firstIndex(where: { $0.soundId == soundId && $0.userId == userId }) {
-            favouriteAsmrSounds.remove(at: index)
-        } else {
-            favouriteAsmrSounds.append(UserFavouriteAsmrSound(
-                userId: userId, soundId: soundId, savedAt: Date()
-            ))
         }
     }
 }

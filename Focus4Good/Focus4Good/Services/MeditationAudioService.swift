@@ -1,17 +1,11 @@
-//
-//  MeditationAudioService.swift
-//  Focus4Good
-//
-//  Created by Shreya on 29/03/26.
-//
-
-import AVFoundation
+@preconcurrency import AVFoundation
 
 // MARK: - MeditationAudioService
 
 /// Provides AI-generated guided meditation voice using AVSpeechSynthesizer
 /// with a calm, gentle delivery — similar to BreatheAudioService.
 
+@MainActor
 class MeditationAudioService: NSObject, AVSpeechSynthesizerDelegate {
 
     static let shared = MeditationAudioService()
@@ -22,7 +16,7 @@ class MeditationAudioService: NSObject, AVSpeechSynthesizerDelegate {
     private var selectedVoice: AVSpeechSynthesisVoice?
     private(set) var isSpeaking = false
 
-    override init() {
+    private override init() {
         super.init()
         synthesizer.delegate = self
         selectedVoice = pickCalmVoice()
@@ -107,16 +101,16 @@ class MeditationAudioService: NSObject, AVSpeechSynthesizerDelegate {
 
     // MARK: - Delegate
 
-    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didStart utterance: AVSpeechUtterance) {
-        isSpeaking = true
+    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didStart utterance: AVSpeechUtterance) {
+        Task { @MainActor in isSpeaking = true }
     }
 
-    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
-        isSpeaking = false
+    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
+        Task { @MainActor in isSpeaking = false }
     }
 
-    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
-        isSpeaking = false
+    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
+        Task { @MainActor in isSpeaking = false }
     }
 
     // MARK: - Private Helpers

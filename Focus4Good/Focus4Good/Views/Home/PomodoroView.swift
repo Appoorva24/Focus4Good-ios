@@ -2,9 +2,10 @@ import SwiftUI
 
 struct PomodoroView: View {
     let task: UserTask
-    @Environment(TaskStore.self) private var taskStore
-    @Environment(UserStore.self) private var userStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(TaskStore.self)     private var taskStore
+    @Environment(UserStore.self)     private var userStore
+    @Environment(ProgressStore.self) private var progressStore
+    @Environment(\.dismiss)          private var dismiss
 
     @State private var timeRemaining: Int
     @State private var isBreak = false
@@ -247,15 +248,23 @@ struct PomodoroView: View {
         totalFocusMinutes += 25
 
         if currentSession >= totalSessions {
-            // All sessions done — award points
+            // All sessions done — award points and record progress
             let points = max(0, (totalSessions * 25 * 2) - (distractedCount * 5))
+            guard let userId = userStore.currentUser?.id else {
+                sessionComplete = true
+                return
+            }
             Task {
+                // Mark task complete (also calls ProgressStore.incrementTasksCompleted)
                 await taskStore.toggleCompletion(for: task)
+                // Update focus points on the User object
                 await userStore.updateFocusPoints(by: points)
+                // Record focus time and points in ProgressStore
+                await progressStore.addFocusTime(minutes: totalFocusMinutes, userId: userId)
+                await progressStore.addPointsEarned(points: points, userId: userId)
             }
             sessionComplete = true
         } else {
-            // Show break screen before next session
             showBreakScreen = true
         }
     }

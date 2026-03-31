@@ -32,9 +32,12 @@ struct CommunityMember: Identifiable, Codable, Hashable {
 struct Post: Identifiable, Codable, Hashable {
     var id: UUID = UUID()
     var authorId: UUID
+    var authorName: String = "Anonymous"
+    var authorImageUrl: String?
     var communityId: UUID
     var content: String
     var imageUrl: String?
+    var postImageName: String?
     var hashtag: String?
     var likeCount: Int
     var createdAt: Date

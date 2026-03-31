@@ -1,10 +1,3 @@
-//
-//  BraindumpPasswordView.swift
-//  Focus4Good
-//
-//  Created by Shreya on 20/03/26.
-//
-
 import SwiftUI
 
 struct BraindumpPasswordView: View {
@@ -26,61 +19,6 @@ struct BraindumpPasswordView: View {
         }
     }
 
-    // MARK: - PIN Entry
-
-    private var pinEntryScreen: some View {
-        VStack(spacing: 32) {
-            Spacer()
-
-            Image(systemName: "lock.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(Color("CalmOrange"))
-
-            Text(screenTitle)
-                .font(.title3)
-                .fontWeight(.bold)
-
-            Text(screenSubtitle)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-
-            // PIN dots
-            HStack(spacing: 16) {
-                ForEach(0..<pinLength, id: \.self) { index in
-                    Circle()
-                        .fill(index < currentPin.count ? Color("CalmOrange") : Color(.systemGray4))
-                        .frame(width: 16, height: 16)
-                }
-            }
-            .animation(.easeInOut(duration: 0.15), value: currentPin.count)
-
-            if showError {
-                Text(errorMessage)
-                    .font(.caption)
-                    .foregroundStyle(.red)
-                    .transition(.opacity)
-            }
-
-            Spacer()
-
-            // Number pad
-            numberPad
-                .padding(.bottom, 40)
-        }
-        .padding(.horizontal, 40)
-        .navigationTitle("Braindump")
-        .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            storedPin = UserDefaults.standard.string(forKey: "braindump_pin")
-            if storedPin == nil {
-                isSettingPin = true
-            }
-        }
-    }
-
-    // MARK: - Helpers
-
     private var currentPin: String {
         isSettingPin && !confirmPin.isEmpty ? confirmPin : enteredPin
     }
@@ -96,17 +34,68 @@ struct BraindumpPasswordView: View {
         if isSettingPin && enteredPin.count == pinLength {
             return "Re-enter your 4-digit PIN to confirm"
         }
-        if isSettingPin {
-            return "Set a 4-digit PIN to protect your entries"
-        }
-        return "Enter your 4-digit PIN to unlock"
+        return isSettingPin
+            ? "Set a 4-digit PIN to protect your entries"
+            : "Enter your 4-digit PIN to unlock"
     }
 
     private var errorMessage: String {
         isSettingPin ? "PINs didn't match. Try again." : "Incorrect PIN. Try again."
     }
 
+    // MARK: - PIN Entry Screen
+
+    private var pinEntryScreen: some View {
+        VStack(spacing: 32) {
+            Spacer()
+
+            Image(systemName: "lock.fill")
+                .font(.system(size: 48))
+                .foregroundStyle(Color.accentColor)
+
+            Text(screenTitle)
+                .font(.title3)
+                .fontWeight(.bold)
+
+            Text(screenSubtitle)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            HStack(spacing: 16) {
+                ForEach(0..<pinLength, id: \.self) { index in
+                    Circle()
+                        .fill(index < currentPin.count ? Color.accentColor : Color(.systemGray4))
+                        .frame(width: 16, height: 16)
+                }
+            }
+            .animation(.easeInOut(duration: 0.15), value: currentPin.count)
+
+            if showError {
+                Text(errorMessage)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .transition(.opacity)
+            }
+
+            Spacer()
+
+            numberPad.padding(.bottom, 40)
+        }
+        .padding(.horizontal, 40)
+        .navigationTitle("Braindump")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            storedPin = UserDefaults.standard.string(forKey: "braindump_pin")
+            if storedPin == nil { isSettingPin = true }
+        }
+    }
+
     // MARK: - Number Pad
+
+    private var numberPadRows: [[String]] {
+        [["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"], ["", "0", "delete"]]
+    }
 
     private var numberPad: some View {
         VStack(spacing: 16) {
@@ -120,45 +109,27 @@ struct BraindumpPasswordView: View {
         }
     }
 
-    private var numberPadRows: [[String]] {
-        [
-            ["1", "2", "3"],
-            ["4", "5", "6"],
-            ["7", "8", "9"],
-            ["", "0", "delete"]
-        ]
-    }
-
+    @ViewBuilder
     private func numberKey(_ key: String) -> some View {
-        Group {
-            if key.isEmpty {
-                Color.clear
+        if key.isEmpty {
+            Color.clear.frame(width: 72, height: 72)
+        } else if key == "delete" {
+            Button { deleteDigit() } label: {
+                Image(systemName: "delete.left")
+                    .font(.title3)
+                    .foregroundStyle(.primary)
                     .frame(width: 72, height: 72)
-            } else if key == "delete" {
-                Button {
-                    deleteDigit()
-                } label: {
-                    Image(systemName: "delete.left")
-                        .font(.title3)
-                        .foregroundStyle(.primary)
-                        .frame(width: 72, height: 72)
-                }
-            } else {
-                Button {
-                    addDigit(key)
-                } label: {
-                    Text(key)
-                        .font(.title2)
-                        .fontWeight(.medium)
-                        .foregroundStyle(.primary)
-                        .frame(width: 72, height: 72)
-                        .background(
-                            Circle()
-                                .fill(Color(.systemGray6))
-                        )
-                }
-                .buttonStyle(.plain)
             }
+        } else {
+            Button { addDigit(key) } label: {
+                Text(key)
+                    .font(.title2)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.primary)
+                    .frame(width: 72, height: 72)
+                    .background(Circle().fill(Color(.systemGray6)))
+            }
+            .buttonStyle(.plain)
         }
     }
 
@@ -167,26 +138,18 @@ struct BraindumpPasswordView: View {
     private func addDigit(_ digit: String) {
         showError = false
 
-        // In confirm phase
         if isSettingPin && enteredPin.count == pinLength {
             guard confirmPin.count < pinLength else { return }
             confirmPin += digit
-            if confirmPin.count == pinLength {
-                validateNewPin()
-            }
+            if confirmPin.count == pinLength { validateNewPin() }
             return
         }
 
-        // Normal entry
         guard enteredPin.count < pinLength else { return }
         enteredPin += digit
 
-        if enteredPin.count == pinLength {
-            if isSettingPin {
-                // Move to confirm phase — UI will update
-            } else {
-                validateExistingPin()
-            }
+        if enteredPin.count == pinLength && !isSettingPin {
+            validateExistingPin()
         }
     }
 
