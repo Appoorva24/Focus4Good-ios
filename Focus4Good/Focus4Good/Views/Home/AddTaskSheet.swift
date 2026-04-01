@@ -61,7 +61,7 @@ struct AddTaskSheet: View {
                         Label("Duration", systemImage: "timer")
                             .foregroundStyle(.black)
                         Spacer()
-                        Stepper("\(estimatedDuration) min", value: $estimatedDuration, in: 5...240, step: 5)
+                        Stepper("\(estimatedDuration) min", value: $estimatedDuration, in: 25...125, step: 25)
                             .fixedSize()
                     }
                 } header: { Text("More Options").textCase(nil) }

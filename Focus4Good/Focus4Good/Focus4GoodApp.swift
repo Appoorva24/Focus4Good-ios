@@ -4,7 +4,6 @@ import SwiftUI
 struct Focus4GoodApp: App {
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
 
-    // @State because @Observable classes don't use @StateObject
     @State private var userStore = UserStore.shared
     @State private var taskStore = TaskStore.shared
     @State private var volunteerStore = VolunteerStore.shared
@@ -34,9 +33,9 @@ struct Focus4GoodApp: App {
                 Task {
                     let granted = await NotificationManager.shared.requestPermission()
                     if granted {
-                        print("✅ App has notification permissions")
+                        print(" App has notification permissions")
                     } else {
-                        print("⚠️ User denied notification permissions")
+                        print("User denied notification permissions")
                     }
                 }
             }

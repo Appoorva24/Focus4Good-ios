@@ -99,6 +99,7 @@ struct CommunityPostRowView: View {
     }
 }
 
+
 #Preview {
     let post = Post(
         authorId: UUID(),

@@ -14,6 +14,10 @@ struct CommunityRowView: View {
         communityStore.isMember(communityId: community.id, userId: currentUserId)
     }
 
+    private var isCreator: Bool {
+        community.creatorId == currentUserId
+    }
+
     private var communityPosts: [Post] {
         communityStore.posts(in: community)
     }
@@ -23,7 +27,7 @@ struct CommunityRowView: View {
     @ViewBuilder
     private var cardContent: some View {
         HStack {
-            if isJoined {
+            if isJoined || isCreator {
                 NavigationLink {
                     CommunityPostsView(community: community)
                 } label: {
@@ -45,18 +49,19 @@ struct CommunityRowView: View {
                     }
                 }
             } label: {
-                Text(isJoined ? "Joined" : "Join")
+                Text(isCreator ? "Created" : (isJoined ? "Joined" : "Join"))
                     .fontWeight(.semibold)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 6)
-                    .background(isJoined ? AppTheme.orange.opacity(0.15) : AppTheme.orange)
-                    .foregroundStyle(isJoined ? AppTheme.orange : Color.white)
+                    .background(isCreator ? Color.green.opacity(0.15) : (isJoined ? AppTheme.orange.opacity(0.15) : AppTheme.orange))
+                    .foregroundStyle(isCreator ? Color.green : (isJoined ? AppTheme.orange : Color.white))
                     .clipShape(Capsule())
                     .overlay(
                         Capsule()
-                            .stroke(AppTheme.orange, lineWidth: isJoined ? 1.5 : 0)
+                            .stroke(isCreator ? Color.green : AppTheme.orange, lineWidth: (isJoined || isCreator) ? 1.5 : 0)
                     )
             }
+            .disabled(isCreator)
         }
     }
 
@@ -64,7 +69,7 @@ struct CommunityRowView: View {
 
     private var communityInfo: some View {
         HStack {
-            Image("PersonImage")
+            Image("personimage")
                 .resizable()
                 .scaledToFit()
                 .frame(width: 40, height: 40)

@@ -26,7 +26,7 @@ struct DummyData {
             mission: "Eliminating educational inequity by placing talented graduates in low-income schools.",
             founderName: "Shaheen Mistri",
             founderPhone: "+91-22-6656-0200",
-            imageUrl: nil,
+            imageName: "ngo",
             studentCount: 38000,
             yearsActive: 15,
             projectCount: 12,
@@ -39,7 +39,7 @@ struct DummyData {
             mission: "Improving quality of education for underprivileged children across India.",
             founderName: "Madhav Chavan",
             founderPhone: "+91-11-4141-0000",
-            imageUrl: nil,
+            imageName: "ngo",
             studentCount: 75000,
             yearsActive: 28,
             projectCount: 20,
@@ -53,29 +53,17 @@ struct DummyData {
                 id: UUID(),
                 ngoId: ngoId,
                 title: "Teaching Drive — South Delhi",
-                description: "Join us for a one-day intensive teaching session with underprivileged children in South Delhi government schools.",
-                eventType: "Teaching",
                 location: "South Delhi",
                 eventDate: Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date(),
-                startTime: Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: Date()) ?? Date(),
-                endTime: Calendar.current.date(bySettingHour: 17, minute: 0, second: 0, of: Date()) ?? Date(),
-                imageUrl: nil,
-                participantCount: 24,
-                creatorId: UUID()
+                participantCount: 24
             ),
             VolunteerEvent(
                 id: UUID(),
                 ngoId: ngoId,
                 title: "Community Awareness Walk",
-                description: "Spread awareness about education rights in local communities through an organised awareness walk.",
-                eventType: "Awareness",
                 location: "Connaught Place, Delhi",
                 eventDate: Calendar.current.date(byAdding: .day, value: 14, to: Date()) ?? Date(),
-                startTime: Calendar.current.date(bySettingHour: 7, minute: 30, second: 0, of: Date()) ?? Date(),
-                endTime: Calendar.current.date(bySettingHour: 10, minute: 0, second: 0, of: Date()) ?? Date(),
-                imageUrl: nil,
-                participantCount: 50,
-                creatorId: UUID()
+                participantCount: 50
             )
         ]
     }

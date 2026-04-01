@@ -31,37 +31,62 @@ class CommunityStore {
         communities = [
             Community(
                 creatorId: UUID(),
-                name: "ADHD Support",
-                description: "A safe space for people with ADHD to connect and share experiences.",
+                name: "ADHD Community",
+                description: "This is for person who having adhd to connect and share experiences.",
                 isPrivate: false,
                 memberCount: 128,
                 createdAt: Date()
             ),
             Community(
                 creatorId: UUID(),
-                name: "Focus Warriors",
-                description: "Tips, tricks, and accountability for staying focused.",
+                name: "Daily Mindfulness",
+                description: "A quiet place to practice mindfulness and meditation techniques.",
                 isPrivate: false,
                 memberCount: 64,
+                createdAt: Date()
+            ),
+            Community(
+                creatorId: UUID(),
+                name: "Focus Techniques",
+                description: "Share the best techniques to maintain focus and productivity.",
+                isPrivate: false,
+                memberCount: 92,
                 createdAt: Date()
             )
         ]
         posts = [
             Post(
                 authorId: UUID(),
+                authorName: "Alex Johnson",
+                authorImageUrl: "profilePic",
                 communityId: communities[0].id,
-                content: "Just completed my first full Pomodoro session without distractions! 🎉",
-                hashtag: "ADHD",
-                likeCount: 42,
+                content: "Just found a great new focus technique using the Pomodoro timer. It really helps me stay on track!",
+                postImageName: "FirstPost",
+                hashtag: "FocusTips",
+                likeCount: 45,
                 createdAt: Date()
             ),
             Post(
                 authorId: UUID(),
-                communityId: communities[0].id,
-                content: "The breathing exercises in the Calm Centre really help me reset during study breaks.",
-                hashtag: "Focus",
-                likeCount: 23,
-                createdAt: Calendar.current.date(byAdding: .hour, value: -3, to: Date()) ?? Date()
+                authorName: "Sam Rivera",
+                authorImageUrl: "profileMale",
+                communityId: communities[1].id,
+                content: "Remember to take deep breaths today. Even 5 minutes of meditation can change your entire afternoon.",
+                postImageName: "PostMeditation",
+                hashtag: "Mindfulness",
+                likeCount: 120,
+                createdAt: Date()
+            ),
+            Post(
+                authorId: UUID(),
+                authorName: "Alex Johnson",
+                authorImageUrl: "profilePic",
+                communityId: communities[2].id,
+                content: "What are your favorite background sounds for deep work? I've been loving brown noise lately.",
+                postImageName: "PostDeepWork",
+                hashtag: "DeepWork",
+                likeCount: 38,
+                createdAt: Date()
             )
         ]
     }
