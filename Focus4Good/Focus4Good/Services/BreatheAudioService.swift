@@ -1,16 +1,14 @@
 @preconcurrency import AVFoundation
 
-// MARK: - BreatheAudioService
+//BreatheAudioService
 
 /// Provides a full guided breathing experience using AVSpeechSynthesizer
 /// with a gentle, calming female voice.
 
-@MainActor
+@MainActor                  //base class.      //delegate protocol - tells when speech event is happening
 class BreatheAudioService: NSObject, AVSpeechSynthesizerDelegate {
 
     static let shared = BreatheAudioService()
-
-    // MARK: - Private State
 
 
     //synthesizer - takes any text and convert that into speech
@@ -23,7 +21,7 @@ class BreatheAudioService: NSObject, AVSpeechSynthesizerDelegate {
         selectedVoice = pickFemaleVoice()
     }
 
-    // MARK: - Voice Selection
+    //Voice Selection
 
     /// Pick the best available female voice for a calm, gentle experience.
     private func pickFemaleVoice() -> AVSpeechSynthesisVoice? {
@@ -48,7 +46,7 @@ class BreatheAudioService: NSObject, AVSpeechSynthesizerDelegate {
         return AVSpeechSynthesisVoice(language: "en-US")
     }
 
-    // MARK: - Full Guided Experience
+    // Full Guided Experience
 
     /// Welcome and settle the user before the session begins.
     func speakIntro(cycles: Int) {
@@ -121,8 +119,6 @@ class BreatheAudioService: NSObject, AVSpeechSynthesizerDelegate {
         )
     }
 
-    // MARK: - Private Helpers
-
     /// Speak with a gentle, calming delivery.
     private func speakCalm(_ text: String) {
         if synthesizer.isSpeaking {
@@ -143,8 +139,8 @@ class BreatheAudioService: NSObject, AVSpeechSynthesizerDelegate {
 
     // managing phone's volume
     private func configureAudioSession() {
-        let session = AVAudioSession.sharedInstance()
-        try? session.setCategory(.playback, mode: .default, options: [.duckOthers])
-        try? session.setActive(true)
+        let session = AVAudioSession.sharedInstance() // app ko audio play karne ke liye is se permission leni padti hai
+        try? session.setCategory(.playback, mode: .default, options: [.duckOthers])// agar koi spotify use kar raha hai to uski volume kam ho jayegi
+        try? session.setActive(true) //iske bina song play ni hoga
     }
 }

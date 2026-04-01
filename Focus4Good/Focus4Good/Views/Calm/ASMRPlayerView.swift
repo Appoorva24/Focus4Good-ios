@@ -59,7 +59,6 @@ struct ASMRPlayerView: View {
             .frame(maxWidth: .infinity)
         }
         .background(Color(.systemBackground))
-        .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             if store.activeAsmrSound?.id == sound.id, audio.isPlaying {
                 isPlaying = true
@@ -89,7 +88,7 @@ struct ASMRPlayerView: View {
                     .font(.title3)
                     .foregroundStyle(isFavourite ? Color.accentColor : .secondary)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.plain) //check
         }
     }
 
@@ -225,19 +224,17 @@ struct ASMRPlayerView: View {
 }
 
 #Preview {
-    NavigationStack {
-        ASMRPlayerView(
-            sound: AsmrSound(
-                name: "Nature & Calm",
-                description: "Recommended for Focus",
-                category: "Nature",
-                audioUrl: "",
-                imageUrl: "asmr_hero",
-                durationSeconds: 300
-            ),
-            isFavourite: false,
-            onToggleFavourite: {}
-        )
-        .environment(CalmCentreStore.shared)
-    }
+    ASMRPlayerView(
+        sound: AsmrSound(
+            name: "Nature & Calm",
+            description: "Recommended for Focus",
+            category: "Nature",
+            audioUrl: "",
+            imageUrl: "asmr_hero",
+            durationSeconds: 300
+        ),
+        isFavourite: false,
+        onToggleFavourite: {}
+    )
+    .environment(CalmCentreStore.shared)
 }

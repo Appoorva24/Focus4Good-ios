@@ -1,6 +1,6 @@
 @preconcurrency import AVFoundation
 
-// MARK: - JPMRAudioService
+// JPMRAudioService
 
 /// Provides guided voice instructions throughout a JPMR session
 /// using AVSpeechSynthesizer with a gentle, calming female voice.
@@ -10,7 +10,7 @@ class JPMRAudioService: NSObject, AVSpeechSynthesizerDelegate {
 
     static let shared = JPMRAudioService()
 
-    // MARK: - Private State
+    // Private State
 
     private let synthesizer = AVSpeechSynthesizer()
     private var selectedVoice: AVSpeechSynthesisVoice?
@@ -21,7 +21,7 @@ class JPMRAudioService: NSObject, AVSpeechSynthesizerDelegate {
         selectedVoice = pickFemaleVoice()
     }
 
-    // MARK: - Voice Selection
+    // Voice Selection
 
     private func pickFemaleVoice() -> AVSpeechSynthesisVoice? {
         let preferred: [String] = [
@@ -43,7 +43,7 @@ class JPMRAudioService: NSObject, AVSpeechSynthesizerDelegate {
         return AVSpeechSynthesisVoice(language: "en-US")
     }
 
-    // MARK: - Guided Experience
+    //  Guided Experience
 
     /// Welcome message as preparation begins.
     func speakPreparation(groupCount: Int) {
