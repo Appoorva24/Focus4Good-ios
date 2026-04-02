@@ -45,6 +45,7 @@ private let defaultCycles = 4
 struct BreatheSessionView: View {
 
     @Environment(CalmCentreStore.self) private var store
+    @Environment(UserStore.self) private var userStore
     @Environment(\.dismiss) private var dismiss
 
     @State private var selectedCycles = defaultCycles
@@ -55,7 +56,9 @@ struct BreatheSessionView: View {
     @State private var showCompletion = false
     @State private var timer: Timer?
 
-    private let userId = UUID()
+    private var userId: UUID {
+        userStore.currentUser?.id ?? UUID()
+    }
 
     var body: some View {
         ZStack {
@@ -308,5 +311,6 @@ struct BreatheSessionView: View {
     NavigationStack {
         BreatheSessionView()
             .environment(CalmCentreStore.shared)
+            .environment(UserStore.shared)
     }
 }

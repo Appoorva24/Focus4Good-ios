@@ -1,16 +1,34 @@
-//
-//  CommunityPostRowView.swift
-//  Focus4Good
-//
-//  Created by Admin on 17/03/26.
-//
-
 import SwiftUI
+
+// MARK: - Time Ago Formatter
+
+private func timeAgo(_ date: Date) -> String {
+    let seconds = Int(Date().timeIntervalSince(date))
+    if seconds < 60 { return "Just now" }
+    let minutes = seconds / 60
+    if minutes < 60 { return "\(minutes)m ago" }
+    let hours = minutes / 60
+    if hours < 24 { return "\(hours)h ago" }
+    let days = hours / 24
+    if days < 7 { return "\(days)d ago" }
+    let weeks = days / 7
+    if weeks < 4 { return "\(weeks)w ago" }
+    let months = days / 30
+    if months < 12 { return "\(months)mo ago" }
+    let years = days / 365
+    return "\(years)y ago"
+}
 
 struct CommunityPostRowView: View {
     var post: Post
     @State private var isLiked: Bool = false
-    @State private var isCommented: Bool = false
+    @State private var showComments: Bool = false
+    @Environment(CommunityStore.self) private var communityStore
+    @Environment(UserStore.self) private var userStore
+
+    private var commentCount: Int {
+        communityStore.comments(for: post).count
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -27,7 +45,7 @@ struct CommunityPostRowView: View {
                     Text(post.authorName)
                         .font(.subheadline.bold())
 
-                    Text(post.createdAt, style: .relative)
+                    Text(timeAgo(post.createdAt))
                         .font(.caption)
                         .foregroundStyle(.gray)
                 }
@@ -41,7 +59,7 @@ struct CommunityPostRowView: View {
                         .padding(.vertical, 4)
                         .foregroundStyle(.blue)
                         .background(Color.blue.opacity(0.12))
-                        .cornerRadius(10)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
             }
 
@@ -50,14 +68,22 @@ struct CommunityPostRowView: View {
                 .font(.callout)
 
             // ── Post Image ──
-            if let postImage = post.postImageName {
+            if let postImageData = post.postImageData, let uiImage = UIImage(data: postImageData) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 220)
+                    .clipped()
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+            } else if let postImage = post.postImageName {
                 Image(postImage)
                     .resizable()
                     .scaledToFill()
                     .frame(maxWidth: .infinity)
                     .frame(height: 220)
                     .clipped()
-                    .cornerRadius(16)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
             }
 
             // ── Like & Comment Bar ──
@@ -76,14 +102,33 @@ struct CommunityPostRowView: View {
                 Spacer().frame(width: 12)
 
                 Button {
-                    isCommented.toggle()
+                    showComments = true
                 } label: {
-                    Image(systemName: isCommented ? "message.fill" : "message")
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundStyle(isCommented ? AppTheme.orange : AppTheme.orange.opacity(0.5))
+                    HStack(spacing: 4) {
+                        Image(systemName: "message")
+                            .font(.system(size: 20, weight: .bold))
+                        if commentCount > 0 {
+                            Text("\(commentCount)")
+                                .font(.subheadline)
+                        }
+                    }
+                    .foregroundStyle(AppTheme.orange.opacity(0.5))
                 }
 
                 Spacer()
+
+                // ── Save Button ──
+                Button {
+                    Task {
+                        let userId = userStore.currentUser?.id ?? UUID()
+                        await communityStore.toggleSave(postId: post.id, userId: userId)
+                    }
+                } label: {
+                    let isSaved = communityStore.isSaved(postId: post.id, userId: userStore.currentUser?.id ?? UUID())
+                    Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(isSaved ? AppTheme.orange : AppTheme.orange.opacity(0.5))
+                }
             }
             .padding(.top, 4)
         }
@@ -93,12 +138,151 @@ struct CommunityPostRowView: View {
             RoundedRectangle(cornerRadius: 20)
                 .stroke(Color.black.opacity(0.12), lineWidth: 0.5)
         )
-        .cornerRadius(20)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
         .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
         .padding(.horizontal, 16)
+        .fullScreenCover(isPresented: $showComments) {
+            CommentsSheetView(post: post)
+        }
     }
 }
 
+// MARK: - Comments Sheet
+
+struct CommentsSheetView: View {
+    let post: Post
+    @Environment(CommunityStore.self) private var communityStore
+    @Environment(UserStore.self) private var userStore
+    @State private var newCommentText: String = ""
+    @FocusState private var isInputFocused: Bool
+    @Environment(\.dismiss) private var dismiss
+
+    private var currentUser: User? {
+        userStore.currentUser
+    }
+
+    private var comments: [PostComment] {
+        communityStore.comments(for: post)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if comments.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "bubble.left.and.bubble.right")
+                            .font(.system(size: 44))
+                            .foregroundStyle(.gray.opacity(0.3))
+                        Text("No comments yet")
+                            .font(.headline)
+                            .foregroundStyle(.secondary)
+                        Text("Be the first to share your thoughts!")
+                            .font(.subheadline)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    List {
+                        ForEach(comments) { comment in
+                            HStack(alignment: .top, spacing: 12) {
+                                Image(comment.authorImageUrl ?? "profilePic")
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 36, height: 36)
+                                    .clipShape(Circle())
+                                
+                                VStack(alignment: .leading, spacing: 4) {
+                                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                                        Text(comment.authorName)
+                                            .font(.subheadline.bold())
+                                        Text(timeAgo(comment.createdAt))
+                                            .font(.caption2)
+                                            .foregroundStyle(.gray)
+                                    }
+                                    
+                                    Text(comment.content)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.primary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
+                            .listRowSeparator(.hidden)
+                            .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
+                        }
+                    }
+                    .listStyle(.plain)
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                // ── Native Message Input Bar ──
+                VStack(spacing: 0) {
+                    Divider()
+                    HStack(alignment: .bottom, spacing: 12) {
+                        Image(currentUser?.profileImageUrl ?? "profilePic")
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 32, height: 32)
+                            .clipShape(Circle())
+                            .padding(.bottom, 2)
+                        
+                        HStack(alignment: .bottom, spacing: 8) {
+                            TextField("Add a comment...", text: $newCommentText, axis: .vertical)
+                                .lineLimit(1...5)
+                                .textFieldStyle(.plain)
+                                .focused($isInputFocused)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                            
+                            Button {
+                                guard !newCommentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+                                Task {
+                                    let userId = currentUser?.id ?? UUID()
+                                    let userName = currentUser?.fullName ?? "You"
+                                    let userImage = currentUser?.profileImageUrl
+                                    await communityStore.addComment(
+                                        content: newCommentText.trimmingCharacters(in: .whitespacesAndNewlines),
+                                        postId: post.id,
+                                        userId: userId,
+                                        authorName: userName,
+                                        authorImageUrl: userImage
+                                    )
+                                    newCommentText = ""
+                                    isInputFocused = false
+                                }
+                            } label: {
+                                Image(systemName: "arrow.up.circle.fill")
+                                    .font(.title2)
+                                    .foregroundStyle(
+                                        newCommentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                        ? Color.gray.opacity(0.3)
+                                        : AppTheme.orange
+                                    )
+                            }
+                            .disabled(newCommentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            .padding(.bottom, 4)
+                            .padding(.trailing, 4)
+                        }
+                        .background(Color(uiColor: .secondarySystemBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 18))
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(.regularMaterial)
+                }
+            }
+            .navigationTitle("Comments")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+        }
+    }
+}
 
 #Preview {
     let post = Post(
@@ -113,6 +297,6 @@ struct CommunityPostRowView: View {
         createdAt: Date()
     )
     CommunityPostRowView(post: post)
+        .environment(CommunityStore.shared)
+        .environment(UserStore.shared)
 }
-
-

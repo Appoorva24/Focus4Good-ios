@@ -10,7 +10,11 @@ struct BraindumpEditorView: View {
     @State private var showWellDonePopup = false
 
     @Environment(CalmCentreStore.self) private var store
-    private let userId = UUID()
+    @Environment(UserStore.self) private var userStore
+
+    private var userId: UUID {
+        userStore.currentUser?.id ?? UUID()
+    }
 
     var body: some View {
         ZStack {
@@ -91,5 +95,6 @@ struct BraindumpEditorView: View {
     NavigationStack {
         BraindumpEditorView(folder: BrainDumpFolder(userId: UUID(), name: "Preview", entryCount: 0))
             .environment(CalmCentreStore.shared)
+            .environment(UserStore.shared)
     }
 }

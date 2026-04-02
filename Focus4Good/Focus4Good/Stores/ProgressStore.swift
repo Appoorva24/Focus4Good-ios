@@ -22,13 +22,14 @@ class ProgressStore {
     }
 
     static let shared = ProgressStore()
-    private init() {}
+    init() {}
 
 
     // MARK: - Fetch
     func fetchProgress(userId: UUID) async {
         isLoading = true
-        do { isLoading = false }
+        // TODO: Fetch from backend when available.
+        isLoading = false
     }
 
     // MARK: - Updates

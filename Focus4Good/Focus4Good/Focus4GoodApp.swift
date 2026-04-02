@@ -29,34 +29,38 @@ struct Focus4GoodApp: App {
             .environment(calmCentreStore)
             .environment(communityStore)
             .onAppear {
-                // Request notification permissions on app launch
                 Task {
-                    let granted = await NotificationManager.shared.requestPermission()
-                    if granted {
-                        print(" App has notification permissions")
-                    } else {
-                        print("User denied notification permissions")
-                    }
+                    _ = await NotificationManager.shared.requestPermission()
                 }
             }
         }
     }
 }
 
+enum AppTab: Hashable {
+    case home, progress, calm, community
+}
+
 struct MainTabView: View {
+    @State private var selectedTab: AppTab = .home
+
     var body: some View {
-        TabView {
-            HomeView()
-                .tabItem { Label("Home", systemImage: "house.fill") }
+        TabView(selection: $selectedTab) {
+            Tab("Home", systemImage: "house.fill", value: .home) {
+                HomeView()
+            }
 
-            ProgressTrackerView()
-                .tabItem { Label("Progress", systemImage: "chart.bar.fill") }
+            Tab("Progress", systemImage: "chart.bar.fill", value: .progress) {
+                ProgressTrackerView()
+            }
 
-            CalmCentreView()
-                .tabItem { Label("Calm", systemImage: "figure.mind.and.body") }
+            Tab("Calm", systemImage: "figure.mind.and.body", value: .calm) {
+                CalmCentreView()
+            }
 
-            CommunityHome()
-                .tabItem { Label("Community", systemImage: "person.3.fill") }
+            Tab("Community", systemImage: "person.3.fill", value: .community) {
+                CommunityHome()
+            }
         }
         .tint(AppTheme.orange)
     }

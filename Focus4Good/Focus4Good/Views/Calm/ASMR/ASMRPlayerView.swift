@@ -239,5 +239,6 @@ struct ASMRPlayerView: View {
             onToggleFavourite: {}
         )
         .environment(CalmCentreStore.shared)
+        .environment(UserStore.shared)
     }
 }

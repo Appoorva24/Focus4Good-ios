@@ -115,6 +115,7 @@ private let prepDuration  = 20
 struct JPMRSessionView: View {
 
     @Environment(CalmCentreStore.self) private var store
+    @Environment(UserStore.self) private var userStore
     @Environment(\.dismiss) private var dismiss
 
     @State private var selectedGroups: Set<Int> = Set(1...11)
@@ -127,7 +128,9 @@ struct JPMRSessionView: View {
     @State private var elapsedSeconds = 0
     @State private var timer: Timer?
 
-    private let userId = UUID()
+    private var userId: UUID {
+        userStore.currentUser?.id ?? UUID()
+    }
 
     private var activeSteps: [MuscleStep] {
         allSteps.filter { selectedGroups.contains($0.groupNumber) }
@@ -556,5 +559,6 @@ struct JPMRSessionView: View {
     NavigationStack {
         JPMRSessionView()
             .environment(CalmCentreStore.shared)
+            .environment(UserStore.shared)
     }
 }

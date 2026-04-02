@@ -100,7 +100,7 @@ struct HomeView: View {
                 HStack {
                     Text("Today's Plan")
                         .font(.headline.bold())
-                        .foregroundStyle(.black)
+                        .foregroundStyle(AppTheme.textPrimary)
                     Spacer()
                 }
                 .padding(.horizontal, 16)
@@ -131,7 +131,7 @@ struct HomeView: View {
                                     }
                                 Text(task.title)
                                     .font(.subheadline)
-                                    .foregroundStyle(.black)
+                                    .foregroundStyle(AppTheme.textPrimary)
                                 Spacer()
                             }
                         }
@@ -152,7 +152,7 @@ struct HomeView: View {
                     .padding(.top, 4)
                 }
                 .padding(16)
-                .background(Color.white)
+                .background(Color(.secondarySystemBackground))
             }
             .clipShape(RoundedRectangle(cornerRadius: 20))
             .overlay(RoundedRectangle(cornerRadius: 20).stroke(AppTheme.orange.opacity(0.4), lineWidth: 1))

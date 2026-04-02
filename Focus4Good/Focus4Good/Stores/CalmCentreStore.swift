@@ -33,7 +33,7 @@ class CalmCentreStore {
     }
 
     static let shared = CalmCentreStore()
-    private init() {}
+    init() {}
 
     // MARK: - Fetch
     func fetchBreathingSessions(userId: UUID) async { isLoading = true; isLoading = false }
