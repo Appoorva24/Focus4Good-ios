@@ -8,7 +8,6 @@ struct Focus4GoodApp: App {
     @State private var taskStore = TaskStore.shared
     @State private var volunteerStore = VolunteerStore.shared
     @State private var progressStore = ProgressStore.shared
-    @State private var gamificationStore = GamificationStore.shared
     @State private var calmCentreStore = CalmCentreStore.shared
     @State private var communityStore = CommunityStore.shared
 
@@ -25,7 +24,6 @@ struct Focus4GoodApp: App {
             .environment(taskStore)
             .environment(volunteerStore)
             .environment(progressStore)
-            .environment(gamificationStore)
             .environment(calmCentreStore)
             .environment(communityStore)
             .onAppear {

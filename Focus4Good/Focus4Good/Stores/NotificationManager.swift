@@ -1,4 +1,3 @@
-import Foundation
 import UserNotifications
 
 /// Notification Manager - Handles all task notifications

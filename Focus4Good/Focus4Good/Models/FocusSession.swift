@@ -1,4 +1,3 @@
-import Foundation
 
 
 struct FocusSession: Identifiable, Codable, Hashable {

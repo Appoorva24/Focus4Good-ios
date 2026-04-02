@@ -1,4 +1,3 @@
-import Foundation
 
 // MARK: - NGO
 struct NGO: Identifiable, Codable, Hashable {

@@ -1,4 +1,3 @@
-import Foundation
 
 // MARK: - TaskCategory
 struct TaskCategory: Identifiable, Codable, Hashable {

@@ -1,4 +1,3 @@
-import Foundation
 
 //BreathingSession
 struct BreathingSession: Codable {
