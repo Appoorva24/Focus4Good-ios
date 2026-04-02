@@ -4,17 +4,18 @@
 
 // Maps display names to their actual bundle file names (without extension).
 private let soundFileMapping: [String: String] = [
-    "Soft Rain":       "soft_rain_asmr",
-    "Typing":          "keyboard_typing_asmr",
+    "Soft Rain":       "softrainasmr",
+    "Typing":          "Keyboardtypingasmr",
     "Crinkling":       "crinkling",
     "Tapping":         "tapping",
-    "White Noise":     "white_noise",
+    "White Noise":     "whitenoise",
     "Forest":          "forest",
-    "Nature & Calm":   "nature_and_calm",
+    "Nature & Calm":   "natureAndCalm",
 ]
 
 // ASMRAudioService
 
+// @MainActor ensures that all UI updates happen on the main thread
 @MainActor
 class ASMRAudioService {
 
@@ -29,11 +30,13 @@ class ASMRAudioService {
 
 
     func play(soundName: String) {
+
+        //kills currently playing audio
         stop()
 
         // Configure audio session
         let session = AVAudioSession.sharedInstance()
-        try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+        try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers]) //sound plays if app goes to background
         try? session.setActive(true)
 
         // Look up the file name from the mapping
@@ -76,7 +79,7 @@ class ASMRAudioService {
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 
-    //Duration & Current Time
+    
 
     /// Total duration of the loaded audio in seconds.
     var duration: TimeInterval {
@@ -88,7 +91,7 @@ class ASMRAudioService {
         audioPlayer?.currentTime ?? 0
     }
 
-    // MARK: Seeking
+    
 
     /// Seek to a specific time in seconds.
     func seek(to time: TimeInterval) {
@@ -97,7 +100,7 @@ class ASMRAudioService {
         player.currentTime = clampedTime
     }
 
-    // MARK: Volume
+    //Volume
 
     func setVolume(_ volume: Float) {
         audioPlayer?.volume = volume

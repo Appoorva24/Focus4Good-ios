@@ -46,13 +46,15 @@ struct SensorySootheView: View {
         .navigationTitle("ASMR Sounds")
         .navigationBarTitleDisplayMode(.large)
         .onAppear { loadFavourites() }
-        .navigationDestination(isPresented: $showPlayer) {
+        .sheet(isPresented: $showPlayer) {
             if let sound = selectedSound {
                 ASMRPlayerView(
                     sound: sound,
                     isFavourite: favouriteNames.contains(sound.name),
                     onToggleFavourite: { toggleFavourite(sound.name) }
                 )
+                .environment(store)
+                .presentationDragIndicator(.visible)
             }
         }
     }

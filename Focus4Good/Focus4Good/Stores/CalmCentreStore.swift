@@ -15,13 +15,19 @@ class CalmCentreStore {
     var errorMessage: String?
 
     // MARK: - Computed
+
+    //filter karke favourites nikalta hai
     var favouriteAsmrSounds: [AsmrSound] { asmrSounds.filter { favouriteAsmrSoundIds.contains($0.id) } }
+
+    //sound ko category wise group karta hai
     var asmrSoundsByCategory: [String: [AsmrSound]] { Dictionary(grouping: asmrSounds, by: { $0.category }) }
+
+    //latest notes ko upar rakhta hai
     var recentBrainDumpEntries: [BrainDumpEntry] { brainDumpEntries.sorted { $0.createdAt > $1.createdAt } }
 
     var totalCalmMinutesToday: Int {
-        let cal = Calendar.current
-        let b = breathingSessions.filter { cal.isDateInToday($0.completedAt) }.reduce(0) { $0 + $1.durationSeconds / 60 }
+        let cal = Calendar.current//current date system
+        let b = breathingSessions.filter { cal.isDateInToday($0.completedAt) }.reduce(0) { $0 + $1.durationSeconds / 60 }//aaj ke breathing sessions ko minutes mein convert
         let j = jpmrSessions.filter { cal.isDateInToday($0.completedAt) }.reduce(0) { $0 + $1.durationSeconds / 60 }
         let m = guidedMeditationSessions.filter { cal.isDateInToday($0.completedAt) }.reduce(0) { $0 + $1.durationSeconds / 60 }
         return b + j + m
@@ -34,7 +40,7 @@ class CalmCentreStore {
     static let shared = CalmCentreStore()
     init() {}
 
-    // MARK: - Fetch
+    // MARK: - Fetch. //future mein backend se data aayega
     func fetchBreathingSessions(userId: UUID) async { isLoading = true; isLoading = false }
     func fetchJpmrSessions(userId: UUID) async { isLoading = true; isLoading = false }
     func fetchGuidedMeditationSessions(userId: UUID) async { isLoading = true; isLoading = false }
@@ -44,10 +50,10 @@ class CalmCentreStore {
     func fetchBrainDumpEntries(userId: UUID) async { isLoading = true; isLoading = false }
 
     // MARK: - Log Sessions
-    func logBreathingSession(userId: UUID, cyclesCompleted: Int, durationSeconds: Int) async {
+    func logBreathingSession(userId: UUID, cyclesCompleted: Int, durationSeconds: Int) async { //naya session add karta hai
         let points = cyclesCompleted * 10
         breathingSessions.append(BreathingSession(userId: userId, cyclesCompleted: cyclesCompleted, durationSeconds: durationSeconds, pointsEarned: points, completedAt: Date()))
-        await UserStore.shared.updateFocusPoints(by: points)
+        await UserStore.shared.updateFocusPoints(by: points) // user ke points update
         await ProgressStore.shared.addCalmCentreTime(minutes: durationSeconds / 60, userId: userId)
         await ProgressStore.shared.addPointsEarned(points: points, userId: userId)
     }
