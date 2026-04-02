@@ -77,23 +77,27 @@ private struct OnboardingPageContent: View {
     @Binding var hasSeenOnboarding: Bool
 
     var body: some View {
-        VStack(spacing: 0) {
-            Spacer(minLength: 16)
+        GeometryReader { geo in
+            let imageWidth = geo.size.width - 88
+            let containerWidth = geo.size.width - 64
 
-            // ── Image area ───────────────────────────────────
-            ZStack {
-                Image(page.imageName)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: UIScreen.main.bounds.width - 88, height: 296)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-            }
-            .frame(width: UIScreen.main.bounds.width - 64, height: 320)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(hex: "FFF9F2"))
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 16))
+            VStack(spacing: 0) {
+                Spacer(minLength: 16)
+
+                // ── Image area ───────────────────────────────────
+                ZStack {
+                    Image(page.imageName)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: imageWidth, height: 296)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .frame(width: containerWidth, height: 320)
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(Color(hex: "FFF9F2"))
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 16))
 
             Spacer(minLength: 32)
 
@@ -140,6 +144,7 @@ private struct OnboardingPageContent: View {
             }
             .padding(.horizontal, 32)
             .padding(.bottom, 36)
+            }
         }
     }
 

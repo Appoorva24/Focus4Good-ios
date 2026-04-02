@@ -11,7 +11,7 @@ class UserStore {
     var errorMessage: String?
 
     static let shared = UserStore()
-    private init() {
+    init() {
         // Initialize with dummy user so the app works without a backend
         currentUser = DummyData.currentUser
     }

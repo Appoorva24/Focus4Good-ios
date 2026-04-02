@@ -116,5 +116,6 @@ struct BraindumpEntriesView: View {
             folder: BrainDumpFolder(userId: UUID(), name: "Random Thoughts", entryCount: 2)
         )
         .environment(CalmCentreStore.shared)
+        .environment(UserStore.shared)
     }
 }

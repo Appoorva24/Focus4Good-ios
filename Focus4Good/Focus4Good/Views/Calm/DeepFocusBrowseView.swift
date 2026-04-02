@@ -7,6 +7,7 @@ private let totalSessionSeconds = 300
 struct DeepFocusBrowseView: View {
 
     @Environment(CalmCentreStore.self) private var store
+    @Environment(UserStore.self) private var userStore
     @Environment(\.dismiss) private var dismiss
 
     @State private var isPlaying = false
@@ -19,7 +20,10 @@ struct DeepFocusBrowseView: View {
     @State private var showCompletion = false
 
     private static let favouriteKey = "deep_focus_favourite"
-    private let userId = UUID()
+
+    private var userId: UUID {
+        userStore.currentUser?.id ?? UUID()
+    }
 
     private var remaining: TimeInterval {
         max(0, Double(totalSessionSeconds) - elapsed)
@@ -304,5 +308,6 @@ struct DeepFocusBrowseView: View {
     NavigationStack {
         DeepFocusBrowseView()
             .environment(CalmCentreStore.shared)
+            .environment(UserStore.shared)
     }
 }

@@ -20,6 +20,7 @@ struct Community: Identifiable, Codable, Hashable {
     var name: String
     var description: String
     var coverImageUrl: String?
+    var coverImageData: Data?
     var isPrivate: Bool
     var memberCount: Int
     var createdAt: Date
@@ -47,6 +48,7 @@ struct Post: Identifiable, Codable, Hashable {
     var content: String
     var imageUrl: String?
     var postImageName: String?
+    var postImageData: Data?
     var hashtag: String?
     var likeCount: Int
     var createdAt: Date
@@ -66,5 +68,7 @@ struct PostComment: Identifiable, Codable, Hashable {
     var userId: UUID
     var postId: UUID
     var content: String
+    var authorName: String = "Anonymous"
+    var authorImageUrl: String?
     var createdAt: Date
 }

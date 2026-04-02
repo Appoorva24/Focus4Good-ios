@@ -59,7 +59,7 @@ struct AddTaskSheet: View {
                     }
                     HStack {
                         Label("Duration", systemImage: "timer")
-                            .foregroundStyle(.black)
+                            .foregroundStyle(AppTheme.textPrimary)
                         Spacer()
                         Stepper("\(estimatedDuration) min", value: $estimatedDuration, in: 25...125, step: 25)
                             .fixedSize()
@@ -100,10 +100,10 @@ struct AddTaskSheet: View {
     private func pickerRow(icon: String, label: String, value: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack {
-                Label(label, systemImage: icon).foregroundStyle(.black)
+                Label(label, systemImage: icon).foregroundStyle(AppTheme.textPrimary)
                 Spacer()
-                Text(value).foregroundStyle(.black)
-                Image(systemName: "chevron.up.chevron.down").font(.caption).foregroundStyle(.black)
+                Text(value).foregroundStyle(AppTheme.textPrimary)
+                Image(systemName: "chevron.up.chevron.down").font(.caption).foregroundStyle(AppTheme.textSecondary)
             }
         }
         .buttonStyle(.plain)
@@ -127,11 +127,6 @@ struct AddTaskSheet: View {
         
         Task {
             await taskStore.addTask(task)
-            
-            // Schedule notification if time is set
-            if isTimeEnabled {
-                await NotificationManager.shared.scheduleNotification(for: task)
-            }
         }
         
         dismiss()

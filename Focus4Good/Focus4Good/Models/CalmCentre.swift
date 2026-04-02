@@ -40,14 +40,6 @@ struct AsmrSound: Identifiable, Codable, Hashable {
     var durationSeconds: Int
 }
 
-//UserFavouriteAsmrSound
-struct UserFavouriteAsmrSound: Identifiable, Codable, Hashable {
-    var id: UUID = UUID()
-    var userId: UUID
-    var soundId: UUID
-    var savedAt: Date
-}
-
 //BrainDumpFolder
 struct BrainDumpFolder: Identifiable, Codable, Hashable {
     var id: UUID = UUID()

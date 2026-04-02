@@ -178,5 +178,6 @@ struct SensorySootheView: View {
     NavigationStack {
         SensorySootheView()
             .environment(CalmCentreStore.shared)
+            .environment(UserStore.shared)
     }
 }

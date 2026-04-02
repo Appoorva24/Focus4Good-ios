@@ -3,12 +3,15 @@ import SwiftUI
 struct BraindumpFoldersView: View {
 
     @Environment(CalmCentreStore.self) private var store
+    @Environment(UserStore.self) private var userStore
 
     @State private var isEditing = false
     @State private var showNewFolderAlert = false
     @State private var newFolderName = ""
 
-    private let userId = UUID()
+    private var userId: UUID {
+        userStore.currentUser?.id ?? UUID()
+    }
 
     var body: some View {
         List {
@@ -102,5 +105,6 @@ struct BraindumpFoldersView: View {
     NavigationStack {
         BraindumpFoldersView()
             .environment(CalmCentreStore.shared)
+            .environment(UserStore.shared)
     }
 }

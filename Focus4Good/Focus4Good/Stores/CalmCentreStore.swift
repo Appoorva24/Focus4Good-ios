@@ -39,7 +39,7 @@ class CalmCentreStore {
     }
 
     static let shared = CalmCentreStore()
-    private init() {}
+    init() {}
 
     // MARK: - Fetch. //future mein backend se data aayega
     func fetchBreathingSessions(userId: UUID) async { isLoading = true; isLoading = false }

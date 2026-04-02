@@ -40,7 +40,7 @@ class GamificationStore {
     var achievedMilestones: [UserMilestone] { userMilestones.filter { $0.achievedAt != nil } }
 
     static let shared = GamificationStore()
-    private init() {
+    init() {
         dailyTip = DummyData.dailyTip
     }
 

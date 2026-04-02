@@ -26,7 +26,7 @@ class TaskStore {
     }
 
     static let shared = TaskStore()
-    private init() {}
+    init() {}
 
     // MARK: - Tasks
     func fetchTasks(userId: UUID) async {
@@ -40,9 +40,6 @@ class TaskStore {
         // Schedule notification if task has time
         if task.scheduledTime != nil {
             await NotificationManager.shared.scheduleNotification(for: task)
-            print("✅ Task added with notification: \(task.title)")
-        } else {
-            print("✅ Task added without notification: \(task.title)")
         }
     }
 
@@ -57,9 +54,6 @@ class TaskStore {
             // Schedule new notification if task has time
             if task.scheduledTime != nil {
                 await NotificationManager.shared.scheduleNotification(for: task)
-                print("✅ Task updated with new notification: \(task.title)")
-            } else {
-                print("✅ Task updated without notification: \(task.title)")
             }
         }
     }
@@ -71,7 +65,7 @@ class TaskStore {
         // Remove task
         tasks.removeAll { $0.id == task.id }
 
-        print("✅ Task deleted and notification cancelled: \(task.title)")
+
     }
 
     func toggleCompletion(for task: UserTask) async {

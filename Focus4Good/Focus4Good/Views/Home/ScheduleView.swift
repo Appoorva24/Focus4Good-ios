@@ -38,7 +38,7 @@ struct ScheduleView: View {
                 }
             }
             
-            // Floating button sirf tab dikhega jab tasks honge
+            // Show floating button only when tasks exist
             if !taskStore.tasks.isEmpty {
                 floatingAddButton
             }

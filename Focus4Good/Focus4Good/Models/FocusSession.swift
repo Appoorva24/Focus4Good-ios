@@ -1,6 +1,6 @@
 import Foundation
 
-// MARK: - FocusSession
+
 struct FocusSession: Identifiable, Codable, Hashable {
     var id: UUID = UUID()
     var userId: UUID
@@ -21,3 +21,4 @@ struct FocusSession: Identifiable, Codable, Hashable {
         case cancelled
     }
 }
+

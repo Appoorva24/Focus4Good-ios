@@ -117,7 +117,7 @@ struct EditProfileView: View {
                     HStack(spacing: 12) {
                         Image(systemName: "envelope").foregroundStyle(AppTheme.orange).frame(width: 20)
                         TextField("Email", text: $email).font(.subheadline)
-                            .keyboardType(.emailAddress).autocapitalization(.none)
+                            .keyboardType(.emailAddress).textInputAutocapitalization(.never)
                     }
                 } header: { Text("Personal Info").textCase(nil) }
             }

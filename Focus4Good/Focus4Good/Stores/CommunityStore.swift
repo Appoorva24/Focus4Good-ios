@@ -10,6 +10,7 @@ class CommunityStore {
     var posts: [Post] = []
     var postLikes: [PostLike] = []
     var postComments: [PostComment] = []
+    var savedPostIds: [UUID: Set<UUID>] = [:]   // userId -> set of saved postIds
     var isLoading = false
     var errorMessage: String?
 
@@ -24,9 +25,10 @@ class CommunityStore {
     func isMember(communityId: UUID, userId: UUID) -> Bool { communityMembers.contains { $0.communityId == communityId && $0.userId == userId } }
     func communities(in category: CommunityCategory) -> [Community] { communities.filter { $0.categoryId == category.id } }
     func memberRole(communityId: UUID, userId: UUID) -> String? { communityMembers.first { $0.communityId == communityId && $0.userId == userId }?.role }
+    func isSaved(postId: UUID, userId: UUID) -> Bool { savedPostIds[userId]?.contains(postId) ?? false }
 
     static let shared = CommunityStore()
-    private init() {
+    init() {
         // Seed with dummy data so the tab isn't empty
         communities = [
             Community(
@@ -98,8 +100,8 @@ class CommunityStore {
     func fetchComments(postId: UUID) async { isLoading = true; isLoading = false }
 
     // MARK: - Communities
-    func createCommunity(name: String, description: String, categoryId: UUID?, isPrivate: Bool, userId: UUID) async {
-        let community = Community(categoryId: categoryId, creatorId: userId, name: name, description: description, coverImageUrl: nil, isPrivate: isPrivate, memberCount: 1, createdAt: Date())
+    func createCommunity(name: String, description: String, categoryId: UUID?, isPrivate: Bool, userId: UUID, coverImageData: Data? = nil) async {
+        let community = Community(categoryId: categoryId, creatorId: userId, name: name, description: description, coverImageUrl: nil, coverImageData: coverImageData, isPrivate: isPrivate, memberCount: 1, createdAt: Date())
         communities.append(community)
         communityMembers.append(CommunityMember(userId: userId, communityId: community.id, role: "admin", joinedAt: Date()))
     }
@@ -116,8 +118,8 @@ class CommunityStore {
     }
 
     // MARK: - Posts
-    func createPost(content: String, communityId: UUID, authorId: UUID, imageUrl: String? = nil, hashtag: String? = nil) async {
-        posts.append(Post(authorId: authorId, communityId: communityId, content: content, imageUrl: imageUrl, hashtag: hashtag, likeCount: 0, createdAt: Date()))
+    func createPost(content: String, communityId: UUID, authorId: UUID, authorName: String = "Anonymous", authorImageUrl: String? = nil, imageUrl: String? = nil, postImageData: Data? = nil, hashtag: String? = nil) async {
+        posts.append(Post(authorId: authorId, authorName: authorName, authorImageUrl: authorImageUrl, communityId: communityId, content: content, imageUrl: imageUrl, postImageData: postImageData, hashtag: hashtag, likeCount: 0, createdAt: Date()))
     }
 
     func deletePost(_ post: Post) async {
@@ -136,11 +138,23 @@ class CommunityStore {
         }
     }
 
-    func addComment(content: String, postId: UUID, userId: UUID) async {
-        postComments.append(PostComment(userId: userId, postId: postId, content: content, createdAt: Date()))
+    func addComment(content: String, postId: UUID, userId: UUID, authorName: String = "Anonymous", authorImageUrl: String? = nil) async {
+        postComments.append(PostComment(userId: userId, postId: postId, content: content, authorName: authorName, authorImageUrl: authorImageUrl, createdAt: Date()))
     }
 
     func deleteComment(_ comment: PostComment) async {
         postComments.removeAll { $0.id == comment.id }
+    }
+
+    // MARK: - Save
+    func toggleSave(postId: UUID, userId: UUID) async {
+        if savedPostIds[userId] == nil {
+            savedPostIds[userId] = []
+        }
+        if savedPostIds[userId]!.contains(postId) {
+            savedPostIds[userId]!.remove(postId)
+        } else {
+            savedPostIds[userId]!.insert(postId)
+        }
     }
 }

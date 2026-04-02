@@ -34,7 +34,6 @@ class TextParser {
             }
         }
         
-        print("📝 Parsed \(parsedTasks.count) tasks from text")
         return parsedTasks
     }
     
@@ -239,26 +238,3 @@ class TextParser {
         return cleaned
     }
 }
-
-// MARK: - Example Usage
-/*
- let scannedText = """
- My Schedule for Today
- 
- • Buy groceries at 5pm
- - Team meeting 3:30pm
- 1. Call mom
- ☐ Workout @6:30am
- Study for exam by 8pm
- """
- 
- let tasks = TextParser.parseTasksFromText(scannedText)
- // Returns:
- // [
- //   ParsedTask(taskName: "Buy groceries", time: 17:00),
- //   ParsedTask(taskName: "Team meeting", time: 15:30),
- //   ParsedTask(taskName: "Call mom", time: nil),
- //   ParsedTask(taskName: "Workout", time: 06:30),
- //   ParsedTask(taskName: "Study for exam", time: 20:00)
- // ]
- */

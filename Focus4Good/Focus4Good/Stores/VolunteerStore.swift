@@ -21,7 +21,7 @@ class VolunteerStore {
 
     // MARK: - Init
     static let shared = VolunteerStore()
-    private init() {
+    init() {
         ngos = DummyData.ngos
         for ngo in ngos {
             volunteerEvents.append(contentsOf: DummyData.volunteerEvents(for: ngo.id))
