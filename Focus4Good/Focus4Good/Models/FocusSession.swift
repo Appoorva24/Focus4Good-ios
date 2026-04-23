@@ -1,4 +1,4 @@
-
+import Foundation
 
 struct FocusSession: Identifiable, Codable, Hashable {
     var id: UUID = UUID()

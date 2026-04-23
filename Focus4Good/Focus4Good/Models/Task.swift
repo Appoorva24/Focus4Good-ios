@@ -1,4 +1,4 @@
-
+import Foundation
 // MARK: - TaskCategory
 struct TaskCategory: Identifiable, Codable, Hashable {
     var id: UUID = UUID()

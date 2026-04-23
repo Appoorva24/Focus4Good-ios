@@ -1,4 +1,4 @@
-
+import Foundation
 // MARK: - User
 struct User: Identifiable, Codable, Hashable {
     var id: UUID = UUID()

@@ -1,4 +1,4 @@
-
+import Foundation
 
 
 //why take this : because their is multiple type of community like tech etc so it repeated 1000 times that why i take community category. 

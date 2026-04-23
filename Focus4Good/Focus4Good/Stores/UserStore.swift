@@ -1,4 +1,4 @@
-
+import Foundation
 @Observable
 class UserStore {
 

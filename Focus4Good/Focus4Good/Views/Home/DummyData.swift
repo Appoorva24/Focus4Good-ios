@@ -1,4 +1,4 @@
-
+import Foundation
 struct DummyData {
 
     static let currentUser = User(

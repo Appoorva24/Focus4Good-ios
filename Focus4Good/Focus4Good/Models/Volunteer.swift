@@ -1,4 +1,4 @@
-
+import Foundation
 // MARK: - NGO
 struct NGO: Identifiable, Codable, Hashable {
     var id: UUID = UUID()

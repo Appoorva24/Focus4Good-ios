@@ -1,4 +1,5 @@
 import UserNotifications
+import Foundation
 
 /// Notification Manager - Handles all task notifications
 class NotificationManager {
