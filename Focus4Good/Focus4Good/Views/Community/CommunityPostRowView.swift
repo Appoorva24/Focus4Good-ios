@@ -42,7 +42,7 @@ struct CommunityPostRowView: View {
                     .clipShape(Circle())
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(post.authorName)
+                    Text(post.authorName ?? "Anonymous")
                         .font(.subheadline.bold())
 
                     Text(timeAgo(post.createdAt))
@@ -68,22 +68,34 @@ struct CommunityPostRowView: View {
                 .font(.callout)
 
             // ── Post Image ──
-            if let postImageData = post.postImageData, let uiImage = UIImage(data: postImageData) {
-                Image(uiImage: uiImage)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 220)
-                    .clipped()
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-            } else if let postImage = post.postImageName {
-                Image(postImage)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 220)
-                    .clipped()
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
+            if let imageUrl = post.imageUrl, let url = URL(string: imageUrl) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 220)
+                            .clipped()
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                    case .failure:
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color(.systemGray5))
+                            .frame(height: 220)
+                            .overlay {
+                                Image(systemName: "photo")
+                                    .foregroundStyle(.secondary)
+                            }
+                    default:
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color(.systemGray5))
+                            .frame(height: 220)
+                            .overlay {
+                                ProgressView()
+                            }
+                    }
+                }
             }
 
             // ── Like & Comment Bar ──
@@ -193,7 +205,7 @@ struct CommentsSheetView: View {
                                 
                                 VStack(alignment: .leading, spacing: 4) {
                                     HStack(alignment: .firstTextBaseline, spacing: 6) {
-                                        Text(comment.authorName)
+                                        Text(comment.authorName ?? "Anonymous")
                                             .font(.subheadline.bold())
                                         Text(timeAgo(comment.createdAt))
                                             .font(.caption2)
@@ -237,14 +249,10 @@ struct CommentsSheetView: View {
                                 guard !newCommentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
                                 Task {
                                     let userId = currentUser?.id ?? UUID()
-                                    let userName = currentUser?.fullName ?? "You"
-                                    let userImage = currentUser?.profileImageUrl
                                     await communityStore.addComment(
                                         content: newCommentText.trimmingCharacters(in: .whitespacesAndNewlines),
                                         postId: post.id,
-                                        userId: userId,
-                                        authorName: userName,
-                                        authorImageUrl: userImage
+                                        userId: userId
                                     )
                                     newCommentText = ""
                                     isInputFocused = false
@@ -287,14 +295,13 @@ struct CommentsSheetView: View {
 #Preview {
     let post = Post(
         authorId: UUID(),
-        authorName: "Alex Johnson",
-        authorImageUrl: "profilePic",
         communityId: UUID(),
         content: "This is the community for ADHD where people can connect, share, and do work that will help people with ADHD.",
-        postImageName: "FirstPost",
         hashtag: "ADHD",
         likeCount: 1023,
-        createdAt: Date()
+        createdAt: Date(),
+        authorName: "Alex Johnson",
+        authorImageUrl: "profilePic"
     )
     CommunityPostRowView(post: post)
         .environment(CommunityStore.shared)

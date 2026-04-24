@@ -19,10 +19,21 @@ struct Community: Identifiable, Codable, Hashable {
     var name: String
     var description: String
     var coverImageUrl: String?
-    var coverImageData: Data?
     var isPrivate: Bool
     var memberCount: Int
     var createdAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case categoryId = "category_id"
+        case creatorId = "creator_id"
+        case name
+        case description
+        case coverImageUrl = "cover_image_url"
+        case isPrivate = "is_private"
+        case memberCount = "member_count"
+        case createdAt = "created_at"
+    }
 }
 
 // MARK: - CommunityMember
@@ -35,22 +46,42 @@ struct CommunityMember: Identifiable, Codable, Hashable {
     var communityId: UUID
     var role: String // also i use enum instead of string (for backend later)
     var joinedAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId = "user_id"
+        case communityId = "community_id"
+        case role
+        case joinedAt = "joined_at"
+    }
 }
 
 // MARK: - Post
 struct Post: Identifiable, Codable, Hashable {
     var id: UUID = UUID()
     var authorId: UUID
-    var authorName: String = "Anonymous"
-    var authorImageUrl: String?
     var communityId: UUID
     var content: String
     var imageUrl: String?
-    var postImageName: String?
-    var postImageData: Data?
     var hashtag: String?
     var likeCount: Int
     var createdAt: Date
+
+    // Joined fields — populated client-side from profiles, not stored in DB
+    var authorName: String?
+    var authorImageUrl: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case authorId = "author_id"
+        case communityId = "community_id"
+        case content
+        case imageUrl = "image_url"
+        case hashtag
+        case likeCount = "like_count"
+        case createdAt = "created_at"
+        // authorName and authorImageUrl are NOT in the DB — excluded from CodingKeys
+    }
 }
 
 // MARK: - PostLike
@@ -59,6 +90,13 @@ struct PostLike: Identifiable, Codable, Hashable {
     var userId: UUID
     var postId: UUID
     var createdAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId = "user_id"
+        case postId = "post_id"
+        case createdAt = "created_at"
+    }
 }
 
 // MARK: - PostComment
@@ -67,7 +105,31 @@ struct PostComment: Identifiable, Codable, Hashable {
     var userId: UUID
     var postId: UUID
     var content: String
-    var authorName: String = "Anonymous"
-    var authorImageUrl: String?
     var createdAt: Date
+
+    // Joined fields — populated client-side from profiles
+    var authorName: String?
+    var authorImageUrl: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId = "user_id"
+        case postId = "post_id"
+        case content
+        case createdAt = "created_at"
+        // authorName and authorImageUrl are NOT in the DB
+    }
+}
+
+// MARK: - SavedPost
+struct SavedPost: Identifiable, Codable, Hashable {
+    var id: UUID = UUID()
+    var userId: UUID
+    var postId: UUID
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId = "user_id"
+        case postId = "post_id"
+    }
 }

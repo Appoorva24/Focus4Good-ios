@@ -112,18 +112,20 @@ struct AddPostView: View {
                     Task {
                         let currUser = userStore.currentUser
                         let authorId = currUser?.id ?? UUID()
-                        let authorName = currUser?.fullName ?? "You"
-                        let authorImageUrl = currUser?.profileImageUrl
-                        
                         let tag = selectedHashtag == .none ? nil : selectedHashtag.rawValue
+                        
+                        // Upload image to Supabase Storage if present
+                        var uploadedImageUrl: String?
+                        if let imageData = coverImageData {
+                            let path = "posts/\(authorId.uuidString)/\(UUID().uuidString).jpg"
+                            uploadedImageUrl = try? await store.uploadImage(data: imageData, path: path)
+                        }
                         
                         await store.createPost(
                             content: postDescription.trimmingCharacters(in: .whitespacesAndNewlines),
                             communityId: community.id,
                             authorId: authorId,
-                            authorName: authorName,
-                            authorImageUrl: authorImageUrl,
-                            postImageData: coverImageData,
+                            imageUrl: uploadedImageUrl,
                             hashtag: tag
                         )
                         isPresented = false

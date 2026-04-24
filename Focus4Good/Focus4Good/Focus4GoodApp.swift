@@ -16,6 +16,9 @@ struct Focus4GoodApp: App {
             Group {
                 if !hasSeenOnboarding {
                     OnboardingView()
+                } else if !userStore.isAuthenticated {
+                    // Show login screen if not authenticated
+                    AuthView()
                 } else {
                     MainTabView()
                 }
@@ -31,9 +34,34 @@ struct Focus4GoodApp: App {
                     _ = await NotificationManager.shared.requestPermission()
                 }
             }
+            .onChange(of: userStore.isAuthenticated) { _, isAuth in
+                if isAuth, let userId = userStore.currentUser?.id {
+                    // Fetch all data when user logs in
+                    Task {
+                        await taskStore.fetchTasks(userId: userId)
+                        await taskStore.fetchCategories()
+                        await progressStore.fetchProgress(userId: userId)
+                        await communityStore.fetchCommunities()
+                        await communityStore.fetchCommunityCategories()
+                        await communityStore.fetchSavedPosts(userId: userId)
+                        await calmCentreStore.fetchBreathingSessions(userId: userId)
+                        await calmCentreStore.fetchJpmrSessions(userId: userId)
+                        await calmCentreStore.fetchGuidedMeditationSessions(userId: userId)
+                        await calmCentreStore.fetchAsmrSounds()
+                        await calmCentreStore.fetchFavouriteAsmrSounds(userId: userId)
+                        await calmCentreStore.fetchBrainDumpFolders(userId: userId)
+                        await calmCentreStore.fetchBrainDumpEntries(userId: userId)
+                        await volunteerStore.fetchNGOs()
+                        await volunteerStore.fetchVolunteerEvents()
+                        await volunteerStore.fetchRegistrations(userId: userId)
+                    }
+                }
+            }
         }
     }
 }
+
+// MARK: - Tabs
 
 enum AppTab: Hashable {
     case home, progress, calm, community
@@ -63,3 +91,4 @@ struct MainTabView: View {
         .tint(AppTheme.orange)
     }
 }
+

@@ -105,7 +105,7 @@ struct BraindumpEntriesView: View {
 
     private func deleteEntry(at offsets: IndexSet) {
         for entry in offsets.map({ entries[$0] }) {
-            store.deleteBrainDumpEntry(entry)
+            Task { await store.deleteBrainDumpEntry(entry) }
         }
     }
 }

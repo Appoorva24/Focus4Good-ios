@@ -72,7 +72,7 @@ struct BraindumpFoldersView: View {
             Button("Cancel", role: .cancel) {}
             Button("Create") {
                 guard !newFolderName.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-                store.addBrainDumpFolder(name: newFolderName, userId: userId)
+                Task { await store.addBrainDumpFolder(name: newFolderName, userId: userId) }
             }
         } message: {
             Text("Enter a name for the new folder.")
@@ -96,7 +96,8 @@ struct BraindumpFoldersView: View {
 
     private func deleteFolder(at offsets: IndexSet) {
         for index in offsets {
-            store.deleteBrainDumpFolder(store.brainDumpFolders[index])
+            let folder = store.brainDumpFolders[index]
+            Task { await store.deleteBrainDumpFolder(folder) }
         }
     }
 }

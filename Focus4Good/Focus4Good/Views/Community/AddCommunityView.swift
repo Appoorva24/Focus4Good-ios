@@ -134,13 +134,21 @@ struct AddCommunityView: View {
                 Button {
                     Task {
                         let userId = userStore.currentUser?.id ?? UUID()
+                        
+                        // Upload cover image to Supabase Storage if present
+                        var uploadedCoverUrl: String?
+                        if let imageData = coverImageData {
+                            let path = "communities/\(userId.uuidString)/\(UUID().uuidString).jpg"
+                            uploadedCoverUrl = try? await communityStore.uploadImage(data: imageData, path: path)
+                        }
+                        
                         await communityStore.createCommunity(
                             name: nameOfCommunity,
                             description: description.isEmpty ? "A community about \(category.isEmpty ? "various topics" : category)." : description,
                             categoryId: nil,
                             isPrivate: isPrivate,
                             userId: userId,
-                            coverImageData: coverImageData
+                            coverImageUrl: uploadedCoverUrl
                         )
                         addCommunity = false
                     }
