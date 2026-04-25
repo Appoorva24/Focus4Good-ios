@@ -117,8 +117,13 @@ struct JPMRSessionView: View {
     @Environment(CalmCentreStore.self) private var store
     @Environment(UserStore.self) private var userStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
+    @Environment(\.scenePhase) private var scenePhase
 
-    @State private var selectedGroups: Set<Int> = Set(1...11)
+    // Replace this URL with your chosen JPMR guided YouTube video
+    private let youtubeVideoURL = "https://youtu.be/ihO02wUzgkc?si=sUTR2YkGJeIRck8i"
+
+    @State private var selectedGroups: Set<Int> = SessionPreset.quick.groups
     @State private var stage: SessionStage = .idle
     @State private var countdown      = 0
     @State private var stepIndex      = 0
@@ -127,6 +132,11 @@ struct JPMRSessionView: View {
     @State private var showCompletion = false
     @State private var elapsedSeconds = 0
     @State private var timer: Timer?
+
+    // Video session tracking
+    @State private var pendingVideoCompletion = false
+    @State private var showVideoCompletionAlert = false
+    @State private var isVideoCompletion = false
 
     private var userId: UUID? {
         userStore.currentUser?.id
@@ -172,11 +182,25 @@ struct JPMRSessionView: View {
         .navigationTitle("Unwind Body")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) { groupMenu }
+            ToolbarItem(placement: .topBarTrailing) { sessionMenu }
         }
         .onDisappear {
             stopTimer()
             JPMRAudioService.shared.stopAll()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active && pendingVideoCompletion {
+                pendingVideoCompletion = false
+                showVideoCompletionAlert = true
+            }
+        }
+        .alert("Video Session Complete?", isPresented: $showVideoCompletionAlert) {
+            Button("Yes, I completed it") {
+                completeVideoSession()
+            }
+            Button("Not yet", role: .cancel) { }
+        } message: {
+            Text("Did you complete the full JPMR guided video?")
         }
     }
 
@@ -336,24 +360,32 @@ struct JPMRSessionView: View {
         return Color(.systemGray4)
     }
 
-    private var groupMenu: some View {
+    private var sessionMenu: some View {
         Menu {
-            ForEach(SessionPreset.allCases, id: \.label) { preset in
-                Button {
-                    selectedGroups = preset.groups
-                } label: {
-                    HStack {
-                        Text("\(preset.label) — \(preset.detail)")
-                        if activePreset == preset { Image(systemName: "checkmark") }
+            Button {
+                selectedGroups = SessionPreset.quick.groups
+            } label: {
+                HStack {
+                    Text("4 Key Areas")
+                    if selectedGroups == SessionPreset.quick.groups {
+                        Image(systemName: "checkmark")
                     }
+                }
+            }
+
+            Button {
+                pendingVideoCompletion = true
+                if let url = URL(string: youtubeVideoURL) {
+                    openURL(url)
+                }
+            } label: {
+                HStack {
+                    Text("Video Illustration")
+                    Image(systemName: "arrow.up.right")
                 }
             }
         } label: {
             HStack(spacing: 4) {
-                Text("\(selectedGroups.count)")
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-
                 Image(systemName: "figure.mind.and.body")
                     .font(.title3)
             }
@@ -381,6 +413,7 @@ struct JPMRSessionView: View {
                 .ignoresSafeArea()
                 .onTapGesture {
                     showCompletion = false
+                    isVideoCompletion = false
                     dismiss()
                 }
 
@@ -393,17 +426,20 @@ struct JPMRSessionView: View {
                     .font(.title2)
                     .fontWeight(.bold)
 
-                Text("You completed \(selectedGroups.count) muscle group\(selectedGroups.count == 1 ? "" : "s") of progressive relaxation")
+                Text(isVideoCompletion
+                     ? "You completed the full JPMR guided video session"
+                     : "You completed \(selectedGroups.count) muscle group\(selectedGroups.count == 1 ? "" : "s") of progressive relaxation")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
 
-                Text("+ 30 Focus Points")
+                Text(isVideoCompletion ? "+ 50 Focus Points" : "+ 30 Focus Points")
                     .font(.headline)
                     .foregroundStyle(Color.accentColor)
 
                 Button {
                     showCompletion = false
+                    isVideoCompletion = false
                     dismiss()
                 } label: {
                     Text("Done")
@@ -550,6 +586,17 @@ struct JPMRSessionView: View {
         Task {
             guard let uid = userId else { return }
             await store.logJpmrSession(userId: uid, durationSeconds: elapsedSeconds)
+        }
+
+        showCompletion = true
+    }
+
+    private func completeVideoSession() {
+        isVideoCompletion = true
+
+        Task {
+            guard let uid = userId else { return }
+            await store.logJpmrSession(userId: uid, durationSeconds: 900, pointsOverride: 50)
         }
 
         showCompletion = true

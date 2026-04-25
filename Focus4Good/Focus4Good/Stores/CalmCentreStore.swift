@@ -179,8 +179,8 @@ class CalmCentreStore {
         await ProgressStore.shared.addPointsEarned(points: points, userId: userId)
     }
 
-    func logJpmrSession(userId: UUID, durationSeconds: Int) async {
-        let points = 30
+    func logJpmrSession(userId: UUID, durationSeconds: Int, pointsOverride: Int? = nil) async {
+        let points = pointsOverride ?? 30
         let session = JpmrSession(
             userId: userId, durationSeconds: durationSeconds,
             pointsEarned: points, completedAt: Date()
