@@ -80,7 +80,7 @@ struct CommunityRowView: View {
                     .frame(width: 40, height: 40)
                     .clipShape(Circle())
             } else {
-                Image(community.coverImageUrl ?? "PersonImage")
+                Image(community.coverImageUrl ?? "personimage")
                     .resizable()
                     .scaledToFit()
                     .frame(width: 40, height: 40)
@@ -167,7 +167,7 @@ struct CommunityDetailView: View {
                             .clipShape(Circle())
                             .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
                     } else {
-                        Image(community.coverImageUrl ?? "PersonImage")
+                        Image(community.coverImageUrl ?? "personimage")
                             .resizable()
                             .scaledToFit()
                             .frame(width: 100, height: 100)

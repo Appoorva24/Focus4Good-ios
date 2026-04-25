@@ -8,6 +8,8 @@ class VolunteerStore {
     var volunteerEvents: [VolunteerEvent] = []
     var volunteerRegistrations: [VolunteerRegistration] = []
 
+    
+    
     // MARK: - Computed
     func events(for ngo: NGO) -> [VolunteerEvent] {
         volunteerEvents
@@ -18,6 +20,7 @@ class VolunteerStore {
     func isRegistered(ngoId: UUID, userId: UUID) -> Bool {
         volunteerRegistrations.contains { $0.ngoId == ngoId && $0.userId == userId }
     }
+    
 
     // MARK: - Init
     static let shared = VolunteerStore()
@@ -27,6 +30,8 @@ class VolunteerStore {
             volunteerEvents.append(contentsOf: DummyData.volunteerEvents(for: ngo.id))
         }
     }
+    
+    
 
     // MARK: - Register
     func registerForNGO(

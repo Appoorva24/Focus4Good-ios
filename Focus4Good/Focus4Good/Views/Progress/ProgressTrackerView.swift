@@ -13,7 +13,7 @@ enum ProgressPeriod: String, CaseIterable, Identifiable {
 struct ProgressTrackerView: View {
     @Environment(ProgressStore.self)      private var progressStore
     @Environment(UserStore.self)          private var userStore
-    @Environment(GamificationStore.self)  private var gamificationStore
+
 
     @State private var selectedPeriod: ProgressPeriod = .weekly
 
@@ -24,14 +24,7 @@ struct ProgressTrackerView: View {
         }
     }
 
-    private var milestoneInfo: (milestone: Milestone, ratio: Double)? {
-        guard let m = gamificationStore.nextMilestone else { return nil }
-        let um    = gamificationStore.userMilestones.first { $0.milestoneId == m.id }
-        let ratio = m.pointsRequired > 0
-            ? min(Double(um?.progress ?? 0) / Double(m.pointsRequired), 1.0)
-            : 0
-        return (m, ratio)
-    }
+
 
     var body: some View {
         NavigationStack {
@@ -50,7 +43,7 @@ struct ProgressTrackerView: View {
                     VStack(alignment: .leading, spacing: 24) {
                         statisticsSection
                         keyMetricsSection
-                        nextMilestoneSection
+
                     }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 32)
@@ -75,14 +68,18 @@ struct ProgressTrackerView: View {
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(.secondary)
 
+                    Spacer()
+
                     TasksGauge(
                         completed: progress?.tasksCompleted ?? 0,
                         goal:      progress?.taskGoal ?? 1
                     )
                     .frame(height: 100)
+
+                    Spacer()
                 }
                 .padding(16)
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(AppTheme.cardBg)
                 .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
                 .shadow(color: AppTheme.shadow, radius: 8, y: 2)
@@ -110,7 +107,7 @@ struct ProgressTrackerView: View {
                     Spacer()
                 }
                 .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
                 .background(AppTheme.cardBg)
                 .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
                 .shadow(color: AppTheme.shadow, radius: 8, y: 2)
@@ -141,34 +138,6 @@ struct ProgressTrackerView: View {
         }
     }
 
-    // MARK: - Next Milestone
-
-    private var nextMilestoneSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Next Milestone")
-                .font(.title3.bold())
-
-            if let info = milestoneInfo {
-                MilestoneCard(
-                    milestone: info.milestone,
-                    progress:  info.ratio
-                )
-            } else {
-                HStack(spacing: 10) {
-                    Image(systemName: "trophy.fill")
-                        .foregroundStyle(AppTheme.orange.opacity(0.5))
-                    Text("No upcoming milestones")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(20)
-                .background(AppTheme.cardBg)
-                .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
-                .shadow(color: AppTheme.shadow, radius: 8, y: 2)
-            }
-        }
-    }
 }
 
 // MARK: - Tasks Gauge
@@ -257,65 +226,11 @@ private struct MetricCard: View {
     }
 }
 
-// MARK: - Milestone Card
-
-private struct MilestoneCard: View {
-    let milestone: Milestone
-    let progress: Double
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 14) {
-                Image(systemName: milestone.imageUrl.isEmpty ? "book.fill" : milestone.imageUrl)
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(AppTheme.orange)
-                    .frame(width: 46, height: 46)
-                    .background(Color(.systemGray6))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(milestone.name)
-                        .font(.headline)
-
-                    Text(milestone.description)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(3)
-                }
-            }
-
-            // Progress Bar
-            VStack(spacing: 6) {
-                HStack {
-                    Text("Progress")
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text("\(Int(progress * 100))%")
-                        .font(.caption.bold())
-                        .foregroundStyle(AppTheme.orange)
-                }
-
-                Gauge(value: progress, in: 0...1) {
-                    EmptyView()
-                }
-                .gaugeStyle(.linearCapacity)
-                .tint(AppTheme.orange)
-            }
-        }
-        .padding(18)
-        .background(AppTheme.cardBg)
-        .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
-        .shadow(color: AppTheme.shadow, radius: 8, y: 2)
-    }
-}
-
 // MARK: - Preview
 
 #Preview {
     let progressStore     = ProgressStore.shared
     let userStore         = UserStore.shared
-    let gamificationStore = GamificationStore.shared
     let userId            = UUID()
 
     let _ = {
@@ -346,5 +261,4 @@ private struct MilestoneCard: View {
     return ProgressTrackerView()
         .environment(progressStore)
         .environment(userStore)
-        .environment(gamificationStore)
 }

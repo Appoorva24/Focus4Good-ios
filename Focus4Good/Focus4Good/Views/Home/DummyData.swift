@@ -9,7 +9,7 @@ struct DummyData {
         passwordHash: nil,
         profileImageUrl: nil,
         authProvider: "email",
-        focusPoints: 0,
+        focusPoints: 5000,
         currentLevel: 1,
         bestStreak: 0,
         currentStreak: 0
@@ -68,15 +68,11 @@ struct DummyData {
         ]
     }
 
-    static let dailyTip = DailyTip(
-        id: UUID(),
-        content: "Focus on exhale — it helps maintain calmness and reduces stress instantly.",
-        isActive: true
-    )
+
 
     static let onboardingPages: [(title: String, subtitle: String, imageName: String)] = [
         ("Struggling with ADHD?", "Easily distracted? Overwhelmed by simple tasks?\nDon't worry. We got you!", "o1"),
-        ("Scan & Schedule", "Instantly convert your handwritten list into a smart schedule with automatic pomodoro slots", "o2"),
+        ("Plan Your Day", "Easily create tasks and manage your daily schedule with smart pomodoro sessions", "o2"),
         ("Build Virtual Classroom", "Complete tasks to unlock upgrades and build a classroom that supports you better every day.", "o3"),
         ("Master Hyperactivity", "Access smart sensory tools, guided meditation and relaxation tools to help with your hyperactivity", "o4"),
         ("You Are Not Alone", "Connect with people who suffer from ADHD, and find your safe space", "o5")

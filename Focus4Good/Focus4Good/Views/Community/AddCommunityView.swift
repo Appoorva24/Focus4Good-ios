@@ -31,7 +31,7 @@ struct AddCommunityView: View {
                             .clipShape(Circle())
                             .padding()
                     } else {
-                        Image("PersonImage")
+                        Image("personimage")
                             .resizable()
                             .scaledToFit()
                             .frame(width: 100, height: 100)

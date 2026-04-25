@@ -3,13 +3,11 @@ import Foundation
 @Observable
 class TaskStore {
 
-    // MARK: - State
     var tasks: [UserTask] = []
     var categories: [TaskCategory] = []
     var isLoading = false
     var errorMessage: String?
 
-    // MARK: - Computed
     var todaysTasks: [UserTask] {
         let today = Calendar.current.startOfDay(for: Date())
         return tasks.filter { task in
@@ -21,14 +19,15 @@ class TaskStore {
     var completedTasks: [UserTask] { tasks.filter { $0.isCompleted } }
     var pendingTasks: [UserTask] { tasks.filter { !$0.isCompleted } }
 
+    
+    
+    
     func tasks(for category: TaskCategory) -> [UserTask] {
         tasks.filter { $0.categoryId == category.id }
     }
 
     static let shared = TaskStore()
     init() {}
-
-    // MARK: - Tasks
     func fetchTasks(userId: UUID) async {
         isLoading = true
         isLoading = false
@@ -36,36 +35,16 @@ class TaskStore {
 
     func addTask(_ task: UserTask) async {
         tasks.append(task)
-
-        // Schedule notification if task has time
-        if task.scheduledTime != nil {
-            await NotificationManager.shared.scheduleNotification(for: task)
-        }
     }
 
     func updateTask(_ task: UserTask) async {
         if let index = tasks.firstIndex(where: { $0.id == task.id }) {
-            // Cancel old notification
-            await NotificationManager.shared.cancelNotification(for: task.id)
-
-            // Update task
             tasks[index] = task
-
-            // Schedule new notification if task has time
-            if task.scheduledTime != nil {
-                await NotificationManager.shared.scheduleNotification(for: task)
-            }
         }
     }
 
     func deleteTask(_ task: UserTask) async {
-        // Cancel notification first
-        await NotificationManager.shared.cancelNotification(for: task.id)
-
-        // Remove task
         tasks.removeAll { $0.id == task.id }
-
-
     }
 
     func toggleCompletion(for task: UserTask) async {
@@ -76,6 +55,7 @@ class TaskStore {
             await ProgressStore.shared.incrementTasksCompleted(userId: userId)
         }
     }
+    
 
     // MARK: - Categories
     func fetchCategories() async {

@@ -4,7 +4,7 @@ struct ScheduleView: View {
     @Environment(TaskStore.self) private var taskStore
     @Environment(UserStore.self) private var userStore
     @State private var showAddTask = false
-    @State private var showScanner = false
+
     @State private var selectedTask: UserTask?
 
     private var repetitiveTasks: [UserTask] {
@@ -48,9 +48,7 @@ struct ScheduleView: View {
         .sheet(isPresented: $showAddTask) {
             AddTaskSheet()
         }
-        .sheet(isPresented: $showScanner) {
-            ScannerView()
-        }
+
         .navigationDestination(item: $selectedTask) { task in
             PomodoroView(task: task)
         }
@@ -113,41 +111,7 @@ struct ScheduleView: View {
                 }
                 .buttonStyle(.plain)
                 
-                // Scan button - NOW ENABLED!
-                Button {
-                    showScanner = true
-                } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: "camera.circle.fill")
-                            .font(.title2)
-                            .foregroundStyle(AppTheme.orange)
-                        
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Scan Schedule")
-                                .font(.headline)
-                                .foregroundStyle(AppTheme.textPrimary)
-                            Text("Import from image or document")
-                                .font(.caption)
-                                .foregroundStyle(AppTheme.textSecondary)
-                        }
-                        
-                        Spacer()
-                        
-                        Image(systemName: "chevron.right")
-                            .font(.caption)
-                            .foregroundStyle(AppTheme.textSecondary)
-                    }
-                    .padding(16)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(Color(.systemBackground))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .stroke(AppTheme.orange.opacity(0.3), lineWidth: 1.5)
-                            )
-                    )
-                }
-                .buttonStyle(.plain)
+
             }
             .padding(.horizontal, 24)
             .padding(.top, 16)

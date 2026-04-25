@@ -1,9 +1,6 @@
 import Foundation
 
 
-
-//why take this : because their is multiple type of community like tech etc so it repeated 1000 times that why i take community category. 
-
 struct CommunityCategory: Identifiable, Codable, Hashable {
     var id: UUID = UUID()
     var name: String
@@ -12,10 +9,7 @@ struct CommunityCategory: Identifiable, Codable, Hashable {
 // MARK: - Community
 struct Community: Identifiable, Codable, Hashable {
     var id: UUID = UUID()
-    var categoryId: UUID?  //reference of community category // why use id : api friendly avoid duplication and lightweight \\ also we create like category : communitycategory
-//but what if 1000 thoudand community having multiple repated community so this things happen that why use uuid 
-    //it just a copy of data not refrence that why changing category does not effect other category even having same uuid 
-    
+    var categoryId: UUID?
     var creatorId: UUID
     var name: String
     var description: String
