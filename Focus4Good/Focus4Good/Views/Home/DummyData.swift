@@ -6,7 +6,6 @@ struct DummyData {
         id: UUID(),
         fullName: "Appoorva Khajuria",
         email: "appoorva2025@gmail.com",
-        passwordHash: nil,
         profileImageUrl: nil,
         authProvider: "email",
         focusPoints: 5000,

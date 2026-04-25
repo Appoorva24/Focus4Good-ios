@@ -5,6 +5,8 @@ import Foundation
 /// Manages the state of the virtual classroom — which items are unlocked,
 /// persists unlock state to UserDefaults, and handles Focus Point spending.
 /// Also stores custom item positions set by the user via drag-and-drop.
+///
+@MainActor
 @Observable
 class ClassroomStore {
 
