@@ -21,10 +21,16 @@ private func timeAgo(_ date: Date) -> String {
 
 struct CommunityPostRowView: View {
     var post: Post
-    @State private var isLiked: Bool = false
     @State private var showComments: Bool = false
     @Environment(CommunityStore.self) private var communityStore
     @Environment(UserStore.self) private var userStore
+
+    private var currentUserId: UUID? { userStore.currentUser?.id }
+
+    private var isLiked: Bool {
+        guard let uid = currentUserId else { return false }
+        return communityStore.isLiked(postId: post.id, userId: uid)
+    }
 
     private var commentCount: Int {
         communityStore.comments(for: post).count
@@ -101,14 +107,15 @@ struct CommunityPostRowView: View {
             // ── Like & Comment Bar ──
             HStack(spacing: 4) {
                 Button {
-                    isLiked.toggle()
+                    guard let uid = currentUserId else { return }
+                    Task { await communityStore.toggleLike(postId: post.id, userId: uid) }
                 } label: {
                     Image(systemName: isLiked ? "heart.fill" : "heart")
                         .font(.system(size: 20, weight: .bold))
                         .foregroundStyle(isLiked ? AppTheme.orange : AppTheme.orange.opacity(0.5))
                 }
 
-                Text("\(post.likeCount + (isLiked ? 1 : 0))")
+                Text("\(post.likeCount)")
                     .foregroundStyle(isLiked ? AppTheme.orange : AppTheme.orange.opacity(0.5))
 
                 Spacer().frame(width: 12)
@@ -131,12 +138,13 @@ struct CommunityPostRowView: View {
 
                 // ── Save Button ──
                 Button {
-                    Task {
-                        let userId = userStore.currentUser?.id ?? UUID()
-                        await communityStore.toggleSave(postId: post.id, userId: userId)
-                    }
+                    guard let uid = currentUserId else { return }
+                    Task { await communityStore.toggleSave(postId: post.id, userId: uid) }
                 } label: {
-                    let isSaved = communityStore.isSaved(postId: post.id, userId: userStore.currentUser?.id ?? UUID())
+                    let isSaved: Bool = {
+                        guard let uid = currentUserId else { return false }
+                        return communityStore.isSaved(postId: post.id, userId: uid)
+                    }()
                     Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
                         .font(.system(size: 20, weight: .bold))
                         .foregroundStyle(isSaved ? AppTheme.orange : AppTheme.orange.opacity(0.5))
@@ -246,9 +254,9 @@ struct CommentsSheetView: View {
                                 .padding(.vertical, 8)
                             
                             Button {
-                                guard !newCommentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+                                guard !newCommentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                                      let userId = currentUser?.id else { return }
                                 Task {
-                                    let userId = currentUser?.id ?? UUID()
                                     await communityStore.addComment(
                                         content: newCommentText.trimmingCharacters(in: .whitespacesAndNewlines),
                                         postId: post.id,

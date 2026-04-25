@@ -12,8 +12,8 @@ struct BraindumpEditorView: View {
     @Environment(CalmCentreStore.self) private var store
     @Environment(UserStore.self) private var userStore
 
-    private var userId: UUID {
-        userStore.currentUser?.id ?? UUID()
+    private var userId: UUID? {
+        userStore.currentUser?.id
     }
 
     var body: some View {
@@ -85,7 +85,8 @@ struct BraindumpEditorView: View {
         guard !trimmed.isEmpty else { return }
         isEditorFocused = false
         Task {
-            await store.addBrainDumpEntry(content: trimmed, userId: userId, folderId: folder.id)
+            guard let uid = userId else { return }
+            await store.addBrainDumpEntry(content: trimmed, userId: uid, folderId: folder.id)
         }
         showWellDonePopup = true
     }

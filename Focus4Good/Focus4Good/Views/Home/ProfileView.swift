@@ -8,7 +8,8 @@ struct ProfileView: View {
     @State private var showNotificationsAlert = false
     @State private var showTimezoneAlert = false
 
-    private var user: User { userStore.currentUser ?? DummyData.currentUser }
+    private var userName: String { userStore.currentUser?.fullName ?? "Loading…" }
+    private var userEmail: String { userStore.currentUser?.email ?? "" }
 
     var body: some View {
         NavigationStack {
@@ -21,8 +22,8 @@ struct ProfileView: View {
                             Image(systemName: "person.fill").font(.title2).foregroundStyle(AppTheme.orange)
                         }
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(user.fullName).font(.headline)
-                            Text(user.email).font(.caption).foregroundStyle(AppTheme.textSecondary)
+                            Text(userName).font(.headline)
+                            Text(userEmail).font(.caption).foregroundStyle(AppTheme.textSecondary)
                         }
                     }
                     .padding(.vertical, 6)

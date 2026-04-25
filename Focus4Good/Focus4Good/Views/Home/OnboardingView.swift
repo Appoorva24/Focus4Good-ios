@@ -4,7 +4,7 @@ struct OnboardingView: View {
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
     @State private var currentPage = 0
 
-    private let pages = DummyData.onboardingPages
+    private let pages = OnboardingData.pages
 
     var body: some View {
         ZStack(alignment: .top) {

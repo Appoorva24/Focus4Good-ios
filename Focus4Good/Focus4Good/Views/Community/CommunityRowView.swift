@@ -8,12 +8,13 @@ struct CommunityRowView: View {
     @State private var showUnfollowAlert = false
     @State private var showPosts = false
 
-    private var currentUserId: UUID {
-        userStore.currentUser?.id ?? UUID()
+    private var currentUserId: UUID? {
+        userStore.currentUser?.id
     }
 
     private var isJoined: Bool {
-        communityStore.isMember(communityId: community.id, userId: currentUserId)
+        guard let uid = currentUserId else { return false }
+        return communityStore.isMember(communityId: community.id, userId: uid)
     }
 
     /// Posts belonging to this community
@@ -39,8 +40,9 @@ struct CommunityRowView: View {
             // Join button logic
             if !isJoined {
                 Button {
+                    guard let uid = currentUserId else { return }
                     Task {
-                        await communityStore.joinCommunity(community, userId: currentUserId)
+                        await communityStore.joinCommunity(community, userId: uid)
                     }
                 } label: {
                     Text("Join")
@@ -126,8 +128,9 @@ struct CommunityRowView: View {
         .alert("Unfollow Community", isPresented: $showUnfollowAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Confirm", role: .destructive) {
+                guard let uid = currentUserId else { return }
                 Task {
-                    await communityStore.leaveCommunity(community, userId: currentUserId)
+                    await communityStore.leaveCommunity(community, userId: uid)
                     selectedTab = .forYou
                 }
             }
@@ -153,12 +156,13 @@ struct CommunityDetailView: View {
         communityStore.posts(in: community)
     }
 
-    private var currentUserId: UUID {
-        userStore.currentUser?.id ?? UUID()
+    private var currentUserId: UUID? {
+        userStore.currentUser?.id
     }
 
     private var isJoined: Bool {
-        communityStore.isMember(communityId: community.id, userId: currentUserId)
+        guard let uid = currentUserId else { return false }
+        return communityStore.isMember(communityId: community.id, userId: uid)
     }
 
     var body: some View {
@@ -268,8 +272,9 @@ struct CommunityDetailView: View {
                                 .multilineTextAlignment(.center)
                             
                             Button {
+                                guard let uid = currentUserId else { return }
                                 Task {
-                                    await communityStore.joinCommunity(community, userId: currentUserId)
+                                    await communityStore.joinCommunity(community, userId: uid)
                                 }
                             } label: {
                                 Text("Join")
@@ -326,8 +331,9 @@ struct CommunityDetailView: View {
                         }
                     } else {
                         Button {
+                            guard let uid = currentUserId else { return }
                             Task {
-                                await communityStore.joinCommunity(community, userId: currentUserId)
+                                await communityStore.joinCommunity(community, userId: uid)
                             }
                         } label: {
                             Image(systemName: "person.badge.plus")
@@ -339,8 +345,9 @@ struct CommunityDetailView: View {
         .alert("Leave Community", isPresented: $showLeaveAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Leave", role: .destructive) {
+                guard let uid = currentUserId else { return }
                 Task {
-                    await communityStore.leaveCommunity(community, userId: currentUserId)
+                    await communityStore.leaveCommunity(community, userId: uid)
                     selectedTab = .forYou
                     dismiss()
                 }

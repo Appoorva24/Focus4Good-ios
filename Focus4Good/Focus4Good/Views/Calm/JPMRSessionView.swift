@@ -128,8 +128,8 @@ struct JPMRSessionView: View {
     @State private var elapsedSeconds = 0
     @State private var timer: Timer?
 
-    private var userId: UUID {
-        userStore.currentUser?.id ?? UUID()
+    private var userId: UUID? {
+        userStore.currentUser?.id
     }
 
     private var activeSteps: [MuscleStep] {
@@ -548,7 +548,8 @@ struct JPMRSessionView: View {
         JPMRAudioService.shared.speakCompletion(groupCount: selectedGroups.count)
 
         Task {
-            await store.logJpmrSession(userId: userId, durationSeconds: elapsedSeconds)
+            guard let uid = userId else { return }
+            await store.logJpmrSession(userId: uid, durationSeconds: elapsedSeconds)
         }
 
         showCompletion = true

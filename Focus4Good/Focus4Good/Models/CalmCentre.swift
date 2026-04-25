@@ -1,7 +1,7 @@
 import Foundation
 
-//BreathingSession
-struct BreathingSession: Identifiable, Codable, Hashable {
+// MARK: - BreathingSession
+struct BreathingSession: Identifiable, Hashable {
     var id: UUID = UUID()
     var userId: UUID
     var cyclesCompleted: Int
@@ -19,8 +19,30 @@ struct BreathingSession: Identifiable, Codable, Hashable {
     }
 }
 
-//JpmrSession
-struct JpmrSession: Identifiable, Codable, Hashable {
+extension BreathingSession: Codable {
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id              = try c.decode(UUID.self, forKey: .id)
+        userId          = try c.decode(UUID.self, forKey: .userId)
+        cyclesCompleted = try c.decode(Int.self, forKey: .cyclesCompleted)
+        durationSeconds = try c.decode(Int.self, forKey: .durationSeconds)
+        pointsEarned    = try c.decode(Int.self, forKey: .pointsEarned)
+        completedAt     = SupabaseDateCoding.flexDecode(from: c, key: .completedAt) ?? Date()
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(userId, forKey: .userId)
+        try c.encode(cyclesCompleted, forKey: .cyclesCompleted)
+        try c.encode(durationSeconds, forKey: .durationSeconds)
+        try c.encode(pointsEarned, forKey: .pointsEarned)
+        try c.encode(SupabaseDateCoding.encodeTimestamp(completedAt), forKey: .completedAt)
+    }
+}
+
+// MARK: - JpmrSession
+struct JpmrSession: Identifiable, Hashable {
     var id: UUID = UUID()
     var userId: UUID
     var durationSeconds: Int
@@ -36,8 +58,28 @@ struct JpmrSession: Identifiable, Codable, Hashable {
     }
 }
 
-//GuidedMeditationSession
-struct GuidedMeditationSession: Identifiable, Codable, Hashable {
+extension JpmrSession: Codable {
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id              = try c.decode(UUID.self, forKey: .id)
+        userId          = try c.decode(UUID.self, forKey: .userId)
+        durationSeconds = try c.decode(Int.self, forKey: .durationSeconds)
+        pointsEarned    = try c.decode(Int.self, forKey: .pointsEarned)
+        completedAt     = SupabaseDateCoding.flexDecode(from: c, key: .completedAt) ?? Date()
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(userId, forKey: .userId)
+        try c.encode(durationSeconds, forKey: .durationSeconds)
+        try c.encode(pointsEarned, forKey: .pointsEarned)
+        try c.encode(SupabaseDateCoding.encodeTimestamp(completedAt), forKey: .completedAt)
+    }
+}
+
+// MARK: - GuidedMeditationSession
+struct GuidedMeditationSession: Identifiable, Hashable {
     var id: UUID = UUID()
     var userId: UUID
     var meditationName: String
@@ -55,7 +97,29 @@ struct GuidedMeditationSession: Identifiable, Codable, Hashable {
     }
 }
 
-//AsmrSound
+extension GuidedMeditationSession: Codable {
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id              = try c.decode(UUID.self, forKey: .id)
+        userId          = try c.decode(UUID.self, forKey: .userId)
+        meditationName  = try c.decode(String.self, forKey: .meditationName)
+        durationSeconds = try c.decode(Int.self, forKey: .durationSeconds)
+        pointsEarned    = try c.decode(Int.self, forKey: .pointsEarned)
+        completedAt     = SupabaseDateCoding.flexDecode(from: c, key: .completedAt) ?? Date()
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(userId, forKey: .userId)
+        try c.encode(meditationName, forKey: .meditationName)
+        try c.encode(durationSeconds, forKey: .durationSeconds)
+        try c.encode(pointsEarned, forKey: .pointsEarned)
+        try c.encode(SupabaseDateCoding.encodeTimestamp(completedAt), forKey: .completedAt)
+    }
+}
+
+// MARK: - AsmrSound (no Date fields — auto-Codable is fine)
 struct AsmrSound: Identifiable, Codable, Hashable {
     var id: UUID = UUID()
     var name: String
@@ -76,7 +140,7 @@ struct AsmrSound: Identifiable, Codable, Hashable {
     }
 }
 
-// AsmrFavourite (join table)
+// MARK: - AsmrFavourite (no Date fields — auto-Codable is fine)
 struct AsmrFavourite: Identifiable, Codable, Hashable {
     var id: UUID = UUID()
     var userId: UUID
@@ -89,7 +153,7 @@ struct AsmrFavourite: Identifiable, Codable, Hashable {
     }
 }
 
-//BrainDumpFolder
+// MARK: - BrainDumpFolder (no Date fields — auto-Codable is fine)
 struct BrainDumpFolder: Identifiable, Codable, Hashable {
     var id: UUID = UUID()
     var userId: UUID
@@ -104,11 +168,11 @@ struct BrainDumpFolder: Identifiable, Codable, Hashable {
     }
 }
 
-//BrainDumpEntry
-struct BrainDumpEntry: Identifiable, Codable, Hashable {
+// MARK: - BrainDumpEntry
+struct BrainDumpEntry: Identifiable, Hashable {
     var id: UUID = UUID()
     var userId: UUID
-    var folderId: UUID?  
+    var folderId: UUID?
     var content: String
     var pointsEarned: Int
     var createdAt: Date
@@ -120,5 +184,27 @@ struct BrainDumpEntry: Identifiable, Codable, Hashable {
         case content
         case pointsEarned = "points_earned"
         case createdAt = "created_at"
+    }
+}
+
+extension BrainDumpEntry: Codable {
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id           = try c.decode(UUID.self, forKey: .id)
+        userId       = try c.decode(UUID.self, forKey: .userId)
+        folderId     = try c.decodeIfPresent(UUID.self, forKey: .folderId)
+        content      = try c.decode(String.self, forKey: .content)
+        pointsEarned = try c.decode(Int.self, forKey: .pointsEarned)
+        createdAt    = SupabaseDateCoding.flexDecode(from: c, key: .createdAt) ?? Date()
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(userId, forKey: .userId)
+        try c.encodeIfPresent(folderId, forKey: .folderId)
+        try c.encode(content, forKey: .content)
+        try c.encode(pointsEarned, forKey: .pointsEarned)
+        try c.encode(SupabaseDateCoding.encodeTimestamp(createdAt), forKey: .createdAt)
     }
 }

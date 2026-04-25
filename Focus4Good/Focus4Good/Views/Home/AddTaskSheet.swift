@@ -112,8 +112,14 @@ struct AddTaskSheet: View {
     private func saveTask() {
         guard !title.isEmpty else { return }
         
+        // Guard: must have an authenticated user — never fall back to dummy data
+        guard let userId = userStore.currentUser?.id else {
+            print("❌ Cannot save task: no authenticated user")
+            return
+        }
+        
         let task = UserTask(
-            userId: userStore.currentUser?.id ?? DummyData.currentUser.id,
+            userId: userId,
             categoryId: nil,
             title: title,
             scheduledDate: isDateEnabled ? selectedDate : Date(),
@@ -125,11 +131,14 @@ struct AddTaskSheet: View {
             createdAt: Date()
         )
         
+        // Await the insert BEFORE dismissing so the environment stays alive
         Task {
             await taskStore.addTask(task)
+            // Dismiss only after the insert succeeds
+            await MainActor.run {
+                dismiss()
+            }
         }
-        
-        dismiss()
     }
 }
 

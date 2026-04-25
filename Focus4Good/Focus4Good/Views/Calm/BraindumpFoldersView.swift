@@ -9,8 +9,8 @@ struct BraindumpFoldersView: View {
     @State private var showNewFolderAlert = false
     @State private var newFolderName = ""
 
-    private var userId: UUID {
-        userStore.currentUser?.id ?? UUID()
+    private var userId: UUID? {
+        userStore.currentUser?.id
     }
 
     var body: some View {
@@ -72,7 +72,8 @@ struct BraindumpFoldersView: View {
             Button("Cancel", role: .cancel) {}
             Button("Create") {
                 guard !newFolderName.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-                Task { await store.addBrainDumpFolder(name: newFolderName, userId: userId) }
+                guard let uid = userId else { return }
+                Task { await store.addBrainDumpFolder(name: newFolderName, userId: uid) }
             }
         } message: {
             Text("Enter a name for the new folder.")

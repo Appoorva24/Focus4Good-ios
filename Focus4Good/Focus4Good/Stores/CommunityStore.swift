@@ -1,6 +1,7 @@
 import Foundation
 import Supabase
 
+@MainActor
 @Observable
 class CommunityStore {
 
@@ -370,7 +371,7 @@ class CommunityStore {
     func uploadImage(data: Data, path: String) async throws -> String {
         try await client.storage
             .from("community-images")
-            .upload(path: path, file: data, options: .init(contentType: "image/jpeg"))
+            .upload(path, data: data, options: .init(contentType: "image/jpeg"))
 
         let publicURL = try client.storage
             .from("community-images")

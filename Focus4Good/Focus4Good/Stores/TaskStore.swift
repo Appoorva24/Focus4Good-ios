@@ -1,6 +1,7 @@
 import Foundation
 import Supabase
 
+@MainActor
 @Observable
 class TaskStore {
     
@@ -40,8 +41,10 @@ class TaskStore {
                 .execute()
                 .value
             tasks = fetched
+            print("✅ Fetched \(fetched.count) tasks")
         } catch {
             errorMessage = "Failed to load tasks: \(error.localizedDescription)"
+            print("❌ fetchTasks error: \(error)")
         }
         isLoading = false
     }
@@ -49,6 +52,8 @@ class TaskStore {
     // MARK: - Add Task
     func addTask(_ task: UserTask) async {
         do {
+            print("📝 Inserting task: \(task.title) for user: \(task.userId)")
+            
             // Insert into Supabase
             let inserted: UserTask = try await client
                 .from("tasks")
@@ -58,8 +63,9 @@ class TaskStore {
                 .execute()
                 .value
             
-            // Add to local array
+            // Add to local array — @MainActor ensures UI updates
             tasks.insert(inserted, at: 0)
+            print("✅ Task inserted successfully: \(inserted.title) (id: \(inserted.id))")
             
             // Schedule local notification if needed
             if task.scheduledTime != nil {
@@ -67,6 +73,7 @@ class TaskStore {
             }
         } catch {
             errorMessage = "Failed to add task: \(error.localizedDescription)"
+            print("❌ addTask error: \(error)")
         }
     }
     

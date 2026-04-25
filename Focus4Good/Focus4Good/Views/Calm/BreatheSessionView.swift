@@ -56,8 +56,8 @@ struct BreatheSessionView: View {
     @State private var showCompletion = false
     @State private var timer: Timer?
 
-    private var userId: UUID {
-        userStore.currentUser?.id ?? UUID()
+    private var userId: UUID? {
+        userStore.currentUser?.id
     }
 
     var body: some View {
@@ -296,8 +296,9 @@ struct BreatheSessionView: View {
 
         let totalSeconds = selectedCycles * (4 + 7 + 8)
         Task {
+            guard let uid = userId else { return }
             await store.logBreathingSession(
-                userId: userId,
+                userId: uid,
                 cyclesCompleted: selectedCycles,
                 durationSeconds: totalSeconds
             )

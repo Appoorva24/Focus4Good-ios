@@ -1,6 +1,7 @@
 import Foundation
 import Supabase
 
+@MainActor
 @Observable
 class VolunteerStore {
 

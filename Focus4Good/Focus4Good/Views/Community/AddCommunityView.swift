@@ -133,7 +133,7 @@ struct AddCommunityView: View {
 
                 Button {
                     Task {
-                        let userId = userStore.currentUser?.id ?? UUID()
+                        guard let userId = userStore.currentUser?.id else { return }
                         
                         // Upload cover image to Supabase Storage if present
                         var uploadedCoverUrl: String?
@@ -167,7 +167,7 @@ struct AddCommunityView: View {
 
                 Spacer()
             }
-            .navigationBarTitle("Add Community")
+            .navigationTitle("Add Community")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {

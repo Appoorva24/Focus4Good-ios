@@ -82,7 +82,7 @@ struct NGOCardView: View {
                         Text("Verified")
                             .font(.system(size: 12, weight: .bold))
                     }
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(Color.green)
@@ -306,7 +306,7 @@ struct NGODetailView: View {
             } label: {
                 Text("Register as Volunteer")
                     .font(.headline)
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
                     .background(AppTheme.orange)
@@ -484,7 +484,7 @@ struct VolunteerRegistrationView: View {
                 } label: {
                     Text(isRegistered ? "Already Registered" : "Submit Registration")
                         .font(.headline)
-                        .foregroundColor(isRegistered ? AppTheme.textSecondary : .white)
+                        .foregroundStyle(isRegistered ? AppTheme.textSecondary : .white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
                         .background(isRegistered ? Color(.systemGray4) : AppTheme.orange)

@@ -21,8 +21,8 @@ struct DeepFocusBrowseView: View {
 
     private static let favouriteKey = "deep_focus_favourite"
 
-    private var userId: UUID {
-        userStore.currentUser?.id ?? UUID()
+    private var userId: UUID? {
+        userStore.currentUser?.id
     }
 
     private var remaining: TimeInterval {
@@ -293,8 +293,9 @@ struct DeepFocusBrowseView: View {
         hasStarted = false
 
         Task {
+            guard let uid = userId else { return }
             await store.logGuidedMeditationSession(
-                userId: userId,
+                userId: uid,
                 meditationName: "Guided Meditation",
                 durationSeconds: totalSessionSeconds
             )

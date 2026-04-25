@@ -1,20 +1,14 @@
 import Foundation
 
-
-//why take this : because their is multiple type of community like tech etc so it repeated 1000 times that why i take community category. 
-
 struct CommunityCategory: Identifiable, Codable, Hashable {
     var id: UUID = UUID()
     var name: String
 }
 
 // MARK: - Community
-struct Community: Identifiable, Codable, Hashable {
+struct Community: Identifiable, Hashable {
     var id: UUID = UUID()
-    var categoryId: UUID?  //reference of community category // why use id : api friendly avoid duplication and lightweight \\ also we create like category : communitycategory
-//but what if 1000 thoudand community having multiple repated community so this things happen that why use uuid 
-    //it just a copy of data not refrence that why changing category does not effect other category even having same uuid 
-    
+    var categoryId: UUID?
     var creatorId: UUID
     var name: String
     var description: String
@@ -36,15 +30,40 @@ struct Community: Identifiable, Codable, Hashable {
     }
 }
 
-// MARK: - CommunityMember
-//many to many relateionship
-// one user-> multiple community && one commmunity -> multiple user
+extension Community: Codable {
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id            = try c.decode(UUID.self, forKey: .id)
+        categoryId    = try c.decodeIfPresent(UUID.self, forKey: .categoryId)
+        creatorId     = try c.decode(UUID.self, forKey: .creatorId)
+        name          = try c.decode(String.self, forKey: .name)
+        description   = try c.decode(String.self, forKey: .description)
+        coverImageUrl = try c.decodeIfPresent(String.self, forKey: .coverImageUrl)
+        isPrivate     = try c.decode(Bool.self, forKey: .isPrivate)
+        memberCount   = try c.decode(Int.self, forKey: .memberCount)
+        createdAt     = SupabaseDateCoding.flexDecode(from: c, key: .createdAt) ?? Date()
+    }
 
-struct CommunityMember: Identifiable, Codable, Hashable {
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encodeIfPresent(categoryId, forKey: .categoryId)
+        try c.encode(creatorId, forKey: .creatorId)
+        try c.encode(name, forKey: .name)
+        try c.encode(description, forKey: .description)
+        try c.encodeIfPresent(coverImageUrl, forKey: .coverImageUrl)
+        try c.encode(isPrivate, forKey: .isPrivate)
+        try c.encode(memberCount, forKey: .memberCount)
+        try c.encode(SupabaseDateCoding.encodeTimestamp(createdAt), forKey: .createdAt)
+    }
+}
+
+// MARK: - CommunityMember
+struct CommunityMember: Identifiable, Hashable {
     var id: UUID = UUID()
     var userId: UUID
     var communityId: UUID
-    var role: String // also i use enum instead of string (for backend later)
+    var role: String
     var joinedAt: Date
 
     enum CodingKeys: String, CodingKey {
@@ -56,8 +75,28 @@ struct CommunityMember: Identifiable, Codable, Hashable {
     }
 }
 
+extension CommunityMember: Codable {
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id          = try c.decode(UUID.self, forKey: .id)
+        userId      = try c.decode(UUID.self, forKey: .userId)
+        communityId = try c.decode(UUID.self, forKey: .communityId)
+        role        = try c.decode(String.self, forKey: .role)
+        joinedAt    = SupabaseDateCoding.flexDecode(from: c, key: .joinedAt) ?? Date()
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(userId, forKey: .userId)
+        try c.encode(communityId, forKey: .communityId)
+        try c.encode(role, forKey: .role)
+        try c.encode(SupabaseDateCoding.encodeTimestamp(joinedAt), forKey: .joinedAt)
+    }
+}
+
 // MARK: - Post
-struct Post: Identifiable, Codable, Hashable {
+struct Post: Identifiable, Hashable {
     var id: UUID = UUID()
     var authorId: UUID
     var communityId: UUID
@@ -84,8 +123,37 @@ struct Post: Identifiable, Codable, Hashable {
     }
 }
 
+extension Post: Codable {
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id          = try c.decode(UUID.self, forKey: .id)
+        authorId    = try c.decode(UUID.self, forKey: .authorId)
+        communityId = try c.decode(UUID.self, forKey: .communityId)
+        content     = try c.decode(String.self, forKey: .content)
+        imageUrl    = try c.decodeIfPresent(String.self, forKey: .imageUrl)
+        hashtag     = try c.decodeIfPresent(String.self, forKey: .hashtag)
+        likeCount   = try c.decode(Int.self, forKey: .likeCount)
+        createdAt   = SupabaseDateCoding.flexDecode(from: c, key: .createdAt) ?? Date()
+        // Non-DB fields default to nil
+        authorName = nil
+        authorImageUrl = nil
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(authorId, forKey: .authorId)
+        try c.encode(communityId, forKey: .communityId)
+        try c.encode(content, forKey: .content)
+        try c.encodeIfPresent(imageUrl, forKey: .imageUrl)
+        try c.encodeIfPresent(hashtag, forKey: .hashtag)
+        try c.encode(likeCount, forKey: .likeCount)
+        try c.encode(SupabaseDateCoding.encodeTimestamp(createdAt), forKey: .createdAt)
+    }
+}
+
 // MARK: - PostLike
-struct PostLike: Identifiable, Codable, Hashable {
+struct PostLike: Identifiable, Hashable {
     var id: UUID = UUID()
     var userId: UUID
     var postId: UUID
@@ -99,8 +167,26 @@ struct PostLike: Identifiable, Codable, Hashable {
     }
 }
 
+extension PostLike: Codable {
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id        = try c.decode(UUID.self, forKey: .id)
+        userId    = try c.decode(UUID.self, forKey: .userId)
+        postId    = try c.decode(UUID.self, forKey: .postId)
+        createdAt = SupabaseDateCoding.flexDecode(from: c, key: .createdAt) ?? Date()
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(userId, forKey: .userId)
+        try c.encode(postId, forKey: .postId)
+        try c.encode(SupabaseDateCoding.encodeTimestamp(createdAt), forKey: .createdAt)
+    }
+}
+
 // MARK: - PostComment
-struct PostComment: Identifiable, Codable, Hashable {
+struct PostComment: Identifiable, Hashable {
     var id: UUID = UUID()
     var userId: UUID
     var postId: UUID
@@ -118,6 +204,28 @@ struct PostComment: Identifiable, Codable, Hashable {
         case content
         case createdAt = "created_at"
         // authorName and authorImageUrl are NOT in the DB
+    }
+}
+
+extension PostComment: Codable {
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id        = try c.decode(UUID.self, forKey: .id)
+        userId    = try c.decode(UUID.self, forKey: .userId)
+        postId    = try c.decode(UUID.self, forKey: .postId)
+        content   = try c.decode(String.self, forKey: .content)
+        createdAt = SupabaseDateCoding.flexDecode(from: c, key: .createdAt) ?? Date()
+        authorName = nil
+        authorImageUrl = nil
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(userId, forKey: .userId)
+        try c.encode(postId, forKey: .postId)
+        try c.encode(content, forKey: .content)
+        try c.encode(SupabaseDateCoding.encodeTimestamp(createdAt), forKey: .createdAt)
     }
 }
 

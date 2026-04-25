@@ -110,8 +110,7 @@ struct AddPostView: View {
 
                 Button {
                     Task {
-                        let currUser = userStore.currentUser
-                        let authorId = currUser?.id ?? UUID()
+                        guard let authorId = userStore.currentUser?.id else { return }
                         let tag = selectedHashtag == .none ? nil : selectedHashtag.rawValue
                         
                         // Upload image to Supabase Storage if present
@@ -145,7 +144,7 @@ struct AddPostView: View {
 
                 Spacer()
             }
-            .navigationBarTitle("New Post")
+            .navigationTitle("New Post")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
