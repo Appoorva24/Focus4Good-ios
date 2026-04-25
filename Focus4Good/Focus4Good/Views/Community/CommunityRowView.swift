@@ -8,13 +8,12 @@ struct CommunityRowView: View {
     @State private var showUnfollowAlert = false
     @State private var showPosts = false
 
-    private var currentUserId: UUID? {
-        userStore.currentUser?.id
+    private var currentUserId: UUID {
+        userStore.currentUser?.id ?? UUID()
     }
 
     private var isJoined: Bool {
-        guard let uid = currentUserId else { return false }
-        return communityStore.isMember(communityId: community.id, userId: uid)
+        communityStore.isMember(communityId: community.id, userId: currentUserId)
     }
 
     /// Posts belonging to this community
@@ -40,9 +39,8 @@ struct CommunityRowView: View {
             // Join button logic
             if !isJoined {
                 Button {
-                    guard let uid = currentUserId else { return }
                     Task {
-                        await communityStore.joinCommunity(community, userId: uid)
+                        await communityStore.joinCommunity(community, userId: currentUserId)
                     }
                 } label: {
                     Text("Join")
@@ -74,25 +72,15 @@ struct CommunityRowView: View {
 
     private var communityInfo: some View {
         HStack {
-            if let coverUrl = community.coverImageUrl, let url = URL(string: coverUrl) {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 40, height: 40)
-                            .clipShape(Circle())
-                    default:
-                        Image("PersonImage")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 40, height: 40)
-                            .clipShape(Circle())
-                    }
-                }
+            if let data = community.coverImageData,
+               let uiImage = UIImage(data: data) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 40, height: 40)
+                    .clipShape(Circle())
             } else {
-                Image("PersonImage")
+                Image(community.coverImageUrl ?? "personimage")
                     .resizable()
                     .scaledToFit()
                     .frame(width: 40, height: 40)
@@ -128,9 +116,8 @@ struct CommunityRowView: View {
         .alert("Unfollow Community", isPresented: $showUnfollowAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Confirm", role: .destructive) {
-                guard let uid = currentUserId else { return }
                 Task {
-                    await communityStore.leaveCommunity(community, userId: uid)
+                    await communityStore.leaveCommunity(community, userId: currentUserId)
                     selectedTab = .forYou
                 }
             }
@@ -156,13 +143,12 @@ struct CommunityDetailView: View {
         communityStore.posts(in: community)
     }
 
-    private var currentUserId: UUID? {
-        userStore.currentUser?.id
+    private var currentUserId: UUID {
+        userStore.currentUser?.id ?? UUID()
     }
 
     private var isJoined: Bool {
-        guard let uid = currentUserId else { return false }
-        return communityStore.isMember(communityId: community.id, userId: uid)
+        communityStore.isMember(communityId: community.id, userId: currentUserId)
     }
 
     var body: some View {
@@ -172,27 +158,16 @@ struct CommunityDetailView: View {
                 // MARK: - Native Profile Header
                 VStack(spacing: 12) {
                     // Avatar
-                    if let coverUrl = community.coverImageUrl, let url = URL(string: coverUrl) {
-                        AsyncImage(url: url) { phase in
-                            switch phase {
-                            case .success(let image):
-                                image
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 100, height: 100)
-                                    .clipShape(Circle())
-                                    .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
-                            default:
-                                Image("PersonImage")
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 100, height: 100)
-                                    .clipShape(Circle())
-                                    .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
-                            }
-                        }
+                    if let data = community.coverImageData,
+                       let uiImage = UIImage(data: data) {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 100, height: 100)
+                            .clipShape(Circle())
+                            .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
                     } else {
-                        Image("PersonImage")
+                        Image(community.coverImageUrl ?? "personimage")
                             .resizable()
                             .scaledToFit()
                             .frame(width: 100, height: 100)
@@ -272,9 +247,8 @@ struct CommunityDetailView: View {
                                 .multilineTextAlignment(.center)
                             
                             Button {
-                                guard let uid = currentUserId else { return }
                                 Task {
-                                    await communityStore.joinCommunity(community, userId: uid)
+                                    await communityStore.joinCommunity(community, userId: currentUserId)
                                 }
                             } label: {
                                 Text("Join")
@@ -331,9 +305,8 @@ struct CommunityDetailView: View {
                         }
                     } else {
                         Button {
-                            guard let uid = currentUserId else { return }
                             Task {
-                                await communityStore.joinCommunity(community, userId: uid)
+                                await communityStore.joinCommunity(community, userId: currentUserId)
                             }
                         } label: {
                             Image(systemName: "person.badge.plus")
@@ -345,9 +318,8 @@ struct CommunityDetailView: View {
         .alert("Leave Community", isPresented: $showLeaveAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Leave", role: .destructive) {
-                guard let uid = currentUserId else { return }
                 Task {
-                    await communityStore.leaveCommunity(community, userId: uid)
+                    await communityStore.leaveCommunity(community, userId: currentUserId)
                     selectedTab = .forYou
                     dismiss()
                 }

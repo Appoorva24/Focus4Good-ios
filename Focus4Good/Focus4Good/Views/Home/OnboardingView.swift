@@ -78,26 +78,15 @@ private struct OnboardingPageContent: View {
 
     var body: some View {
         GeometryReader { geo in
-            let imageWidth = geo.size.width - 88
-            let containerWidth = geo.size.width - 64
-
             VStack(spacing: 0) {
                 Spacer(minLength: 16)
 
                 // ── Image area ───────────────────────────────────
-                ZStack {
-                    Image(page.imageName)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: imageWidth, height: 296)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                }
-                .frame(width: containerWidth, height: 320)
-                .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color(hex: "FFF9F2"))
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 16))
+                Image(page.imageName)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 280, height: 280)
+                    .clipped()
 
             Spacer(minLength: 32)
 

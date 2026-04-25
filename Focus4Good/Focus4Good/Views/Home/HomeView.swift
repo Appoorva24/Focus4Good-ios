@@ -3,12 +3,14 @@ import SwiftUI
 enum HomeDestination: Hashable {
     case schedule
     case ngoList
+    case classroom
 }
 
 struct HomeView: View {
     @Environment(UserStore.self) private var userStore
     @Environment(TaskStore.self) private var taskStore
     @Environment(VolunteerStore.self) private var volunteerStore
+    @Environment(ClassroomStore.self) private var classroomStore
     @State private var navigationPath = NavigationPath()
     @State private var showProfile = false
 
@@ -73,6 +75,8 @@ struct HomeView: View {
                     ScheduleView()
                 case .ngoList:
                     NGOListView()
+                case .classroom:
+                    VirtualClassroomView()
                 }
             }
         }
@@ -152,7 +156,7 @@ struct HomeView: View {
                     .padding(.top, 4)
                 }
                 .padding(16)
-                .background(Color(.secondarySystemBackground))
+                .background(Color(.systemBackground))
             }
             .clipShape(RoundedRectangle(cornerRadius: 20))
             .overlay(RoundedRectangle(cornerRadius: 20).stroke(AppTheme.orange.opacity(0.4), lineWidth: 1))
@@ -178,41 +182,44 @@ struct HomeView: View {
 
     // MARK: - Virtual Classroom
     private var virtualClassroomCard: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Image("vc")
-                .resizable()
-                .scaledToFill()
-                .frame(maxWidth: .infinity)
-                .frame(height: 200)
-                .clipped()
-                .clipShape(RoundedRectangle(cornerRadius: 16))
+        Button { navigationPath.append(HomeDestination.classroom) } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                Image("vc")
+                    .resizable()
+                    .scaledToFill()
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 200)
+                    .clipped()
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
 
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(alignment: .bottom) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Virtual Classroom")
-                            .font(.headline)
-                            .foregroundStyle(AppTheme.textPrimary)
-                        Text("Complete tasks and grow your virtual class")
-                            .font(.caption)
-                            .foregroundStyle(AppTheme.textSecondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(alignment: .bottom) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Virtual Classroom")
+                                .font(.headline)
+                                .foregroundStyle(AppTheme.textPrimary)
+                            Text("\(classroomStore.unlockedItems.count)/\(classroomStore.items.count) items unlocked")
+                                .font(.caption)
+                                .foregroundStyle(AppTheme.textSecondary)
+                        }
+                        Spacer()
+                        Text("Continue")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 10)
+                            .background(Capsule().fill(AppTheme.orange))
                     }
-                    Spacer()
-                    Text("Continue")
-                        .font(.subheadline.bold())
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 10)
-                        .background(Capsule().fill(AppTheme.orange))
                 }
+                .padding(.horizontal, 4)
+                .padding(.top, 12)
             }
-            .padding(.horizontal, 4)
-            .padding(.top, 12)
+            .padding(16)
+            .background(Color(.systemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+            .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 2)
         }
-        .padding(16)
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 20))
-        .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 2)
+        .buttonStyle(.plain)
     }
 
     // MARK: - NGO Connect

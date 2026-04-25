@@ -12,6 +12,8 @@ class VolunteerStore {
     var isLoading = false
     var errorMessage: String?
 
+    
+    
     // MARK: - Computed
     func events(for ngo: NGO) -> [VolunteerEvent] {
         volunteerEvents
@@ -22,6 +24,7 @@ class VolunteerStore {
     func isRegistered(ngoId: UUID, userId: UUID) -> Bool {
         volunteerRegistrations.contains { $0.ngoId == ngoId && $0.userId == userId }
     }
+    
 
     // MARK: - Init
     static let shared = VolunteerStore()
@@ -73,6 +76,8 @@ class VolunteerStore {
             errorMessage = "Failed to load registrations: \(error.localizedDescription)"
         }
     }
+    
+    
 
     // MARK: - Register
     func registerForNGO(
