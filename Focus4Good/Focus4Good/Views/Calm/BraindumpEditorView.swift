@@ -1,27 +1,35 @@
 import SwiftUI
 
+/// This is the writing screen where you compose your brain dump notes.
 struct BraindumpEditorView: View {
+    // The folder where this note will be saved
     let folder: BrainDumpFolder
 
     @Environment(\.dismiss) private var dismiss
+    // Automatically pops up the keyboard when the screen opens
     @FocusState private var isEditorFocused: Bool
     
+    // The text currently being typed
     @State private var text = ""
+    // Controls the visibility of the "Well done!" popup
     @State private var showWellDonePopup = false
 
     @Environment(CalmCentreStore.self) private var store
     @Environment(UserStore.self) private var userStore
 
+    // Helper to get the current user's ID
     private var userId: UUID? {
         userStore.currentUser?.id
     }
 
     var body: some View {
         ZStack {
+            // Large writing area
             TextEditor(text: $text)
                 .focused($isEditorFocused)
                 .padding()
 
+            // A beautiful "Well done!" popup that shows up after you save your note
             if showWellDonePopup {
                 Color.black.opacity(0.4)
                     .ignoresSafeArea()
@@ -62,6 +70,7 @@ struct BraindumpEditorView: View {
         .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
+                // Back button
                 Button { dismiss() } label: {
                     Image(systemName: "chevron.left")
                         .fontWeight(.semibold)
@@ -69,6 +78,7 @@ struct BraindumpEditorView: View {
             }
 
             ToolbarItem(placement: .topBarTrailing) {
+                // Save button
                 Button { saveEntry() } label: {
                     Image(systemName: "checkmark")
                         .fontWeight(.semibold)
@@ -80,14 +90,20 @@ struct BraindumpEditorView: View {
         .onAppear { isEditorFocused = true }
     }
 
+    /// Saves the typed text as a new note in Supabase
     private func saveEntry() {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        isEditorFocused = false
+        
+        isEditorFocused = false // Hide keyboard
+        
         Task {
             guard let uid = userId else { return }
+            // Push the data to the backend
             await store.addBrainDumpEntry(content: trimmed, userId: uid, folderId: folder.id)
         }
+        
+        // Show the success animation
         showWellDonePopup = true
     }
 }

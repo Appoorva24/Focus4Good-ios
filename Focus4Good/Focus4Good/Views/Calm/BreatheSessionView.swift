@@ -1,64 +1,54 @@
 import SwiftUI
-import AVFoundation
 
 // MARK: - Breathing Phase
-
+/// Defines the different stages of a breathing cycle (Inhale, Hold, Exhale).
 private enum BreathingPhase: String {
-    case breatheIn  = "Breathe In"
-    case hold       = "Hold"
-    case breatheOut = "Breathe Out"
-    case idle       = "Get Ready"
+    case inhale  = "Breathe In"
+    case hold    = "Hold"
+    case exhale  = "Breathe Out"
+    case idle    = "Get Ready"
 
     var duration: Int {
         switch self {
-        case .breatheIn:  4
-        case .hold:       7
-        case .breatheOut: 8
-        case .idle:       0
+        case .inhale:  return 4
+        case .hold:    return 7
+        case .exhale:  return 8
+        case .idle:    return 0
         }
     }
 
     var next: BreathingPhase {
         switch self {
-        case .idle:       .breatheIn
-        case .breatheIn:  .hold
-        case .hold:       .breatheOut
-        case .breatheOut: .breatheIn
+        case .idle:    return .inhale
+        case .inhale:  return .hold
+        case .hold:    return .exhale
+        case .exhale:  return .inhale
         }
     }
 
     var circleScale: CGFloat {
         switch self {
-        case .breatheIn, .hold: 1.0
-        case .breatheOut, .idle: 0.5
+        case .inhale, .hold: return 1.2
+        case .exhale, .idle: return 0.85
         }
     }
 }
 
-// MARK: - Constants
-
-private let cycleOptions = Array(1...8)
-private let defaultCycles = 4
-
-// MARK: - BreatheSessionView
-
 struct BreatheSessionView: View {
-
     @Environment(CalmCentreStore.self) private var store
     @Environment(UserStore.self) private var userStore
     @Environment(\.dismiss) private var dismiss
 
-    @State private var selectedCycles = defaultCycles
-    @State private var currentCycle = 1
-    @State private var phase: BreathingPhase = .idle
-    @State private var countdown = 0
     @State private var isRunning = false
-    @State private var showCompletion = false
+    @State private var isCompleted = false
+    @State private var showExitAlert = false
+    @State private var selectedCycles = 4
+    @State private var currentCycle = 1
+    @State private var countdown = 0
     @State private var timer: Timer?
+    @State private var phase: BreathingPhase = .idle
 
-    private var userId: UUID? {
-        userStore.currentUser?.id
-    }
+    private let audio = BreatheAudioService.shared
 
     var body: some View {
         ZStack {
@@ -72,20 +62,36 @@ struct BreatheSessionView: View {
                 actionButton.padding(.bottom, 48)
             }
 
-            if showCompletion {
+            if isCompleted {
                 completionOverlay
                     .transition(.scale.combined(with: .opacity))
             }
+
+            if showExitAlert {
+                exitOverlay
+            }
         }
-        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: showCompletion)
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: isCompleted)
         .navigationTitle("Breathe")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    if isRunning {
+                        showExitAlert = true
+                    } else {
+                        dismiss()
+                    }
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .fontWeight(.semibold)
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) { cycleMenu }
         }
         .onDisappear {
-            stopTimer()
-            BreatheAudioService.shared.stopAll()
+            stopSession()
         }
     }
 
@@ -101,7 +107,7 @@ struct BreatheSessionView: View {
                 .fill(Color.accentColor.opacity(0.2))
                 .frame(width: 180, height: 180)
                 .scaleEffect(phase.circleScale)
-                .animation(.easeInOut(duration: Double(phase.duration)), value: phase)
+                .animation(.easeInOut(duration: Double(max(phase.duration, 1))), value: phase)
 
             VStack(spacing: 8) {
                 Text(phase.rawValue)
@@ -150,13 +156,12 @@ struct BreatheSessionView: View {
 
     private var cycleMenu: some View {
         Menu {
-            ForEach(cycleOptions, id: \.self) { count in
+            ForEach(1...8, id: \.self) { count in
                 Button {
                     if !isRunning { selectedCycles = count }
                 } label: {
                     HStack {
                         Text("\(count) Cycle\(count == 1 ? "" : "s")")
-                        if count == defaultCycles { Text("Recommended") }
                         if count == selectedCycles { Image(systemName: "checkmark") }
                     }
                 }
@@ -166,7 +171,6 @@ struct BreatheSessionView: View {
                 Text("\(selectedCycles)")
                     .font(.subheadline)
                     .fontWeight(.semibold)
-
                 Image(systemName: "repeat.circle.fill")
                     .font(.title3)
             }
@@ -177,23 +181,16 @@ struct BreatheSessionView: View {
 
     private var completionOverlay: some View {
         ZStack {
-            Color.black.opacity(0.4)
-                .ignoresSafeArea()
-                .onTapGesture {
-                    showCompletion = false
-                    dismiss()
-                }
-
-            VStack(spacing: 20) {
+            Color.black.opacity(0.4).ignoresSafeArea()
+            VStack(spacing: 24) {
                 Image(systemName: "checkmark.seal.fill")
                     .font(.system(size: 64))
                     .foregroundStyle(Color.accentColor)
 
                 Text("Well Done!")
-                    .font(.title2)
-                    .fontWeight(.bold)
+                    .font(.title2.bold())
 
-                Text("You completed \(selectedCycles) cycle\(selectedCycles == 1 ? "" : "s") of 4-7-8 breathing")
+                Text("You completed \(selectedCycles) rounds of deep breathing.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -203,115 +200,120 @@ struct BreatheSessionView: View {
                     .foregroundStyle(Color.accentColor)
 
                 Button {
-                    showCompletion = false
+                    isCompleted = false
                     dismiss()
                 } label: {
                     Text("Done")
                         .font(.headline)
-                        .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 48)
-                        .background(Capsule().fill(Color.accentColor))
+                        .padding()
+                        .background(Color.accentColor)
+                        .foregroundStyle(.white)
+                        .clipShape(Capsule())
                 }
-                .padding(.top, 8)
             }
             .padding(32)
-            .background(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(Color(.systemBackground))
-                    .shadow(color: .black.opacity(0.15), radius: 20, x: 0, y: 10)
-            )
+            .background(Color(.systemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 24))
             .padding(.horizontal, 40)
         }
     }
 
-    // MARK: - Session Logic
+    private var exitOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.4).ignoresSafeArea()
+            VStack(spacing: 24) {
+                VStack(spacing: 12) {
+                    Text("End Session?")
+                        .font(.title3.bold())
+                    Text("Your points won't be saved.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                HStack(spacing: 12) {
+                    Button("Keep Going") { showExitAlert = false }
+                        .buttonStyle(.bordered)
+                    Button("Yes, Exit") {
+                        stopSession()
+                        dismiss()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Color.accentColor)
+                }
+            }
+            .padding(24)
+            .background(RoundedRectangle(cornerRadius: 20).fill(Color(.systemBackground)))
+            .padding(40)
+        }
+    }
+
+    // MARK: - Logic
 
     private func startSession() {
+        isRunning = true
+        isCompleted = false
         currentCycle = 1
-        BreatheAudioService.shared.speakIntro(cycles: selectedCycles)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [self] in
-            startPhase(.breatheIn)
-            isRunning = true
+        phase = .idle
+        audio.speakIntro(cycles: selectedCycles)
+        audio.onSpeechFinished = {
+            audio.onSpeechFinished = nil
+            startNewPhase(.inhale)
         }
     }
 
     private func stopSession() {
-        stopTimer()
-        BreatheAudioService.shared.stopAll()
-        phase = .idle
-        countdown = 0
+        timer?.invalidate()
+        timer = nil
+        audio.stopAll()
         isRunning = false
-        currentCycle = 1
+        phase = .idle
     }
 
-    private func startPhase(_ newPhase: BreathingPhase) {
+    private func startNewPhase(_ newPhase: BreathingPhase) {
         phase = newPhase
         countdown = newPhase.duration
-        BreatheAudioService.shared.speakPhase(
-            newPhase.rawValue, cycle: currentCycle, totalCycles: selectedCycles
-        )
+        audio.speakPhase(newPhase.rawValue, cycle: currentCycle, totalCycles: selectedCycles)
         startTimer()
     }
 
     private func startTimer() {
-        stopTimer()
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in tick() }
-    }
-
-    private func stopTimer() {
         timer?.invalidate()
-        timer = nil
-    }
-
-    private func tick() {
-        guard countdown > 1 else {
-            advancePhase()
-            return
+        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+            if countdown > 1 {
+                countdown -= 1
+            } else {
+                if audio.isSpeaking { return }
+                advancePhase()
+            }
         }
-        countdown -= 1
     }
 
     private func advancePhase() {
-        let next = phase.next
-
-        if phase == .breatheOut {
-            if currentCycle >= selectedCycles {
-                completeSession()
-                return
+        if phase == .exhale {
+            if currentCycle < selectedCycles {
+                currentCycle += 1
+                audio.speakCycleTransition(currentCycle: currentCycle, totalCycles: selectedCycles)
+                timer?.invalidate()
+                audio.onSpeechFinished = {
+                    audio.onSpeechFinished = nil
+                    startNewPhase(.inhale)
+                }
+            } else {
+                finishSession()
             }
-            BreatheAudioService.shared.speakCycleTransition(
-                currentCycle: currentCycle, totalCycles: selectedCycles
-            )
-            currentCycle += 1
+        } else {
+            startNewPhase(phase.next)
         }
-
-        startPhase(next)
     }
 
-    private func completeSession() {
-        stopTimer()
-        isRunning = false
-        BreatheAudioService.shared.speakCompletion(cycles: selectedCycles)
-
-        let totalSeconds = selectedCycles * (4 + 7 + 8)
-        Task {
-            guard let uid = userId else { return }
-            await store.logBreathingSession(
-                userId: uid,
-                cyclesCompleted: selectedCycles,
-                durationSeconds: totalSeconds
-            )
+    private func finishSession() {
+        stopSession()
+        isCompleted = true
+        audio.speakCompletion(cycles: selectedCycles)
+        if let userId = userStore.currentUser?.id {
+            Task {
+                await store.logBreathingSession(userId: userId, cyclesCompleted: selectedCycles, durationSeconds: selectedCycles * 19)
+            }
         }
-
-        showCompletion = true
-    }
-}
-
-#Preview {
-    NavigationStack {
-        BreatheSessionView()
-            .environment(CalmCentreStore.shared)
-            .environment(UserStore.shared)
     }
 }

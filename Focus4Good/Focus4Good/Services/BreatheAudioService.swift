@@ -1,31 +1,40 @@
 @preconcurrency import AVFoundation
 
-//BreatheAudioService
-
-/// Provides a full guided breathing experience using AVSpeechSynthesizer
-/// with a gentle, calming female voice.
-
-@MainActor                  //base class.      //delegate protocol - tells when speech event is happening
+/// This service handles the voice guidance for the Breathing session.
+/// It uses high-quality text-to-speech to guide the user through Inhaling, Holding, and Exhaling.
+@MainActor
 class BreatheAudioService: NSObject, AVSpeechSynthesizerDelegate {
 
     static let shared = BreatheAudioService()
 
+    /// A callback that is triggered when the AI finishes speaking a sentence.
+    /// Used by the UI to wait before moving to the next breathing phase.
+    var onSpeechFinished: (() -> Void)?
 
-    //synthesizer - takes any text and convert that into speech
+    // MARK: - Private State
     private let synthesizer = AVSpeechSynthesizer()
     private var selectedVoice: AVSpeechSynthesisVoice?
 
     private override init() {
         super.init()
         synthesizer.delegate = self
+        // Try to pick a gentle female voice for a more relaxing experience
         selectedVoice = pickFemaleVoice()
     }
 
-    //Voice Selection
+    // MARK: - AVSpeechSynthesizerDelegate
 
-    /// Pick the best available female voice for a calm, gentle experience.
+    /// This is called automatically by iOS when a voice instruction finishes.
+    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
+        Task { @MainActor in
+            self.onSpeechFinished?()
+        }
+    }
+
+    // MARK: - Voice Selection
+
+    /// Attempts to find premium, high-quality female voices like "Zoe" or "Ava".
     private func pickFemaleVoice() -> AVSpeechSynthesisVoice? {
-        // Preferred female voices in priority order (premium → enhanced → default)
         let preferred: [String] = [
             "com.apple.voice.premium.en-US.Zoe",
             "com.apple.voice.premium.en-US.Ava",
@@ -42,13 +51,13 @@ class BreatheAudioService: NSObject, AVSpeechSynthesizerDelegate {
             }
         }
 
-        // Fallback: pick any English female voice, or default English
+        // Fallback to default US English if no premium voice is found
         return AVSpeechSynthesisVoice(language: "en-US")
     }
 
-    // Full Guided Experience
+    // MARK: - Guided Instructions
 
-    /// Welcome and settle the user before the session begins.
+    /// Welcome message when starting the session.
     func speakIntro(cycles: Int) {
         configureAudioSession()
         let text = "Welcome to your breathing space. "
@@ -60,7 +69,7 @@ class BreatheAudioService: NSObject, AVSpeechSynthesizerDelegate {
         speakCalm(text)
     }
 
-    /// Guide the user through each breathing phase.
+    /// Tells the user whether to Inhale, Hold, or Exhale.
     func speakPhase(_ phaseName: String, cycle: Int, totalCycles: Int) {
         configureAudioSession()
 
@@ -87,7 +96,7 @@ class BreatheAudioService: NSObject, AVSpeechSynthesizerDelegate {
         speakCalm(text)
     }
 
-    /// Announce the transition between cycles.
+    /// Announce the transition to the next cycle.
     func speakCycleTransition(currentCycle: Int, totalCycles: Int) {
         configureAudioSession()
         let remaining = totalCycles - currentCycle
@@ -101,7 +110,7 @@ class BreatheAudioService: NSObject, AVSpeechSynthesizerDelegate {
         speakCalm(text)
     }
 
-    /// Speak a calming completion message.
+    /// Final success message when the session is complete.
     func speakCompletion(cycles: Int) {
         configureAudioSession()
         let text = "You did it. \(cycles) \(cycles == 1 ? "round" : "rounds") complete. "
@@ -111,36 +120,45 @@ class BreatheAudioService: NSObject, AVSpeechSynthesizerDelegate {
         speakCalm(text)
     }
 
-    /// Stop all speech immediately.
+    // MARK: - Status & Control
+
+    /// Returns true if the AI is currently talking.
+    var isSpeaking: Bool {
+        synthesizer.isSpeaking
+    }
+
+    /// Stops all speech immediately and clears the audio session.
     func stopAll() {
+        onSpeechFinished = nil
         synthesizer.stopSpeaking(at: .immediate)
         try? AVAudioSession.sharedInstance().setActive(
             false, options: .notifyOthersOnDeactivation
         )
     }
 
-    /// Speak with a gentle, calming delivery.
+    // MARK: - Private Helpers
+
+    /// Starts speaking a text with a meditative, slow delivery.
     private func speakCalm(_ text: String) {
         if synthesizer.isSpeaking {
-            synthesizer.stopSpeaking(at: .immediate)
+            synthesizer.stopSpeaking(at: .word) // Stop naturally at the end of the current word
         }
 
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = selectedVoice
-        utterance.rate = 0.38              // Very slow, meditative pace
-        utterance.pitchMultiplier = 1.05   // Slightly higher for a softer feel
+        utterance.rate = 0.38 // Very slow pace for breathing
+        utterance.pitchMultiplier = 1.05
         utterance.volume = 0.85
         utterance.preUtteranceDelay = 0.3
-        utterance.postUtteranceDelay = 0.5 // Pause after each phrase
+        utterance.postUtteranceDelay = 0.5
 
         synthesizer.speak(utterance)
     }
 
-
-    // managing phone's volume
+    /// Configures the phone's audio session to allow playback (even on silent) and dim other background music.
     private func configureAudioSession() {
-        let session = AVAudioSession.sharedInstance() // app ko audio play karne ke liye is se permission leni padti hai
-        try? session.setCategory(.playback, mode: .default, options: [.duckOthers])// agar koi spotify use kar raha hai to uski volume kam ho jayegi
-        try? session.setActive(true) //iske bina song play ni hoga
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(.playback, mode: .default, options: [.duckOthers])
+        try? session.setActive(true)
     }
 }

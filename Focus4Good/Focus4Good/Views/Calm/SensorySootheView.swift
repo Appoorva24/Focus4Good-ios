@@ -1,41 +1,23 @@
 import SwiftUI
 
-// MARK: - Sound Card Data
-
-private struct ASMRSoundEntry: Identifiable {
-    let id = UUID()
-    let name: String
-    let subtitle: String
-    let imageName: String
-    let category: String
-    let durationSeconds: Int
-}
-
-private let soundEntries: [ASMRSoundEntry] = [
-    .init(name: "Soft Rain",   subtitle: "Light Drizzle",         imageName: "asmr_softrain",   category: "Rain",        durationSeconds: 600),
-    .init(name: "Typing",      subtitle: "Mechanical clicks",     imageName: "asmr_typing",     category: "Ambient",     durationSeconds: 600),
-    .init(name: "Crinkling",   subtitle: "Crisp and dry sounds",  imageName: "asmr_crinkling",  category: "Nature",      durationSeconds: 600),
-    .init(name: "Tapping",     subtitle: "Gentle surface touch",  imageName: "asmr_tapping",    category: "Ambient",     durationSeconds: 600),
-    .init(name: "White Noise", subtitle: "Background hum",        imageName: "asmr_whitenoise", category: "White Noise", durationSeconds: 600),
-    .init(name: "Forest",      subtitle: "Rustling leaves",       imageName: "asmr_forest",     category: "Nature",      durationSeconds: 600),
-]
-
 // MARK: - SensorySootheView
-
+/// This view displays a list of ASMR sounds fetched from Supabase.
 struct SensorySootheView: View {
 
     @Environment(CalmCentreStore.self) private var store
+    @Environment(UserStore.self) private var userStore
 
-    @State private var showPlayer = false
+    // Tracks which sound is currently selected to show in the player sheet
     @State private var selectedSound: AsmrSound?
-    @State private var favouriteNames: Set<String> = []
-
-    private static let favouritesKey = "asmr_favourite_names"
 
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
-                heroBanner
+                // Search for 'Nature & Calm' to be the hero, otherwise use the first sound
+                if let hero = store.asmrSounds.first(where: { $0.name == "Nature & Calm" }) ?? store.asmrSounds.first {
+                    heroBanner(for: hero)
+                }
+                // Show the vertical list of all sounds
                 soundList
             }
             .padding(.horizontal, 16)
@@ -45,56 +27,54 @@ struct SensorySootheView: View {
         .background(Color(.systemGroupedBackground))
         .navigationTitle("ASMR Sounds")
         .navigationBarTitleDisplayMode(.large)
-        .onAppear { loadFavourites() }
-        .sheet(isPresented: $showPlayer) {
-            if let sound = selectedSound {
-                ASMRPlayerView(
-                    sound: sound,
-                    isFavourite: favouriteNames.contains(sound.name),
-                    onToggleFavourite: { toggleFavourite(sound.name) }
-                )
-                .environment(store)
-                .presentationDragIndicator(.visible)
+        .onAppear { 
+            // When the screen opens, fetch the sounds and the user's favorites from Supabase
+            Task {
+                await store.fetchAsmrSounds()
+                if let userId = userStore.currentUser?.id {
+                    await store.fetchFavouriteAsmrSounds(userId: userId)
+                }
             }
         }
-    }
-
-    private func loadFavourites() {
-        if let saved = UserDefaults.standard.stringArray(forKey: Self.favouritesKey) {
-            favouriteNames = Set(saved)
+        // Opens the ASMR player as a slide-up sheet when a sound is selected
+        .sheet(item: $selectedSound) { sound in
+            ASMRPlayerView(
+                sound: sound,
+                isFavourite: store.favouriteAsmrSoundIds.contains(sound.id),
+                onToggleFavourite: {
+                    // Update the favorite status in Supabase when the heart icon is tapped
+                    if let userId = userStore.currentUser?.id {
+                        Task { await store.toggleAsmrFavourite(soundId: sound.id, userId: userId) }
+                    }
+                }
+            )
+            .environment(store)
+            .presentationDragIndicator(.visible)
         }
-    }
-
-    private func toggleFavourite(_ name: String) {
-        if favouriteNames.contains(name) {
-            favouriteNames.remove(name)
-        } else {
-            favouriteNames.insert(name)
-        }
-        UserDefaults.standard.set(Array(favouriteNames), forKey: Self.favouritesKey)
     }
 
     // MARK: - Subviews
 
-    private var heroBanner: some View {
+    /// Creates a large, beautiful banner for the featured sound
+    private func heroBanner(for sound: AsmrSound) -> some View {
         Button {
-            selectedSound = AsmrSound(
-                name: "Nature & Calm",
-                description: "Recommended for Focus",
-                category: "Nature",
-                audioUrl: "",
-                imageUrl: "asmr_hero",
-                durationSeconds: 900
-            )
-            showPlayer = true
+            selectedSound = sound
         } label: {
             ZStack(alignment: .bottomLeading) {
-                Image("asmr_hero")
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(height: 180)
-                    .clipped()
+                // Fetch the image from the URL provided by the backend
+                AsyncImage(url: URL(string: sound.imageUrl)) { image in
+                    image.resizable().aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    // Fallback to local asset if URL fails
+                    Image(sound.imageUrl)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .background(Color.gray.opacity(0.2))
+                }
+                .frame(height: 180)
+                .clipped()
 
+                // Gradient overlay to make the white text readable on bright images
                 LinearGradient(
                     colors: [.clear, .black.opacity(0.5)],
                     startPoint: .center,
@@ -102,12 +82,12 @@ struct SensorySootheView: View {
                 )
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Nature & Calm")
+                    Text(sound.name)
                         .font(.title3)
                         .fontWeight(.bold)
                         .foregroundStyle(.white)
 
-                    Text("Recommended for Focus")
+                    Text("Featured Selection")
                         .font(.caption)
                         .foregroundStyle(.white.opacity(0.85))
                 }
@@ -119,45 +99,62 @@ struct SensorySootheView: View {
         .buttonStyle(.plain)
     }
 
+    /// The list of all sound rows
     private var soundList: some View {
         VStack(spacing: 12) {
-            ForEach(soundEntries) { entry in
-                soundRow(entry)
+            ForEach(store.asmrSounds) { sound in
+                soundRow(sound)
+            }
+            
+            // Show a simple message if no sounds were found in the database
+            if store.asmrSounds.isEmpty && !store.isLoading {
+                ContentUnavailableView("No Sounds Found", systemImage: "speaker.slash", description: Text("Check back later for new ASMR recordings."))
+                    .padding(.top, 40)
             }
         }
     }
 
-    private func soundRow(_ entry: ASMRSoundEntry) -> some View {
+    /// A single row for an ASMR sound with its thumbnail and title
+    private func soundRow(_ sound: AsmrSound) -> some View {
         Button {
-            selectedSound = AsmrSound(
-                name: entry.name,
-                description: entry.subtitle,
-                category: entry.category,
-                audioUrl: "",
-                imageUrl: entry.imageName,
-                durationSeconds: entry.durationSeconds
-            )
-            showPlayer = true
+            selectedSound = sound
         } label: {
             HStack(spacing: 14) {
-                Image(entry.imageName)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 60, height: 60)
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                // Sound Thumbnail from Supabase URL
+                AsyncImage(url: URL(string: sound.imageUrl)) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    // Fallback to local image if URL is missing
+                    Image(sound.imageUrl)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .background(Color(.systemGray6))
+                }
+                .frame(width: 60, height: 60)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(entry.name)
+                    Text(sound.name)
                         .font(.body)
                         .fontWeight(.semibold)
                         .foregroundStyle(.primary)
 
-                    Text(entry.subtitle)
+                    Text(sound.description)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
 
                 Spacer()
+
+                // Show a small heart if this sound is a user favorite
+                if store.favouriteAsmrSoundIds.contains(sound.id) {
+                    Image(systemName: "heart.fill")
+                        .font(.caption2)
+                        .foregroundStyle(Color.accentColor)
+                }
 
                 Image(systemName: "chevron.right")
                     .font(.caption)

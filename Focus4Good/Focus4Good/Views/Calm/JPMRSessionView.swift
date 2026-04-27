@@ -10,51 +10,13 @@ private struct MuscleStep {
     let releaseNote: String
 }
 
+/// The list of the 4 primary muscle groups for a focused JPMR session.
 private let allSteps: [MuscleStep] = [
-    .init(groupNumber: 1,  name: "Feet",            icon: "figure.walk",                       tenseInstruction: "Curl your toes downward tightly",                     releaseNote: "Feel the relaxation spread through your feet"),
-    .init(groupNumber: 2,  name: "Calves",           icon: "figure.run",                        tenseInstruction: "Pull your toes toward your shins, tensing your calves", releaseNote: "Let the tension flow out of your calves"),
-    .init(groupNumber: 3,  name: "Thighs",           icon: "figure.strengthtraining.traditional", tenseInstruction: "Squeeze your thigh muscles tightly together",          releaseNote: "Feel your thighs go heavy and relaxed"),
-    .init(groupNumber: 4,  name: "Hips & Buttocks",  icon: "figure.cooldown",                   tenseInstruction: "Clench your gluteal muscles",                          releaseNote: "Let your hips sink and soften"),
-    .init(groupNumber: 5,  name: "Abdomen",          icon: "figure.core.training",              tenseInstruction: "Suck your stomach in and tighten your core",            releaseNote: "Let your belly go completely soft"),
-    .init(groupNumber: 6,  name: "Chest",            icon: "lungs.fill",                        tenseInstruction: "Take a deep breath and hold, tensing your chest",        releaseNote: "Exhale and feel your breathing slow naturally"),
-    .init(groupNumber: 7,  name: "Hands & Forearms", icon: "hand.raised.fill",                  tenseInstruction: "Make tight fists with both hands",                      releaseNote: "Let your fingers go completely limp"),
-    .init(groupNumber: 8,  name: "Upper Arms",       icon: "figure.arms.open",                  tenseInstruction: "Bend your elbows and flex your biceps hard",             releaseNote: "Let your arms fall heavy by your sides"),
-    .init(groupNumber: 9,  name: "Shoulders",        icon: "figure.stand",                      tenseInstruction: "Shrug your shoulders up toward your ears",               releaseNote: "Let them drop completely"),
-    .init(groupNumber: 10, name: "Neck",             icon: "person.crop.circle",                tenseInstruction: "Gently press the back of your head into the surface",    releaseNote: "Release and feel your neck lengthen"),
-    .init(groupNumber: 11, name: "Forehead",         icon: "face.smiling",                      tenseInstruction: "Raise your eyebrows as high as possible",                releaseNote: "Let your forehead go smooth"),
-    .init(groupNumber: 11, name: "Eyes",             icon: "eye.fill",                          tenseInstruction: "Squeeze your eyes shut tightly",                         releaseNote: "Let your eyelids rest gently"),
-    .init(groupNumber: 11, name: "Jaw",              icon: "face.smiling",                      tenseInstruction: "Clench your teeth and tighten your jaw",                 releaseNote: "Let your mouth hang slightly open"),
+    .init(groupNumber: 1, name: "Feet & Legs", icon: "figure.walk", tenseInstruction: "Curl your toes downward and tense your legs", releaseNote: "Feel the relaxation spread through your lower body"),
+    .init(groupNumber: 2, name: "Abdomen & Core", icon: "figure.core.training", tenseInstruction: "Suck your stomach in and tighten your core", releaseNote: "Let your belly go completely soft"),
+    .init(groupNumber: 3, name: "Hands & Arms", icon: "hand.raised.fill", tenseInstruction: "Make tight fists and flex your arms", releaseNote: "Let your fingers and arms go completely limp"),
+    .init(groupNumber: 4, name: "Shoulders & Neck", icon: "figure.stand", tenseInstruction: "Shrug your shoulders up toward your ears", releaseNote: "Let them drop completely and feel the tension leave your neck"),
 ]
-
-// MARK: - Presets
-
-private enum SessionPreset: CaseIterable {
-    case quick, standard, full
-
-    var label: String {
-        switch self {
-        case .quick:    "Quick"
-        case .standard: "Standard"
-        case .full:     "Full Body"
-        }
-    }
-
-    var detail: String {
-        switch self {
-        case .quick:    "4 key areas"
-        case .standard: "7 groups"
-        case .full:     "All 11"
-        }
-    }
-
-    var groups: Set<Int> {
-        switch self {
-        case .quick:    [5, 7, 9, 11]
-        case .standard: [1, 3, 5, 7, 8, 9, 11]
-        case .full:     Set(1...11)
-        }
-    }
-}
 
 // MARK: - Session Stage
 
@@ -120,10 +82,10 @@ struct JPMRSessionView: View {
     @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
 
-    // Replace this URL with your chosen JPMR guided YouTube video
+    // Link to the external guided video
     private let youtubeVideoURL = "https://youtu.be/ihO02wUzgkc?si=sUTR2YkGJeIRck8i"
 
-    @State private var selectedGroups: Set<Int> = SessionPreset.quick.groups
+    // MARK: - State
     @State private var stage: SessionStage = .idle
     @State private var countdown      = 0
     @State private var stepIndex      = 0
@@ -133,7 +95,7 @@ struct JPMRSessionView: View {
     @State private var elapsedSeconds = 0
     @State private var timer: Timer?
 
-    // Video session tracking
+    // Tracks if the user is watching the external video
     @State private var pendingVideoCompletion = false
     @State private var showVideoCompletionAlert = false
     @State private var isVideoCompletion = false
@@ -142,11 +104,10 @@ struct JPMRSessionView: View {
         userStore.currentUser?.id
     }
 
-    private var activeSteps: [MuscleStep] {
-        allSteps.filter { selectedGroups.contains($0.groupNumber) }
-    }
+    // Now simply uses the 4 focused steps
+    private var activeSteps: [MuscleStep] { allSteps }
 
-    private var activeGroupsSorted: [Int] { selectedGroups.sorted() }
+    private var activeGroupsSorted: [Int] { allSteps.map { $0.groupNumber } }
 
     private var currentStep: MuscleStep {
         activeSteps[min(stepIndex, max(activeSteps.count - 1, 0))]
@@ -154,10 +115,6 @@ struct JPMRSessionView: View {
 
     private var currentEnding: EndingStep {
         EndingStep(rawValue: min(endingIndex, EndingStep.allCases.count - 1)) ?? .deepBreaths
-    }
-
-    private var activePreset: SessionPreset? {
-        SessionPreset.allCases.first { $0.groups == selectedGroups }
     }
 
     var body: some View {
@@ -186,6 +143,7 @@ struct JPMRSessionView: View {
         }
         .onDisappear {
             stopTimer()
+            JPMRAudioService.shared.onSpeechFinished = nil
             JPMRAudioService.shared.stopAll()
         }
         .onChange(of: scenePhase) { _, newPhase in
@@ -194,13 +152,62 @@ struct JPMRSessionView: View {
                 showVideoCompletionAlert = true
             }
         }
-        .alert("Video Session Complete?", isPresented: $showVideoCompletionAlert) {
-            Button("Yes, I completed it") {
-                completeVideoSession()
+        .overlay {
+            if showVideoCompletionAlert {
+                ZStack {
+                    Color.black.opacity(0.4)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            showVideoCompletionAlert = false
+                        }
+
+                    VStack(spacing: 20) {
+                        Text("Video Session Complete?")
+                            .font(.title3)
+                            .fontWeight(.bold)
+                            .foregroundStyle(.black)
+
+                        Text("Did you complete the full JPMR guided video?")
+                            .font(.subheadline)
+                            .foregroundStyle(.black.opacity(0.7))
+                            .multilineTextAlignment(.center)
+
+                        HStack(spacing: 16) {
+                            Button {
+                                showVideoCompletionAlert = false
+                            } label: {
+                                Text("Not yet")
+                                    .font(.headline)
+                                    .foregroundStyle(.black.opacity(0.6))
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 48)
+                                    .background(Capsule().fill(Color(.systemGray5)))
+                            }
+
+                            Button {
+                                showVideoCompletionAlert = false
+                                completeVideoSession()
+                            } label: {
+                                Text("Yes, I did!")
+                                    .font(.headline)
+                                    .foregroundStyle(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 48)
+                                    .background(Capsule().fill(Color.accentColor))
+                            }
+                        }
+                    }
+                    .padding(28)
+                    .background(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .fill(Color(.systemBackground))
+                            .shadow(color: .black.opacity(0.15), radius: 20, x: 0, y: 10)
+                    )
+                    .padding(.horizontal, 36)
+                }
+                .transition(.opacity)
+                .animation(.easeInOut(duration: 0.25), value: showVideoCompletionAlert)
             }
-            Button("Not yet", role: .cancel) { }
-        } message: {
-            Text("Did you complete the full JPMR guided video?")
         }
     }
 
@@ -319,7 +326,7 @@ struct JPMRSessionView: View {
         VStack(spacing: 12) {
             if stage == .tensing || stage == .resting {
                 let groupIndex = (activeGroupsSorted.firstIndex(of: currentStep.groupNumber) ?? 0) + 1
-                Text("Group \(groupIndex) of \(selectedGroups.count)")
+                Text("Group \(groupIndex) of \(allSteps.count)")
                     .font(.subheadline)
                     .fontWeight(.medium)
                     .foregroundStyle(.secondary)
@@ -332,7 +339,7 @@ struct JPMRSessionView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             } else {
-                Text("\(selectedGroups.count) group\(selectedGroups.count == 1 ? "" : "s") selected")
+                Text("\(allSteps.count) Relaxation steps")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -360,16 +367,15 @@ struct JPMRSessionView: View {
         return Color(.systemGray4)
     }
 
+    /// The menu button in the top bar
     private var sessionMenu: some View {
         Menu {
             Button {
-                selectedGroups = SessionPreset.quick.groups
+                // Already using 4 groups, but keeping the button for UI consistency
             } label: {
                 HStack {
                     Text("4 Key Areas")
-                    if selectedGroups == SessionPreset.quick.groups {
-                        Image(systemName: "checkmark")
-                    }
+                    Image(systemName: "checkmark")
                 }
             }
 
@@ -385,14 +391,13 @@ struct JPMRSessionView: View {
                 }
             }
         } label: {
-            HStack(spacing: 4) {
-                Image(systemName: "figure.mind.and.body")
-                    .font(.title3)
-            }
-            .foregroundStyle(Color.accentColor)
+            Image(systemName: "figure.mind.and.body")
+                .font(.title3)
+                .foregroundStyle(Color.accentColor)
         }
     }
 
+    /// The start/stop toggle button
     private var actionButton: some View {
         Button {
             isRunning ? stopSession() : startSession()
@@ -404,7 +409,6 @@ struct JPMRSessionView: View {
                 .background(Capsule().fill(isRunning ? Color(.systemGray3) : Color.accentColor))
                 .shadow(color: (isRunning ? Color.clear : Color.accentColor.opacity(0.3)), radius: 8, x: 0, y: 4)
         }
-        .disabled(selectedGroups.isEmpty)
     }
 
     private var completionOverlay: some View {
@@ -428,7 +432,7 @@ struct JPMRSessionView: View {
 
                 Text(isVideoCompletion
                      ? "You completed the full JPMR guided video session"
-                     : "You completed \(selectedGroups.count) muscle group\(selectedGroups.count == 1 ? "" : "s") of progressive relaxation")
+                     : "You completed the 4 primary groups of progressive relaxation")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -464,7 +468,7 @@ struct JPMRSessionView: View {
     // MARK: - Session Logic
 
     private func startSession() {
-        guard !selectedGroups.isEmpty else { return }
+        guard !allSteps.isEmpty else { return }
         stepIndex = 0
         endingIndex = 0
         elapsedSeconds = 0
@@ -474,6 +478,7 @@ struct JPMRSessionView: View {
 
     private func stopSession() {
         stopTimer()
+        JPMRAudioService.shared.onSpeechFinished = nil
         JPMRAudioService.shared.stopAll()
         stage = .idle
         countdown = 0
@@ -486,7 +491,7 @@ struct JPMRSessionView: View {
     private func enterPreparation() {
         stage = .preparation
         countdown = prepDuration
-        JPMRAudioService.shared.speakPreparation(groupCount: selectedGroups.count)
+        JPMRAudioService.shared.speakPreparation(groupCount: allSteps.count)
         startTimer()
     }
 
@@ -529,12 +534,18 @@ struct JPMRSessionView: View {
     private func tick() {
         elapsedSeconds += 1
         guard countdown > 1 else {
+            // If the AI is still speaking, give it extra time to finish the sentence
+            if JPMRAudioService.shared.isSpeaking {
+                countdown = 2
+                return
+            }
             advance()
             return
         }
         countdown -= 1
     }
 
+    /// Moves the session to the next stage (e.g. from Tense to Rest)
     private func advance() {
         switch stage {
         case .preparation:
@@ -545,25 +556,31 @@ struct JPMRSessionView: View {
             enterRest()
 
         case .resting:
+            // If we finished the last group, move to the ending breaths/scan
             if stepIndex >= activeSteps.count - 1 {
                 enterEnding()
             } else {
+                // Otherwise, transition to the next muscle group
                 stopTimer()
                 let nextIndex = stepIndex + 1
                 let nextStep = activeSteps[nextIndex]
-                let groupIndex = (activeGroupsSorted.firstIndex(of: nextStep.groupNumber) ?? 0) + 1
+                
                 JPMRAudioService.shared.speakGroupTransition(
                     nextName: nextStep.name,
-                    currentIndex: groupIndex,
-                    totalGroups: selectedGroups.count
+                    currentIndex: nextIndex + 1,
+                    totalGroups: allSteps.count
                 )
+                
                 stepIndex = nextIndex
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [self] in
+                // Wait for the AI to finish the transition before starting the 'Tense' phase
+                JPMRAudioService.shared.onSpeechFinished = { [self] in
+                    JPMRAudioService.shared.onSpeechFinished = nil
                     enterTense()
                 }
             }
 
         case .ending:
+            // If we finished all ending steps, complete the session
             if endingIndex >= EndingStep.allCases.count - 1 {
                 completeSession()
             } else {
@@ -576,12 +593,13 @@ struct JPMRSessionView: View {
         }
     }
 
+    /// Finalizes the session and speaks the completion message.
     private func completeSession() {
         stopTimer()
         isRunning = false
         stage = .complete
 
-        JPMRAudioService.shared.speakCompletion(groupCount: selectedGroups.count)
+        JPMRAudioService.shared.speakCompletion(groupCount: allSteps.count)
 
         Task {
             guard let uid = userId else { return }

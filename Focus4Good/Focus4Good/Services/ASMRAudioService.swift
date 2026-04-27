@@ -1,108 +1,107 @@
 @preconcurrency import AVFoundation
 
-//Sound-to-File Mapping
-
-// Maps display names to their actual bundle file names (without extension).
-private let soundFileMapping: [String: String] = [
-    "Soft Rain":       "softrainasmr",
-    "Typing":          "Keyboardtypingasmr",
-    "Crinkling":       "crinkling",
-    "Tapping":         "tapping",
-    "White Noise":     "whitenoise",
-    "Forest":          "forest",
-    "Nature & Calm":   "natureAndCalm",
-]
-
-// ASMRAudioService
-
-// @MainActor ensures that all UI updates happen on the main thread
+/// This service handles the actual audio playback for ASMR sounds.
+/// It can stream audio from Supabase or play files stored locally in the app.
 @MainActor
 class ASMRAudioService {
-
-
-    //prevents two different sounds from playing at the same time
+    // Singleton instance to ensure only one sound plays at a time
     static let shared = ASMRAudioService()
 
-    private var audioPlayer: AVAudioPlayer?
+    private var player: AVPlayer?
+    private var timeObserver: Any?
+    
     private(set) var isPlaying = false
-
+    private(set) var duration: TimeInterval = 0
+    
     private init() {}
 
+    /// Starts playing a sound. It automatically decides whether to stream from Supabase or use a local file.
+    func play(sound: AsmrSound) {
+        stop() // Stop any currently playing sound
 
-    func play(soundName: String) {
-
-        //kills currently playing audio
-        stop()
-
-        // Configure audio session
+        // Set up the audio session so it can play even if the phone is on silent
         let session = AVAudioSession.sharedInstance()
-        try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers]) //sound plays if app goes to background
+        try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
         try? session.setActive(true)
 
-        // Look up the file name from the mapping
-        let fileName = soundFileMapping[soundName] ?? soundName
-
-        // Try to find the audio file in the bundle
-        guard let url = Bundle.main.url(forResource: fileName, withExtension: "mp3") else {
-            print("ASMRAudioService: could not find \(fileName).mp3 in bundle")
-            return
+        let playerItem: AVPlayerItem
+        
+        // Check if the sound has a valid web URL (Supabase Storage)
+        if let url = URL(string: sound.audioUrl), url.scheme != nil {
+            playerItem = AVPlayerItem(url: url)
+        } else {
+            // Fallback: look for a local .mp3 file with the same name in the app bundle
+            guard let bundleUrl = Bundle.main.url(forResource: sound.audioUrl, withExtension: "mp3") ?? 
+                    Bundle.main.url(forResource: sound.name, withExtension: "mp3") else {
+                print("ASMRAudioService: could not find audio in bundle for \(sound.name)")
+                return
+            }
+            playerItem = AVPlayerItem(url: bundleUrl)
         }
 
-
-        //starting the player
-        do {
-            audioPlayer = try AVAudioPlayer(contentsOf: url)
-            audioPlayer?.numberOfLoops = 0  // Play once (timer controls end)
-            audioPlayer?.volume = 0.5
-            audioPlayer?.prepareToPlay()
-            audioPlayer?.play()
-            isPlaying = true
-        } catch {
-            print("ASMRAudioService: failed to play — \(error)")
+        // Initialize the player with the chosen audio source
+        player = AVPlayer(playerItem: playerItem)
+        
+        // Listen for when the sound finishes playing
+        NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: playerItem, queue: .main) { [weak self] _ in
+            Task { @MainActor in
+                self?.isPlaying = false
+            }
         }
+        
+        // Track the current playback progress (every 0.5 seconds)
+        let interval = CMTime(seconds: 0.5, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
+        timeObserver = player?.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
+            // Use Task to safely jump back to the MainActor before updating state
+            Task { @MainActor in
+                guard let self = self else { return }
+                if let currentItem = self.player?.currentItem {
+                    let dur = CMTimeGetSeconds(currentItem.duration)
+                    if dur.isFinite {
+                        self.duration = dur
+                    }
+                }
+            }
+        }
+
+        player?.play()
+        isPlaying = true
     }
 
     func pause() {
-        audioPlayer?.pause()
+        player?.pause()
         isPlaying = false
     }
 
     func resume() {
-        audioPlayer?.play()
+        player?.play()
         isPlaying = true
     }
 
+    /// Completely stops the player and clears memory
     func stop() {
-        audioPlayer?.stop()
-        audioPlayer = nil
+        player?.pause()
+        if let observer = timeObserver {
+            player?.removeTimeObserver(observer)
+            timeObserver = nil
+        }
+        player = nil
         isPlaying = false
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 
-    
-
-    /// Total duration of the loaded audio in seconds.
-    var duration: TimeInterval {
-        audioPlayer?.duration ?? 0
-    }
-
-    /// Current playback position in seconds.
     var currentTime: TimeInterval {
-        audioPlayer?.currentTime ?? 0
+        guard let player = player else { return 0 }
+        return CMTimeGetSeconds(player.currentTime())
     }
 
-    
-
-    /// Seek to a specific time in seconds.
+    /// Moves the playhead to a specific time (used for the progress slider)
     func seek(to time: TimeInterval) {
-        guard let player = audioPlayer else { return }
-        let clampedTime = max(0, min(time, player.duration))
-        player.currentTime = clampedTime
+        let cmTime = CMTime(seconds: time, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
+        player?.seek(to: cmTime, toleranceBefore: .zero, toleranceAfter: .zero)
     }
-
-    //Volume
 
     func setVolume(_ volume: Float) {
-        audioPlayer?.volume = volume
+        player?.volume = volume
     }
 }

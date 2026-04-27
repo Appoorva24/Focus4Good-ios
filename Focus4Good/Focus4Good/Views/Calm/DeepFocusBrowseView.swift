@@ -1,33 +1,44 @@
 import SwiftUI
-
-private let totalSessionSeconds = 300
+import AVFoundation
+import Supabase
 
 // MARK: - DeepFocusBrowseView
-
+/// This view allows users to stream a high-quality guided meditation directly from Supabase.
+/// It handles audio playback, progress tracking, and reward points.
 struct DeepFocusBrowseView: View {
 
     @Environment(CalmCentreStore.self) private var store
     @Environment(UserStore.self) private var userStore
     @Environment(\.dismiss) private var dismiss
 
+    // MARK: - Playback State
+    @State private var player: AVPlayer?
+    @State private var timeObserver: Any?
     @State private var isPlaying = false
     @State private var hasStarted = false
-    @State private var elapsed: TimeInterval = 0
-    @State private var timer: Timer?
+    @State private var currentTime: TimeInterval = 0
+    @State private var duration: TimeInterval = 0
     @State private var volume: Double = 0.5
     @State private var isMuted = false
     @State private var isFavourite = false
     @State private var showCompletion = false
+    @State private var isSeeking = false
 
-    private static let favouriteKey = "deep_focus_favourite"
+    // MARK: - Loading State
+    @State private var isLoadingAudio = false
+    @State private var audioURL: URL?
+    @State private var loadError: String?
 
     private var userId: UUID? {
         userStore.currentUser?.id
     }
 
     private var remaining: TimeInterval {
-        max(0, Double(totalSessionSeconds) - elapsed)
+        max(0, duration - currentTime)
     }
+
+    /// Access the Supabase client for storage fetching
+    private var client: SupabaseClient { SupabaseManager.shared.client }
 
     var body: some View {
         GeometryReader { geo in
@@ -39,7 +50,7 @@ struct DeepFocusBrowseView: View {
                 VStack(spacing: 0) {
                     Spacer()
 
-                    // Artwork
+                    // Visual artwork for the meditation session
                     Image("deep_focus_meditation")
                         .resizable()
                         .aspectRatio(contentMode: .fill)
@@ -49,28 +60,35 @@ struct DeepFocusBrowseView: View {
 
                     Spacer().frame(height: 32)
 
-                    // Title + Favourite
+                    // Title section
                     titleRow.padding(.horizontal, 28)
 
                     Spacer().frame(height: 20)
 
-                    // Progress
-                    progressSection.padding(.horizontal, 28)
+                    // Displays either loading indicator, error message, or the progress bar
+                    if isLoadingAudio {
+                        loadingSection.padding(.horizontal, 28)
+                    } else if let error = loadError {
+                        errorSection(error).padding(.horizontal, 28)
+                    } else {
+                        progressSection.padding(.horizontal, 28)
+                    }
 
                     Spacer().frame(height: 36)
 
-                    // Controls
+                    // Play/Pause and Reset buttons
                     playbackControls
 
                     Spacer().frame(height: 36)
 
-                    // Volume
+                    // Volume control slider
                     volumeSlider.padding(.horizontal, 28)
 
                     Spacer()
                 }
                 .frame(maxWidth: .infinity)
 
+                // Success screen shown when the meditation ends
                 if showCompletion {
                     completionOverlay
                         .transition(.scale.combined(with: .opacity))
@@ -80,8 +98,16 @@ struct DeepFocusBrowseView: View {
         }
         .background(Color(.systemBackground))
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear { loadFavourite() }
-        .onDisappear { stopTimer() }
+        .onAppear {
+            // Fetch the audio URL from Supabase when the screen appears
+            if audioURL == nil {
+                Task { await fetchAudioFromSupabase() }
+            }
+        }
+        .onDisappear {
+            // Clean up the audio player to save memory and battery
+            cleanupPlayer()
+        }
     }
 
     // MARK: - Subviews
@@ -95,7 +121,7 @@ struct DeepFocusBrowseView: View {
 
             Spacer()
 
-            Button { toggleFavourite() } label: {
+            Button { isFavourite.toggle() } label: {
                 Image(systemName: isFavourite ? "heart.fill" : "heart")
                     .font(.title3)
                     .foregroundStyle(isFavourite ? Color.accentColor : .secondary)
@@ -104,17 +130,52 @@ struct DeepFocusBrowseView: View {
         }
     }
 
+    private var loadingSection: some View {
+        VStack(spacing: 12) {
+            ProgressView()
+            Text("Preparing your meditation…")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .frame(height: 60)
+    }
+
+    private func errorSection(_ message: String) -> some View {
+        VStack(spacing: 12) {
+            Text(message)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Button {
+                Task { await fetchAudioFromSupabase() }
+            } label: {
+                Text("Retry Loading")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(Color.accentColor)
+            }
+        }
+        .frame(height: 60)
+    }
+
     private var progressSection: some View {
         VStack(spacing: 6) {
             Slider(
-                value: Binding(get: { elapsed }, set: { _ in }),
-                in: 0...Double(totalSessionSeconds)
-            )
+                value: Binding(
+                    get: { currentTime },
+                    set: { newValue in
+                        currentTime = newValue
+                        seekTo(newValue)
+                    }
+                ),
+                in: 0...max(duration, 1)
+            ) { editing in
+                isSeeking = editing
+            }
             .tint(Color(.systemGray))
-            .disabled(true)
 
             HStack {
-                Text(formatTime(elapsed))
+                Text(formatTime(currentTime))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
@@ -133,12 +194,11 @@ struct DeepFocusBrowseView: View {
         HStack(spacing: 44) {
             Button {
                 isMuted.toggle()
+                player?.isMuted = isMuted
             } label: {
                 Image(systemName: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
                     .font(.title2)
-                    .foregroundStyle(.primary)
             }
-            .buttonStyle(.plain)
 
             Button {
                 if isPlaying { pauseSession() }
@@ -150,17 +210,15 @@ struct DeepFocusBrowseView: View {
                     .foregroundStyle(.white)
                     .frame(width: 60, height: 60)
                     .background(Circle().fill(Color.accentColor))
-                    .shadow(color: Color.accentColor.opacity(0.3), radius: 8, x: 0, y: 4)
             }
-            .buttonStyle(.plain)
+            .disabled(audioURL == nil || isLoadingAudio)
 
             Button { resetSession() } label: {
                 Image(systemName: "arrow.counterclockwise")
                     .font(.title2)
-                    .foregroundStyle(.primary)
             }
-            .buttonStyle(.plain)
         }
+        .buttonStyle(.plain)
     }
 
     private var volumeSlider: some View {
@@ -171,6 +229,9 @@ struct DeepFocusBrowseView: View {
 
             Slider(value: $volume, in: 0...1)
                 .tint(Color(.systemGray))
+                .onChange(of: volume) { _, newValue in
+                    player?.volume = Float(newValue)
+                }
 
             Image(systemName: "speaker.wave.3.fill")
                 .font(.caption)
@@ -180,23 +241,17 @@ struct DeepFocusBrowseView: View {
 
     private var completionOverlay: some View {
         ZStack {
-            Color.black.opacity(0.4)
-                .ignoresSafeArea()
-                .onTapGesture {
-                    showCompletion = false
-                    dismiss()
-                }
-
-            VStack(spacing: 20) {
+            Color.black.opacity(0.4).ignoresSafeArea()
+            
+            VStack(spacing: 24) {
                 Image(systemName: "checkmark.seal.fill")
                     .font(.system(size: 64))
                     .foregroundStyle(Color.accentColor)
 
-                Text("Namaste 🙏")
-                    .font(.title2)
-                    .fontWeight(.bold)
+                Text("Peaceful Moment")
+                    .font(.title2.bold())
 
-                Text("You completed a 5-minute\nGuided Meditation session")
+                Text("You finished your guided meditation session. Notice how you feel right now.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -209,86 +264,124 @@ struct DeepFocusBrowseView: View {
                     showCompletion = false
                     dismiss()
                 } label: {
-                    Text("Done")
+                    Text("Finish")
                         .font(.headline)
-                        .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 48)
-                        .background(
-                            Capsule()
-                                .fill(Color.accentColor)
-                                .shadow(color: Color.accentColor.opacity(0.3), radius: 8, x: 0, y: 4)
-                        )
+                        .padding()
+                        .background(Color.accentColor)
+                        .foregroundStyle(.white)
+                        .clipShape(Capsule())
                 }
-                .padding(.top, 8)
             }
             .padding(32)
-            .background(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(Color(.systemBackground))
-                    .shadow(color: .black.opacity(0.15), radius: 20, x: 0, y: 10)
-            )
+            .background(Color(.systemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 24))
             .padding(.horizontal, 40)
         }
     }
+
+    // MARK: - Logic
 
     private func formatTime(_ seconds: TimeInterval) -> String {
         let total = Int(seconds)
         return String(format: "%d:%02d", total / 60, total % 60)
     }
 
-    // MARK: - Favourite
+    /// Fetches the direct streaming link from Supabase Storage
+    private func fetchAudioFromSupabase() async {
+        isLoadingAudio = true
+        loadError = nil
 
-    private func loadFavourite() {
-        isFavourite = UserDefaults.standard.bool(forKey: Self.favouriteKey)
+        do {
+            let publicURL = try client.storage
+                .from("guided_meditation")
+                .getPublicURL(path: "Breathing Meditation 2009.mp3")
+
+            audioURL = publicURL
+            isLoadingAudio = false
+        } catch {
+            loadError = "Could not load audio. Please check your connection."
+            isLoadingAudio = false
+        }
     }
 
-    private func toggleFavourite() {
-        isFavourite.toggle()
-        UserDefaults.standard.set(isFavourite, forKey: Self.favouriteKey)
+    /// Sets up the AVPlayer for cloud streaming
+    private func setupPlayer(url: URL) {
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(.playback, mode: .default, options: [.duckOthers])
+        try? session.setActive(true)
+
+        let playerItem = AVPlayerItem(url: url)
+        player = AVPlayer(playerItem: playerItem)
+        player?.volume = Float(volume)
+        player?.isMuted = isMuted
+
+        // Update progress bar as audio plays
+        let interval = CMTime(seconds: 0.5, preferredTimescale: 600)
+        timeObserver = player?.addPeriodicTimeObserver(forInterval: interval, queue: .main) { time in
+            // Directly update state on the MainActor
+            Task { @MainActor in
+                guard !isSeeking else { return }
+                currentTime = CMTimeGetSeconds(time)
+                
+                if let item = player?.currentItem {
+                    let dur = CMTimeGetSeconds(item.duration)
+                    if dur.isFinite && dur > 0 { duration = dur }
+                }
+            }
+        }
+
+        // Detect when the meditation finishes
+        NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: playerItem,
+            queue: .main
+        ) { _ in completeSession() }
     }
 
-    // MARK: - Session Logic
+    private func cleanupPlayer() {
+        player?.pause()
+        if let observer = timeObserver {
+            player?.removeTimeObserver(observer)
+            timeObserver = nil
+        }
+        player = nil
+    }
+
+    private func seekTo(_ time: TimeInterval) {
+        let cmTime = CMTime(seconds: time, preferredTimescale: 600)
+        player?.seek(to: cmTime, toleranceBefore: .zero, toleranceAfter: .zero)
+    }
 
     private func startSession() {
-        elapsed = 0
+        guard let url = audioURL else { return }
+        if player == nil { setupPlayer(url: url) }
+        player?.play()
         hasStarted = true
         isPlaying = true
-        startTimer()
     }
 
     private func pauseSession() {
+        player?.pause()
         isPlaying = false
-        stopTimer()
     }
 
     private func resumeSession() {
+        player?.play()
         isPlaying = true
-        startTimer()
     }
 
     private func resetSession() {
-        stopTimer()
-        elapsed = 0
+        player?.pause()
+        seekTo(0)
+        currentTime = 0
         hasStarted = false
         isPlaying = false
     }
 
-    private func startTimer() {
-        stopTimer()
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
-            elapsed += 1
-            if Int(elapsed) >= totalSessionSeconds { completeSession() }
-        }
-    }
-
-    private func stopTimer() {
-        timer?.invalidate()
-        timer = nil
-    }
-
+    /// Logs the completed session to Supabase
     private func completeSession() {
-        stopTimer()
+        player?.pause()
         isPlaying = false
         hasStarted = false
 
@@ -297,7 +390,7 @@ struct DeepFocusBrowseView: View {
             await store.logGuidedMeditationSession(
                 userId: uid,
                 meditationName: "Guided Meditation",
-                durationSeconds: totalSessionSeconds
+                durationSeconds: Int(duration)
             )
         }
 
@@ -312,3 +405,4 @@ struct DeepFocusBrowseView: View {
             .environment(UserStore.shared)
     }
 }
+
