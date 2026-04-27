@@ -72,11 +72,19 @@ struct CommunityRowView: View {
 
     private var communityInfo: some View {
         HStack {
-            Image(community.coverImageUrl ?? "personimage")
-                .resizable()
-                .scaledToFill()
-                .frame(width: 40, height: 40)
-                .clipShape(Circle())
+            Group {
+                if let urlStr = community.coverImageUrl, let url = URL(string: urlStr) {
+                    AsyncImage(url: url) { phase in
+                        if let img = phase.image { img.resizable().scaledToFill() }
+                        else { Image(systemName: "person.3.fill").font(.callout).foregroundStyle(.secondary) }
+                    }
+                } else {
+                    Image(systemName: "person.3.fill").font(.callout).foregroundStyle(.secondary)
+                }
+            }
+            .frame(width: 40, height: 40)
+            .clipShape(Circle())
+            .background(Circle().fill(Color(.systemGray5)))
 
             VStack(alignment: .leading) {
                 Text(community.name)
@@ -149,12 +157,20 @@ struct CommunityDetailView: View {
                 // MARK: - Native Profile Header
                 VStack(spacing: 12) {
                     // Avatar
-                    Image(community.coverImageUrl ?? "personimage")
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 100, height: 100)
-                        .clipShape(Circle())
-                        .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
+                    Group {
+                        if let urlStr = community.coverImageUrl, let url = URL(string: urlStr) {
+                            AsyncImage(url: url) { phase in
+                                if let img = phase.image { img.resizable().scaledToFill() }
+                                else { Image(systemName: "person.3.fill").font(.largeTitle).foregroundStyle(.secondary) }
+                            }
+                        } else {
+                            Image(systemName: "person.3.fill").font(.largeTitle).foregroundStyle(.secondary)
+                        }
+                    }
+                    .frame(width: 100, height: 100)
+                    .clipShape(Circle())
+                    .background(Circle().fill(Color(.systemGray5)))
+                    .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
 
                     // Name & Subtitle
                     VStack(spacing: 4) {

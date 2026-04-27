@@ -44,6 +44,18 @@ class CalmCentreStore {
     private var client: SupabaseClient { SupabaseManager.shared.client }
     init() {}
 
+    // MARK: - Clear (called on sign-out)
+    func clearData() {
+        breathingSessions = []
+        jpmrSessions = []
+        guidedMeditationSessions = []
+        asmrSounds = []
+        favouriteAsmrSoundIds = []
+        brainDumpFolders = []
+        brainDumpEntries = []
+        activeAsmrSound = nil
+    }
+
     // MARK: - Fetch from Supabase
     func fetchBreathingSessions(userId: UUID) async {
         isLoading = true

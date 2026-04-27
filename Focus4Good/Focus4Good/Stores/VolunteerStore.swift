@@ -31,6 +31,13 @@ class VolunteerStore {
     private var client: SupabaseClient { SupabaseManager.shared.client }
     init() {}
 
+    // MARK: - Clear (called on sign-out)
+    func clearData() {
+        ngos = []
+        volunteerEvents = []
+        volunteerRegistrations = []
+    }
+
     // MARK: - Fetch from Supabase
     func fetchNGOs() async {
         isLoading = true

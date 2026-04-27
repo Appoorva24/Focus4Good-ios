@@ -56,6 +56,8 @@ class UserStore {
             // 2. Trigger auto-creates profile. Fetch it.
             await fetchCurrentUser(userId: userId)
             isAuthenticated = true
+            // 3. Grant 100 bonus focus points to new users
+            await grantNewUserBonus()
             // Preload tasks/progress for the new user
             await loadUserData(userId: userId)
         } catch {
@@ -90,17 +92,57 @@ class UserStore {
         currentUser = nil
         userSettings = nil
         isAuthenticated = false
-        // Clear cached store data
+        // Clear ALL cached store data
         TaskStore.shared.tasks = []
         TaskStore.shared.categories = []
         ProgressStore.shared.clearData()
+        CommunityStore.shared.clearData()
+        CalmCentreStore.shared.clearData()
+        VolunteerStore.shared.clearData()
+        ClassroomStore.shared.clearData()
+        // Cancel pending notifications
+        NotificationManager.shared.cancelAllNotifications()
+    }
+
+    // MARK: - New User Bonus
+    /// Grants 100 bonus focus points and unlocks all classroom items for first-time users
+    private func grantNewUserBonus() async {
+        guard var user = currentUser else { return }
+        // Only grant bonus if user has 0 focus points (brand new)
+        guard user.focusPoints == 0 else { return }
+        let bonusPoints = 100
+        do {
+            try await client
+                .from("profiles")
+                .update(["focus_points": bonusPoints])
+                .eq("id", value: user.id.uuidString)
+                .execute()
+            user.focusPoints = bonusPoints
+            currentUser = user
+            // Also unlock all classroom items as a bonus
+            ClassroomStore.shared.unlockAllForNewUser()
+            print("🎁 Granted \(bonusPoints) bonus focus points to new user")
+        } catch {
+            print("❌ Failed to grant bonus points: \(error)")
+        }
     }
 
     // MARK: - Bulk data load (called after every auth)
     private func loadUserData(userId: UUID) async {
-        async let tasks: () = TaskStore.shared.fetchTasks(userId: userId)
-        async let progress: () = ProgressStore.shared.fetchProgress(userId: userId)
-        _ = await (tasks, progress)
+        async let tasks: ()       = TaskStore.shared.fetchTasks(userId: userId)
+        async let progress: ()    = ProgressStore.shared.fetchProgress(userId: userId)
+        async let communities: () = CommunityStore.shared.fetchCommunities()
+        async let categories: ()  = CommunityStore.shared.fetchCommunityCategories()
+        async let ngos: ()        = VolunteerStore.shared.fetchNGOs()
+        async let events: ()      = VolunteerStore.shared.fetchVolunteerEvents()
+        async let regs: ()        = VolunteerStore.shared.fetchRegistrations(userId: userId)
+        async let breathing: ()   = CalmCentreStore.shared.fetchBreathingSessions(userId: userId)
+        async let jpmr: ()        = CalmCentreStore.shared.fetchJpmrSessions(userId: userId)
+        async let meditation: ()  = CalmCentreStore.shared.fetchGuidedMeditationSessions(userId: userId)
+        async let asmr: ()        = CalmCentreStore.shared.fetchAsmrSounds()
+        async let folders: ()     = CalmCentreStore.shared.fetchBrainDumpFolders(userId: userId)
+        async let entries: ()     = CalmCentreStore.shared.fetchBrainDumpEntries(userId: userId)
+        _ = await (tasks, progress, communities, categories, ngos, events, regs, breathing, jpmr, meditation, asmr, folders, entries)
     }
     
     // MARK: - Profile CRUD

@@ -13,6 +13,7 @@ struct VirtualClassroomView: View {
     @State private var showShop = false
     @State private var justUnlockedItem: ClassroomItem?
     @State private var showUnlockCelebration = false
+    @State private var showWelcomePopup = true
     @State private var selectedItemID: String?
 
     // Celebration animation states
@@ -122,6 +123,11 @@ struct VirtualClassroomView: View {
             )
         }
         .onAppear { checkAffordability() }
+        .alert("Welcome to Your Virtual Classroom! 🎓", isPresented: $showWelcomePopup) {
+            Button("Let's Go!") { showWelcomePopup = false }
+        } message: {
+            Text("This is your personal study space! Earn Focus Points by completing tasks and spending time in the Calm Centre, then use them to unlock items for your classroom. Tap the Item Shop to start decorating!")
+        }
     }
 
     // MARK: - Zoom Gesture

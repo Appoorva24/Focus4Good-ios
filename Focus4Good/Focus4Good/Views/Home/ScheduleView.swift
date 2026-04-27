@@ -4,6 +4,7 @@ struct ScheduleView: View {
     @Environment(TaskStore.self) private var taskStore
     @Environment(UserStore.self) private var userStore
     @State private var showAddTask = false
+    @State private var showScanNotes = false
     @State private var selectedTask: UserTask?
 
     private var repetitiveTasks: [UserTask] {
@@ -45,13 +46,18 @@ struct ScheduleView: View {
                 }
             }
 
-            // Always show the add button so users can add their first task
-            floatingAddButton
+            // Only show floating add button when tasks exist
+            if !taskStore.tasks.isEmpty {
+                floatingAddButton
+            }
         }
         .navigationTitle("Schedule")
         .navigationBarTitleDisplayMode(.large)
         .sheet(isPresented: $showAddTask) {
             AddTaskSheet()
+        }
+        .sheet(isPresented: $showScanNotes) {
+            ScanNotesView()
         }
         .navigationDestination(item: $selectedTask) { task in
             PomodoroView(task: task)
@@ -62,6 +68,8 @@ struct ScheduleView: View {
             Task { await taskStore.fetchTasks(userId: userId) }
         }
     }
+
+    // MARK: - Empty State (Manual + Scan buttons, NO floating button)
 
     private var emptyState: some View {
         VStack(spacing: 24) {
@@ -84,7 +92,7 @@ struct ScheduleView: View {
             }
             
             VStack(spacing: 16) {
-                // Manual button - clickable
+                // Manual button
                 Button {
                     showAddTask = true
                 } label: {
@@ -119,6 +127,42 @@ struct ScheduleView: View {
                     )
                 }
                 .buttonStyle(.plain)
+
+                // Scan from Handwritten Notes button
+                Button {
+                    showScanNotes = true
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "doc.text.viewfinder")
+                            .font(.title2)
+                            .foregroundStyle(AppTheme.orange)
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Scan from Handwritten Notes")
+                                .font(.headline)
+                                .foregroundStyle(AppTheme.textPrimary)
+                            Text("Use camera to scan your written task list")
+                                .font(.caption)
+                                .foregroundStyle(AppTheme.textSecondary)
+                        }
+                        
+                        Spacer()
+                        
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.textSecondary)
+                    }
+                    .padding(16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color(.systemBackground))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(AppTheme.orange.opacity(0.3), lineWidth: 1.5)
+                            )
+                    )
+                }
+                .buttonStyle(.plain)
             }
             .padding(.horizontal, 24)
             .padding(.top, 16)
@@ -126,6 +170,20 @@ struct ScheduleView: View {
             Spacer()
         }
         .frame(maxWidth: .infinity)
+    }
+
+    // MARK: - Task List
+
+    private var upcomingTasks: [UserTask] {
+        // Tasks not matching today and not repetitive — shown in an "Upcoming" section
+        let cal = Calendar.current
+        return taskStore.tasks
+            .filter {
+                $0.repeatType == .never &&
+                !$0.isCompleted &&
+                !(cal.isDate($0.scheduledDate ?? Date.distantPast, inSameDayAs: Date()))
+            }
+            .sorted { priorityOrder($0) < priorityOrder($1) }
     }
 
     private var taskList: some View {
@@ -156,9 +214,32 @@ struct ScheduleView: View {
                     }
                 }
             }
+
+            if !upcomingTasks.isEmpty {
+                Section {
+                    ForEach(upcomingTasks) { task in
+                        TaskRowView(task: task, selectedTask: $selectedTask)
+                    }
+                } header: {
+                    Text("Upcoming").font(.headline).foregroundStyle(AppTheme.textPrimary).textCase(nil)
+                }
+            }
+
+            // Fallback: if no section matched, show all tasks
+            if repetitiveTasks.isEmpty && todayTasks.isEmpty && upcomingTasks.isEmpty {
+                Section {
+                    ForEach(taskStore.tasks) { task in
+                        TaskRowView(task: task, selectedTask: $selectedTask)
+                    }
+                } header: {
+                    Text("All Tasks").font(.headline).foregroundStyle(AppTheme.textPrimary).textCase(nil)
+                }
+            }
         }
         .listStyle(.insetGrouped)
     }
+
+    // MARK: - Floating Add Button (only shown when tasks exist)
 
     private var floatingAddButton: some View {
         Button { showAddTask = true } label: {

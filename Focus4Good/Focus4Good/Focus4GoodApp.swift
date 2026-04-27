@@ -40,43 +40,30 @@ struct Focus4GoodApp: App {
                     SplashView {
                         handleSplashFinished()
                     }
-                    .transition(.opacity)
 
                 case .onboarding:
                     OnboardingView(onComplete: {
-                        withAnimation(.easeInOut(duration: 0.4)) {
-                            appState = .auth
-                        }
+                        appState = .auth
                     })
-                    .transition(.opacity)
 
                 case .auth:
                     AuthView(onSuccess: {
                         // Brief re-splash after login so the user sees the logo
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            appState = .splash
-                        }
+                        appState = .splash
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                            withAnimation(.easeInOut(duration: 0.4)) {
-                                appState = .app
-                            }
+                            appState = .app
                         }
                     })
-                    .transition(.opacity)
 
                 case .app:
                     MainTabView()
-                        .transition(.opacity)
                 }
             }
-            .animation(.easeInOut(duration: 0.35), value: appState)
             // Watch for sign-out: when isAuthenticated flips to false while in the
             // app, send the user back to the auth screen immediately.
             .onChange(of: userStore.isAuthenticated) { _, isAuth in
                 if !isAuth && appState == .app {
-                    withAnimation(.easeInOut(duration: 0.35)) {
-                        appState = .auth
-                    }
+                    appState = .auth
                 }
             }
             .environment(userStore)
@@ -86,6 +73,10 @@ struct Focus4GoodApp: App {
             .environment(classroomStore)
             .environment(calmCentreStore)
             .environment(communityStore)
+            .onAppear {
+                // Request notification permission on first launch
+                Task { _ = await NotificationManager.shared.requestPermission() }
+            }
         }
     }
 
@@ -102,17 +93,11 @@ struct Focus4GoodApp: App {
         }
         
         if !hasSeenOnboarding {
-            withAnimation(.easeInOut(duration: 0.4)) {
-                appState = .onboarding
-            }
+            appState = .onboarding
         } else if userStore.isAuthenticated {
-            withAnimation(.easeInOut(duration: 0.4)) {
-                appState = .app
-            }
+            appState = .app
         } else {
-            withAnimation(.easeInOut(duration: 0.4)) {
-                appState = .auth
-            }
+            appState = .auth
         }
     }
 }

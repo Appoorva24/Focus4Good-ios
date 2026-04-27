@@ -1,5 +1,6 @@
 import Foundation
 import Supabase
+import UIKit
 
 @MainActor
 @Observable
@@ -32,6 +33,17 @@ class CommunityStore {
     static let shared = CommunityStore()
     private var client: SupabaseClient { SupabaseManager.shared.client }
     init() {}
+
+    // MARK: - Clear (called on sign-out)
+    func clearData() {
+        communities = []
+        communityCategories = []
+        communityMembers = []
+        posts = []
+        postLikes = []
+        postComments = []
+        savedPostIds = []
+    }
 
     // MARK: - Fetch
     func fetchCommunities() async {
@@ -98,6 +110,34 @@ class CommunityStore {
             errorMessage = "Failed to load posts: \(error.localizedDescription)"
         }
         isLoading = false
+    }
+
+    /// Fetch posts from all communities the current user has joined or created
+    func fetchPostsForJoinedCommunities(userId: UUID) async {
+        let joinedIds = communityMembers
+            .filter { $0.userId == userId }
+            .map { $0.communityId }
+        let createdIds = communities
+            .filter { $0.creatorId == userId }
+            .map { $0.id }
+        let allIds = Set(joinedIds + createdIds)
+        for communityId in allIds {
+            await fetchPosts(communityId: communityId)
+        }
+    }
+
+    /// Fetch all members across all communities
+    func fetchAllMembers() async {
+        do {
+            let fetched: [CommunityMember] = try await client
+                .from("community_members")
+                .select()
+                .execute()
+                .value
+            communityMembers = fetched
+        } catch {
+            errorMessage = "Failed to load members: \(error.localizedDescription)"
+        }
     }
 
     func fetchLikes(postId: UUID) async {
@@ -369,9 +409,15 @@ class CommunityStore {
 
     // MARK: - Image Upload (Supabase Storage)
     func uploadImage(data: Data, path: String) async throws -> String {
+        // Compress if data is too large (> 2MB)
+        var uploadData = data
+        if uploadData.count > 2_000_000, let uiImage = UIImage(data: data) {
+            uploadData = uiImage.jpegData(compressionQuality: 0.6) ?? data
+        }
+
         try await client.storage
             .from("community-images")
-            .upload(path, data: data, options: .init(contentType: "image/jpeg"))
+            .upload(path, data: uploadData, options: .init(contentType: "image/jpeg", upsert: true))
 
         let publicURL = try client.storage
             .from("community-images")

@@ -135,6 +135,22 @@ class ClassroomStore {
         persistRotations()
     }
 
+    /// Unlock all items for a brand-new user (no points deducted — it's a bonus)
+    func unlockAllForNewUser() {
+        for i in items.indices {
+            items[i].isUnlocked = true
+        }
+        persistUnlocked()
+        print("🎁 All classroom items unlocked for new user")
+    }
+
+    /// Clear all data (called on sign-out)
+    func clearData() {
+        items = ClassroomItem.allItems
+        customPositions.removeAll()
+        customRotations.removeAll()
+    }
+
     /// Reset all items (for testing/debug)
     func resetAll() {
         for i in items.indices {

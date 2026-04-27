@@ -41,11 +41,19 @@ struct CommunityPostRowView: View {
 
             // ── Author Header ──
             HStack {
-                Image(post.authorImageUrl ?? "profilePic")
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 40, height: 40)
-                    .clipShape(Circle())
+                Group {
+                    if let urlStr = post.authorImageUrl, let url = URL(string: urlStr) {
+                        AsyncImage(url: url) { phase in
+                            if let img = phase.image { img.resizable().scaledToFill() }
+                            else { Image(systemName: "person.fill").font(.title3).foregroundStyle(.secondary) }
+                        }
+                    } else {
+                        Image(systemName: "person.fill").font(.title3).foregroundStyle(.secondary)
+                    }
+                }
+                .frame(width: 40, height: 40)
+                .clipShape(Circle())
+                .background(Circle().fill(Color(.systemGray5)))
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(post.authorName ?? "Anonymous")
@@ -205,11 +213,19 @@ struct CommentsSheetView: View {
                     List {
                         ForEach(comments) { comment in
                             HStack(alignment: .top, spacing: 12) {
-                                Image(comment.authorImageUrl ?? "profilePic")
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 36, height: 36)
-                                    .clipShape(Circle())
+                                Group {
+                                    if let urlStr = comment.authorImageUrl, let url = URL(string: urlStr) {
+                                        AsyncImage(url: url) { phase in
+                                            if let img = phase.image { img.resizable().scaledToFill() }
+                                            else { Image(systemName: "person.fill").font(.subheadline).foregroundStyle(.secondary) }
+                                        }
+                                    } else {
+                                        Image(systemName: "person.fill").font(.subheadline).foregroundStyle(.secondary)
+                                    }
+                                }
+                                .frame(width: 36, height: 36)
+                                .clipShape(Circle())
+                                .background(Circle().fill(Color(.systemGray5)))
                                 
                                 VStack(alignment: .leading, spacing: 4) {
                                     HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -238,12 +254,20 @@ struct CommentsSheetView: View {
                 VStack(spacing: 0) {
                     Divider()
                     HStack(alignment: .bottom, spacing: 12) {
-                        Image(currentUser?.profileImageUrl ?? "profilePic")
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 32, height: 32)
-                            .clipShape(Circle())
-                            .padding(.bottom, 2)
+                        Group {
+                            if let urlStr = currentUser?.profileImageUrl, let url = URL(string: urlStr) {
+                                AsyncImage(url: url) { phase in
+                                    if let img = phase.image { img.resizable().scaledToFill() }
+                                    else { Image(systemName: "person.fill").font(.callout).foregroundStyle(.secondary) }
+                                }
+                            } else {
+                                Image(systemName: "person.fill").font(.callout).foregroundStyle(.secondary)
+                            }
+                        }
+                        .frame(width: 32, height: 32)
+                        .clipShape(Circle())
+                        .background(Circle().fill(Color(.systemGray5)))
+                        .padding(.bottom, 2)
                         
                         HStack(alignment: .bottom, spacing: 8) {
                             TextField("Add a comment...", text: $newCommentText, axis: .vertical)
