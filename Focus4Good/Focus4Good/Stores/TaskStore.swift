@@ -77,6 +77,13 @@ class TaskStore {
         }
     }
     
+    // MARK: - Add Tasks Batch
+    func addTasksBatch(_ taskItems: [UserTask]) async {
+        for task in taskItems {
+            await addTask(task)
+        }
+    }
+    
     // MARK: - Update Task
     func updateTask(_ task: UserTask) async {
         do {
