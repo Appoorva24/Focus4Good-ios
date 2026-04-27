@@ -123,5 +123,9 @@ class ProgressStore {
         default: return 15
         }
     }
+    
+    // MARK: - Clear (called on sign-out)
+    func clearData() {
+        progressRecords = []
+    }
 }
-

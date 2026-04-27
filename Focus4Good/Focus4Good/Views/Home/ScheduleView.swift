@@ -30,17 +30,23 @@ struct ScheduleView: View {
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             Group {
-                if taskStore.tasks.isEmpty {
+                if taskStore.isLoading && taskStore.tasks.isEmpty {
+                    // Show a spinner while tasks are loading for the first time
+                    VStack {
+                        Spacer()
+                        ProgressView("Loading tasks…")
+                            .tint(AppTheme.orange)
+                        Spacer()
+                    }
+                } else if taskStore.tasks.isEmpty {
                     emptyState
                 } else {
                     taskList
                 }
             }
-            
-            // Show floating button only when tasks exist
-            if !taskStore.tasks.isEmpty {
-                floatingAddButton
-            }
+
+            // Always show the add button so users can add their first task
+            floatingAddButton
         }
         .navigationTitle("Schedule")
         .navigationBarTitleDisplayMode(.large)
@@ -49,6 +55,11 @@ struct ScheduleView: View {
         }
         .navigationDestination(item: $selectedTask) { task in
             PomodoroView(task: task)
+        }
+        .onAppear {
+            // Refresh tasks whenever the schedule is opened
+            guard let userId = userStore.currentUser?.id else { return }
+            Task { await taskStore.fetchTasks(userId: userId) }
         }
     }
 

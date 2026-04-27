@@ -4,6 +4,10 @@ import SwiftUI
 
 struct AuthView: View {
     @Environment(UserStore.self) private var userStore
+
+    /// Called by Focus4GoodApp when authentication succeeds
+    let onSuccess: () -> Void
+
     @State private var isSignUp = false
     @State private var fullName = ""
     @State private var email = ""
@@ -27,11 +31,14 @@ struct AuthView: View {
                 VStack(spacing: 32) {
                     Spacer().frame(height: 40)
 
-                    // Logo / Header
-                    VStack(spacing: 12) {
-                        Image(systemName: "brain.head.profile.fill")
-                            .font(.system(size: 64))
-                            .foregroundStyle(AppTheme.orange)
+                    // ── Logo / Header ─────────────────────────────
+                    VStack(spacing: 16) {
+                        // SwiftUI-drawn logo on an orange background circle
+                        Image("AppLogo")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 100, height: 100)
+                            .shadow(color: AppTheme.orange.opacity(0.35), radius: 12, y: 4)
 
                         Text("Focus4Good")
                             .font(.largeTitle.bold())
@@ -42,7 +49,7 @@ struct AuthView: View {
                             .foregroundStyle(AppTheme.textSecondary)
                     }
 
-                    // Form Fields
+                    // ── Form Fields ───────────────────────────────
                     VStack(spacing: 16) {
                         if isSignUp {
                             AuthTextField(
@@ -76,7 +83,7 @@ struct AuthView: View {
                     }
                     .padding(.horizontal, 24)
 
-                    // Error Message
+                    // ── Error Message ─────────────────────────────
                     if let error = userStore.errorMessage {
                         Text(error)
                             .font(.caption)
@@ -85,7 +92,7 @@ struct AuthView: View {
                             .padding(.horizontal, 24)
                     }
 
-                    // Submit Button
+                    // ── Submit Button ─────────────────────────────
                     Button {
                         Task {
                             if isSignUp {
@@ -97,8 +104,7 @@ struct AuthView: View {
                     } label: {
                         Group {
                             if userStore.isLoading {
-                                ProgressView()
-                                    .tint(.white)
+                                ProgressView().tint(.white)
                             } else {
                                 Text(isSignUp ? "Create Account" : "Sign In")
                                     .font(.headline)
@@ -116,11 +122,10 @@ struct AuthView: View {
                     .disabled(!isFormValid || userStore.isLoading)
                     .padding(.horizontal, 24)
 
-                    // Toggle Sign In / Sign Up
+                    // ── Toggle Sign In / Sign Up ──────────────────
                     Button {
                         withAnimation(.easeInOut(duration: 0.25)) {
                             isSignUp.toggle()
-                            // Clear fields when switching
                             fullName = ""
                             email = ""
                             password = ""
@@ -141,6 +146,10 @@ struct AuthView: View {
                     Spacer()
                 }
             }
+        }
+        // Watch for successful authentication → notify parent
+        .onChange(of: userStore.isAuthenticated) { _, isAuth in
+            if isAuth { onSuccess() }
         }
     }
 }
@@ -220,9 +229,4 @@ private struct AuthPasswordField: View {
                 .stroke(Color(.systemGray4), lineWidth: 0.5)
         )
     }
-}
-
-#Preview {
-    AuthView()
-        .environment(UserStore.shared)
 }

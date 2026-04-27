@@ -11,6 +11,9 @@ class UserStore {
     var isAuthenticated = false
     var isLoading = false
     var errorMessage: String?
+    /// True once restoreSession() has finished (success or failure).
+    /// The splash screen waits for this before deciding where to navigate.
+    var isSessionReady = false
     
     static let shared = UserStore()
     
@@ -25,12 +28,17 @@ class UserStore {
     private func restoreSession() async {
         do {
             let session = try await client.auth.session
-            await fetchCurrentUser(userId: session.user.id)
+            let userId = session.user.id
+            await fetchCurrentUser(userId: userId)
             isAuthenticated = true
+            // Preload user data so stores are ready immediately
+            await loadUserData(userId: userId)
         } catch {
             // No saved session — user needs to log in
             isAuthenticated = false
         }
+        // Always mark ready so the splash can proceed
+        isSessionReady = true
     }
     
     // MARK: - Auth
@@ -44,9 +52,12 @@ class UserStore {
                 password: password,
                 data: ["full_name": .string(fullName)]  // passed to trigger
             )
+            let userId = response.user.id
             // 2. Trigger auto-creates profile. Fetch it.
-            await fetchCurrentUser(userId: response.user.id)
+            await fetchCurrentUser(userId: userId)
             isAuthenticated = true
+            // Preload tasks/progress for the new user
+            await loadUserData(userId: userId)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -61,8 +72,11 @@ class UserStore {
                 email: email,
                 password: password
             )
-            await fetchCurrentUser(userId: session.user.id)
+            let userId = session.user.id
+            await fetchCurrentUser(userId: userId)
             isAuthenticated = true
+            // Preload tasks/progress so Schedule is populated immediately
+            await loadUserData(userId: userId)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -76,6 +90,17 @@ class UserStore {
         currentUser = nil
         userSettings = nil
         isAuthenticated = false
+        // Clear cached store data
+        TaskStore.shared.tasks = []
+        TaskStore.shared.categories = []
+        ProgressStore.shared.clearData()
+    }
+
+    // MARK: - Bulk data load (called after every auth)
+    private func loadUserData(userId: UUID) async {
+        async let tasks: () = TaskStore.shared.fetchTasks(userId: userId)
+        async let progress: () = ProgressStore.shared.fetchProgress(userId: userId)
+        _ = await (tasks, progress)
     }
     
     // MARK: - Profile CRUD
