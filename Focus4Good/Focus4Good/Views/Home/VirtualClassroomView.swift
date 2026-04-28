@@ -10,6 +10,10 @@ struct VirtualClassroomView: View {
     @Environment(UserStore.self) private var userStore
     @Environment(\.dismiss) private var dismiss
 
+    /// Tracks whether the user has ever opened the virtual classroom.
+    /// First visit → grant 100 bonus focus points.
+    @AppStorage("hasVisitedClassroom") private var hasVisitedClassroom = false
+
     @State private var showShop = false
     @State private var justUnlockedItem: ClassroomItem?
     @State private var showUnlockCelebration = false
@@ -122,7 +126,21 @@ struct VirtualClassroomView: View {
                 }
             )
         }
-        .onAppear { checkAffordability() }
+        .onAppear {
+            checkAffordability()
+            // First-ever visit: grant 100 bonus focus points and show welcome popup
+            if !hasVisitedClassroom {
+                hasVisitedClassroom = true
+                Task {
+                    let success = await userStore.grantBonusPoints(100)
+                    if success {
+                        // Small delay so classroom fully loads before popup
+                        try? await Task.sleep(nanoseconds: 600_000_000)
+                        userStore.showNewUserBonusPopup = true
+                    }
+                }
+            }
+        }
         .alert("Welcome to Your Virtual Classroom! 🎓", isPresented: $showWelcomePopup) {
             Button("Let's Go!") { showWelcomePopup = false }
         } message: {

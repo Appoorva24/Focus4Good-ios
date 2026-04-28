@@ -73,18 +73,16 @@ struct ProgressTrackerView: View {
                     .frame(height: 100)
                 }
                 .padding(16)
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, minHeight: 180)
                 .background(AppTheme.cardBg)
                 .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
                 .shadow(color: AppTheme.shadow, radius: 8, y: 2)
 
                 // Time Spent Card
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 16) {
                     Text("Time Spent")
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(.secondary)
-
-                    Spacer()
 
                     TimeRow(
                         systemImage: "person.fill",
@@ -97,16 +95,13 @@ struct ProgressTrackerView: View {
                         label:       "Calm",
                         minutes:     progress?.calmCentreMinutes ?? 0
                     )
-
-                    Spacer()
                 }
                 .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, minHeight: 180, alignment: .topLeading)
                 .background(AppTheme.cardBg)
                 .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
                 .shadow(color: AppTheme.shadow, radius: 8, y: 2)
             }
-            .fixedSize(horizontal: false, vertical: true)
         }
     }
 

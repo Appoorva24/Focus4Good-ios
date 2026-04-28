@@ -14,6 +14,9 @@ class UserStore {
     /// True once restoreSession() has finished (success or failure).
     /// The splash screen waits for this before deciding where to navigate.
     var isSessionReady = false
+    /// Set to true when 100 bonus points are awarded on first classroom visit.
+    /// VirtualClassroomView triggers this; MainTabView shows the popup.
+    var showNewUserBonusPopup = false
     
     static let shared = UserStore()
     
@@ -56,9 +59,7 @@ class UserStore {
             // 2. Trigger auto-creates profile. Fetch it.
             await fetchCurrentUser(userId: userId)
             isAuthenticated = true
-            // 3. Grant 100 bonus focus points to new users
-            await grantNewUserBonus()
-            // Preload tasks/progress for the new user
+            // 3. Preload tasks/progress for the new user
             await loadUserData(userId: userId)
         } catch {
             errorMessage = error.localizedDescription
@@ -104,26 +105,25 @@ class UserStore {
         NotificationManager.shared.cancelAllNotifications()
     }
 
-    // MARK: - New User Bonus
-    /// Grants 100 bonus focus points and unlocks all classroom items for first-time users
-    private func grantNewUserBonus() async {
-        guard var user = currentUser else { return }
-        // Only grant bonus if user has 0 focus points (brand new)
-        guard user.focusPoints == 0 else { return }
-        let bonusPoints = 100
+    // MARK: - Grant Focus Points (called from VirtualClassroomView on first visit)
+    /// Adds `amount` focus points to the current user in Supabase and returns true on success.
+    @discardableResult
+    func grantBonusPoints(_ amount: Int) async -> Bool {
+        guard var user = currentUser else { return false }
+        let newPoints = user.focusPoints + amount
         do {
             try await client
                 .from("profiles")
-                .update(["focus_points": bonusPoints])
+                .update(["focus_points": newPoints])
                 .eq("id", value: user.id.uuidString)
                 .execute()
-            user.focusPoints = bonusPoints
+            user.focusPoints = newPoints
             currentUser = user
-            // Also unlock all classroom items as a bonus
-            ClassroomStore.shared.unlockAllForNewUser()
-            print("🎁 Granted \(bonusPoints) bonus focus points to new user")
+            print("🎁 Granted \(amount) bonus focus points")
+            return true
         } catch {
             print("❌ Failed to grant bonus points: \(error)")
+            return false
         }
     }
 

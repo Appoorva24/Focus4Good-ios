@@ -149,6 +149,10 @@ class ClassroomStore {
         items = ClassroomItem.allItems
         customPositions.removeAll()
         customRotations.removeAll()
+        // Also wipe UserDefaults so a fresh login starts with a clean classroom
+        UserDefaults.standard.removeObject(forKey: unlockedKey)
+        UserDefaults.standard.removeObject(forKey: positionsKey)
+        UserDefaults.standard.removeObject(forKey: rotationsKey)
     }
 
     /// Reset all items (for testing/debug)
