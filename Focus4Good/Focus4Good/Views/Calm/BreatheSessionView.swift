@@ -279,11 +279,13 @@ struct BreatheSessionView: View {
     private func startTimer() {
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-            if countdown > 1 {
-                countdown -= 1
-            } else {
-                if audio.isSpeaking { return }
-                advancePhase()
+            Task { @MainActor in
+                if countdown > 1 {
+                    countdown -= 1
+                } else {
+                    if audio.isSpeaking { return }
+                    advancePhase()
+                }
             }
         }
     }

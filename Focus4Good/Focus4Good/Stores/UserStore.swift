@@ -142,7 +142,9 @@ class UserStore {
         async let asmr: ()        = CalmCentreStore.shared.fetchAsmrSounds()
         async let folders: ()     = CalmCentreStore.shared.fetchBrainDumpFolders(userId: userId)
         async let entries: ()     = CalmCentreStore.shared.fetchBrainDumpEntries(userId: userId)
-        _ = await (tasks, progress, communities, categories, ngos, events, regs, breathing, jpmr, meditation, asmr, folders, entries)
+        async let members: ()     = CommunityStore.shared.fetchAllMembers()
+        async let saved: ()       = CommunityStore.shared.fetchSavedPosts(userId: userId)
+        _ = await (tasks, progress, communities, categories, ngos, events, regs, breathing, jpmr, meditation, asmr, folders, entries, members, saved)
     }
     
     // MARK: - Profile CRUD

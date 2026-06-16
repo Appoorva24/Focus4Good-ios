@@ -44,17 +44,19 @@ class ASMRAudioService {
         
         // Listen for when the sound finishes playing
         NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: playerItem, queue: .main) { [weak self] _ in
+            let capturedSelf = self
             Task { @MainActor in
-                self?.isPlaying = false
+                capturedSelf?.isPlaying = false
             }
         }
         
         // Track the current playback progress (every 0.5 seconds)
         let interval = CMTime(seconds: 0.5, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
         timeObserver = player?.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
+            let capturedSelf = self
             // Use Task to safely jump back to the MainActor before updating state
             Task { @MainActor in
-                guard let self = self else { return }
+                guard let self = capturedSelf else { return }
                 if let currentItem = self.player?.currentItem {
                     let dur = CMTimeGetSeconds(currentItem.duration)
                     if dur.isFinite {

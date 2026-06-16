@@ -84,16 +84,8 @@ struct HomeView: View {
 
     // MARK: - Quote
     private var quoteSection: some View {
-        Group {
-            Text("\"You don't need to do everything. ")
-                .foregroundStyle(AppTheme.textSecondary)
-            + Text("Just start with one thing.")
-                .foregroundStyle(AppTheme.orange)
-                .bold()
-            + Text("\"")
-                .foregroundStyle(AppTheme.textSecondary)
-        }
-        .font(.subheadline)
+        Text("\(Text("\"You don't need to do everything. ").foregroundStyle(AppTheme.textSecondary))\(Text("Just start with one thing.").foregroundStyle(AppTheme.orange).bold())\(Text("\"").foregroundStyle(AppTheme.textSecondary))")
+            .font(.subheadline)
     }
 
     
