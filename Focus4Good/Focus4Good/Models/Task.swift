@@ -12,6 +12,7 @@ struct UserTask: Identifiable, Hashable {
     var categoryId: UUID?
     var title: String
     var scheduledDate: Date?
+    var endDate: Date?
     var scheduledTime: Date?
     var repeatType: RepeatType
     var priority: Priority
@@ -25,6 +26,7 @@ struct UserTask: Identifiable, Hashable {
         case categoryId = "category_id"
         case title
         case scheduledDate = "scheduled_date"
+        case endDate = "end_date"
         case scheduledTime = "scheduled_time"
         case repeatType = "repeat_type"
         case priority
@@ -52,6 +54,7 @@ struct UserTask: Identifiable, Hashable {
         categoryId: UUID? = nil,
         title: String,
         scheduledDate: Date? = nil,
+        endDate: Date? = nil,
         scheduledTime: Date? = nil,
         repeatType: RepeatType,
         priority: Priority,
@@ -64,6 +67,7 @@ struct UserTask: Identifiable, Hashable {
         self.categoryId = categoryId
         self.title = title
         self.scheduledDate = scheduledDate
+        self.endDate = endDate
         self.scheduledTime = scheduledTime
         self.repeatType = repeatType
         self.priority = priority
@@ -91,6 +95,7 @@ extension UserTask: Codable {
         // Flexibly decode dates — Supabase may return "2026-04-25" (date),
         // "14:30:00" (time), or full ISO8601 timestamps
         scheduledDate = SupabaseDateCoding.flexDecode(from: c, key: .scheduledDate)
+        endDate       = SupabaseDateCoding.flexDecode(from: c, key: .endDate)
         scheduledTime = SupabaseDateCoding.flexDecode(from: c, key: .scheduledTime)
         createdAt     = SupabaseDateCoding.flexDecode(from: c, key: .createdAt) ?? Date()
     }
@@ -110,6 +115,8 @@ extension UserTask: Codable {
         // Encode dates as strings that match the Supabase column types
         try c.encodeIfPresent(scheduledDate.map { SupabaseDateCoding.encodeDateOnly($0) },
                               forKey: .scheduledDate)
+        try c.encodeIfPresent(endDate.map { SupabaseDateCoding.encodeDateOnly($0) },
+                              forKey: .endDate)
         try c.encodeIfPresent(scheduledTime.map { SupabaseDateCoding.encodeTimeOnly($0) },
                               forKey: .scheduledTime)
         try c.encode(SupabaseDateCoding.encodeTimestamp(createdAt), forKey: .createdAt)

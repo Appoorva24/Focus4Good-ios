@@ -85,7 +85,7 @@ struct PomodoroView: View {
             Button("Keep Going", role: .cancel) {}
             Button("End Anyway", role: .destructive) { dismiss() }
         } message: {
-            Text("If you stop now, you won't earn focus points and your classroom won't grow today. Stay a little longer and help the student move forward.")
+            Text("If you stop now, you won't earn focus points. Stay a little longer and stay focused.")
         }
     }
 

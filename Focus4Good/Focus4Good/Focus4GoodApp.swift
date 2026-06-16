@@ -24,7 +24,6 @@ struct Focus4GoodApp: App {
     @State private var taskStore    = TaskStore.shared
     @State private var volunteerStore = VolunteerStore.shared
     @State private var progressStore  = ProgressStore.shared
-    @State private var classroomStore = ClassroomStore.shared
     @State private var calmCentreStore = CalmCentreStore.shared
     @State private var communityStore  = CommunityStore.shared
 
@@ -70,7 +69,6 @@ struct Focus4GoodApp: App {
             .environment(taskStore)
             .environment(volunteerStore)
             .environment(progressStore)
-            .environment(classroomStore)
             .environment(calmCentreStore)
             .environment(communityStore)
             .onAppear {
@@ -130,143 +128,7 @@ struct MainTabView: View {
             }
             .tint(AppTheme.orange)
 
-            // First-visit 100 bonus points popup (triggered by VirtualClassroomView)
-            if userStore.showNewUserBonusPopup {
-                NewUserBonusPopup {
-                    userStore.showNewUserBonusPopup = false
-                }
-                .transition(.opacity.combined(with: .scale(scale: 0.92)))
-                .zIndex(999)
-            }
-        }
-        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: userStore.showNewUserBonusPopup)
-    }
-}
-
-// MARK: - New User Bonus Popup
-
-/// Shown once after sign-up when 100 Focus Points are awarded.
-/// Visual style matches PomodoroSessionPopup for consistency.
-struct NewUserBonusPopup: View {
-    let onContinue: () -> Void
-
-    @State private var starScale: CGFloat = 0.3
-    @State private var starOpacity: Double = 0
-    @State private var textVisible = false
-
-    var body: some View {
-        ZStack {
-            // Dimmed background
-            Color.black.opacity(0.5)
-                .ignoresSafeArea()
-                .onTapGesture {} // block pass-through
-
-            VStack(spacing: 0) {
-                Spacer()
-
-                // Star burst icon
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [Color(hex: "FFF3E8"), Color(hex: "FFD9B3")],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 110, height: 110)
-                        .shadow(color: AppTheme.orange.opacity(0.35), radius: 20)
-
-                    Image(systemName: "gift.fill")
-                        .font(.system(size: 48))
-                        .foregroundStyle(AppTheme.orange)
-                }
-                .scaleEffect(starScale)
-                .opacity(starOpacity)
-                .padding(.bottom, 24)
-
-                if textVisible {
-                    VStack(spacing: 12) {
-                        Text("Welcome to Focus4Good! 🎉")
-                            .font(.title2.bold())
-                            .foregroundStyle(AppTheme.textPrimary)
-                            .multilineTextAlignment(.center)
-
-                        Text("You've received a welcome bonus to get started on your virtual classroom journey!")
-                            .font(.subheadline)
-                            .foregroundStyle(AppTheme.textSecondary)
-                            .multilineTextAlignment(.center)
-                            .lineSpacing(4)
-                            .padding(.horizontal, 8)
-
-                        // Points badge
-                        HStack(spacing: 8) {
-                            Image(systemName: "star.fill")
-                                .font(.title3)
-                                .foregroundStyle(AppTheme.orange)
-                            Text("+ 100 Focus Points")
-                                .font(.title.bold())
-                                .foregroundStyle(AppTheme.orange)
-                        }
-                        .padding(.top, 8)
-
-                        Text("Use them in the Item Shop to unlock classroom items!")
-                            .font(.caption)
-                            .foregroundStyle(AppTheme.textSecondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.top, 2)
-                    }
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .padding(.horizontal, 8)
-                }
-
-                Spacer()
-
-                if textVisible {
-                    Button(action: onContinue) {
-                        HStack(spacing: 8) {
-                            Text("Let's Decorate!")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.headline)
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 56)
-                        .background(
-                            Capsule().fill(
-                                LinearGradient(
-                                    colors: [AppTheme.orange, Color(hex: "F4845F")],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
-                        )
-                        .shadow(color: AppTheme.orange.opacity(0.4), radius: 12, y: 4)
-                    }
-                    .padding(.horizontal, 32)
-                    .padding(.bottom, 48)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color(.systemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 32))
-            .padding(.horizontal, 16)
-            .padding(.vertical, 40)
-            .shadow(color: .black.opacity(0.25), radius: 24, y: 12)
-        }
-        .onAppear {
-            // Animate icon in
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) {
-                starScale = 1.0
-                starOpacity = 1.0
-            }
-            // Then reveal text
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
-                    textVisible = true
-                }
-            }
         }
     }
 }
+

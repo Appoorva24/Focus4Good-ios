@@ -11,12 +11,7 @@ class UserStore {
     var isAuthenticated = false
     var isLoading = false
     var errorMessage: String?
-    /// True once restoreSession() has finished (success or failure).
-    /// The splash screen waits for this before deciding where to navigate.
     var isSessionReady = false
-    /// Set to true when 100 bonus points are awarded on first classroom visit.
-    /// VirtualClassroomView triggers this; MainTabView shows the popup.
-    var showNewUserBonusPopup = false
     
     static let shared = UserStore()
     
@@ -100,32 +95,11 @@ class UserStore {
         CommunityStore.shared.clearData()
         CalmCentreStore.shared.clearData()
         VolunteerStore.shared.clearData()
-        ClassroomStore.shared.clearData()
         // Cancel pending notifications
         NotificationManager.shared.cancelAllNotifications()
     }
 
-    // MARK: - Grant Focus Points (called from VirtualClassroomView on first visit)
-    /// Adds `amount` focus points to the current user in Supabase and returns true on success.
-    @discardableResult
-    func grantBonusPoints(_ amount: Int) async -> Bool {
-        guard var user = currentUser else { return false }
-        let newPoints = user.focusPoints + amount
-        do {
-            try await client
-                .from("profiles")
-                .update(["focus_points": newPoints])
-                .eq("id", value: user.id.uuidString)
-                .execute()
-            user.focusPoints = newPoints
-            currentUser = user
-            print("🎁 Granted \(amount) bonus focus points")
-            return true
-        } catch {
-            print("❌ Failed to grant bonus points: \(error)")
-            return false
-        }
-    }
+
 
     // MARK: - Bulk data load (called after every auth)
     private func loadUserData(userId: UUID) async {

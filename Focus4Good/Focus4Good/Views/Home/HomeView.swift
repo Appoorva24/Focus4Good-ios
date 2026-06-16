@@ -3,20 +3,36 @@ import SwiftUI
 enum HomeDestination: Hashable {
     case schedule
     case ngoList
-    case classroom
 }
 
 struct HomeView: View {
     @Environment(UserStore.self) private var userStore
     @Environment(TaskStore.self) private var taskStore
     @Environment(VolunteerStore.self) private var volunteerStore
-    @Environment(ClassroomStore.self) private var classroomStore
     @State private var navigationPath = NavigationPath()
     @State private var showProfile = false
 
-    private var todayHighPriorityTasks: [UserTask] {
-        taskStore.todaysTasks
-            .filter { $0.priority == .high && !$0.isCompleted }
+    private var upcomingTasksForToday: [UserTask] {
+        let now = Date()
+        let cal = Calendar.current
+        let currentHour = cal.component(.hour, from: now)
+        let currentMinute = cal.component(.minute, from: now)
+        let currentTimeMinutes = currentHour * 60 + currentMinute
+        
+        return taskStore.todaysTasks
+            .filter { task in
+                if task.isCompleted { return false }
+                guard let scheduledTime = task.scheduledTime else { return true } // Show tasks with no time
+                let taskHour = cal.component(.hour, from: scheduledTime)
+                let taskMinute = cal.component(.minute, from: scheduledTime)
+                let taskTimeMinutes = taskHour * 60 + taskMinute
+                return taskTimeMinutes >= currentTimeMinutes
+            }
+            .sorted { task1, task2 in
+                guard let time1 = task1.scheduledTime else { return false }
+                guard let time2 = task2.scheduledTime else { return true }
+                return time1 < time2
+            }
             .prefix(3)
             .map { $0 }
     }
@@ -46,7 +62,6 @@ struct HomeView: View {
                     quoteSection
                     plannerCard
                     statsRow
-                    virtualClassroomCard
                     ngoConnectCard
                 }
                 .padding(.horizontal, 16)
@@ -75,8 +90,6 @@ struct HomeView: View {
                     ScheduleView()
                 case .ngoList:
                     NGOListView()
-                case .classroom:
-                    VirtualClassroomView()
                 }
             }
         }
@@ -112,16 +125,16 @@ struct HomeView: View {
                 .background(AppTheme.orange)
 
                 VStack(alignment: .leading, spacing: 14) {
-                    if todayHighPriorityTasks.isEmpty {
+                    if upcomingTasksForToday.isEmpty {
                         HStack(spacing: 10) {
                             Image(systemName: "checkmark.circle")
                                 .foregroundStyle(AppTheme.orange)
-                            Text("No high priority tasks today")
+                            Text("No upcoming tasks today")
                                 .font(.subheadline)
                                 .foregroundStyle(.gray)
                         }
                     } else {
-                        ForEach(todayHighPriorityTasks) { task in
+                        ForEach(upcomingTasksForToday) { task in
                             HStack(spacing: 12) {
                                 RoundedRectangle(cornerRadius: 5)
                                     .stroke(AppTheme.orange, lineWidth: 1.5)
@@ -180,47 +193,6 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Virtual Classroom
-    private var virtualClassroomCard: some View {
-        Button { navigationPath.append(HomeDestination.classroom) } label: {
-            VStack(alignment: .leading, spacing: 0) {
-                Image("vc")
-                    .resizable()
-                    .scaledToFill()
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 200)
-                    .clipped()
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(alignment: .bottom) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Virtual Classroom")
-                                .font(.headline)
-                                .foregroundStyle(AppTheme.textPrimary)
-                            Text("\(classroomStore.unlockedItems.count)/\(classroomStore.items.count) items unlocked")
-                                .font(.caption)
-                                .foregroundStyle(AppTheme.textSecondary)
-                        }
-                        Spacer()
-                        Text("Continue")
-                            .font(.subheadline.bold())
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 10)
-                            .background(Capsule().fill(AppTheme.orange))
-                    }
-                }
-                .padding(.horizontal, 4)
-                .padding(.top, 12)
-            }
-            .padding(16)
-            .background(Color(.systemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 20))
-            .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 2)
-        }
-        .buttonStyle(.plain)
-    }
 
     // MARK: - NGO Connect
     private var ngoConnectCard: some View {

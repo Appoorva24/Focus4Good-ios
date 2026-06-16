@@ -72,7 +72,6 @@ struct DummyData {
     static let onboardingPages: [(title: String, subtitle: String, imageName: String)] = [
         ("Struggling with ADHD?", "Easily distracted? Overwhelmed by simple tasks?\nDon't worry. We got you!", "o1"),
         ("Plan Your Day", "Easily create tasks and manage your daily schedule with smart pomodoro sessions", "o2"),
-        ("Build Virtual Classroom", "Complete tasks to unlock upgrades and build a classroom that supports you better every day.", "o3"),
         ("Master Hyperactivity", "Access smart sensory tools, guided meditation and relaxation tools to help with your hyperactivity", "o4"),
         ("You Are Not Alone", "Connect with people who suffer from ADHD, and find your safe space", "o5")
     ]

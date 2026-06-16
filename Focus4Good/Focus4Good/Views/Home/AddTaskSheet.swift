@@ -8,13 +8,13 @@ struct AddTaskSheet: View {
     @State private var title = ""
     @State private var isDateEnabled = false
     @State private var selectedDate = Date()
+    @State private var isEndDateEnabled = false
+    @State private var endDate = Date()
     @State private var isTimeEnabled = false
     @State private var selectedTime = Date()
     @State private var repeatType: UserTask.RepeatType = .never
-    @State private var priority: UserTask.Priority = .none
     @State private var estimatedDuration = 25
     @State private var showRepeatPicker = false
-    @State private var showPriorityPicker = false
 
     var body: some View {
         NavigationStack {
@@ -25,12 +25,23 @@ struct AddTaskSheet: View {
 
                 Section {
                     Toggle(isOn: $isDateEnabled.animation()) {
-                        Label("Date", systemImage: "calendar")
+                        Label("Start Date", systemImage: "calendar")
                     }
                     .tint(AppTheme.orange)
 
                     if isDateEnabled {
                         DatePicker("", selection: $selectedDate, displayedComponents: .date)
+                            .datePickerStyle(.graphical)
+                            .tint(AppTheme.orange)
+                    }
+
+                    Toggle(isOn: $isEndDateEnabled.animation()) {
+                        Label("End Date", systemImage: "calendar.badge.clock")
+                    }
+                    .tint(AppTheme.orange)
+
+                    if isEndDateEnabled {
+                        DatePicker("", selection: $endDate, displayedComponents: .date)
                             .datePickerStyle(.graphical)
                             .tint(AppTheme.orange)
                     }
@@ -54,9 +65,6 @@ struct AddTaskSheet: View {
                 } header: { Text("Repeat").textCase(nil) }
 
                 Section {
-                    pickerRow(icon: "line.3.horizontal.decrease", label: "Priority", value: priority.displayName) {
-                        showPriorityPicker = true
-                    }
                     HStack {
                         Label("Duration", systemImage: "timer")
                             .foregroundStyle(AppTheme.textPrimary)
@@ -83,12 +91,6 @@ struct AddTaskSheet: View {
             .confirmationDialog("Repeat", isPresented: $showRepeatPicker, titleVisibility: .visible) {
                 ForEach(UserTask.RepeatType.allCases, id: \.self) { type in
                     Button(type.displayName) { repeatType = type }
-                }
-                Button("Cancel", role: .cancel) {}
-            }
-            .confirmationDialog("Priority", isPresented: $showPriorityPicker, titleVisibility: .visible) {
-                ForEach(UserTask.Priority.allCases, id: \.self) { p in
-                    Button(p.displayName) { priority = p }
                 }
                 Button("Cancel", role: .cancel) {}
             }
@@ -123,9 +125,10 @@ struct AddTaskSheet: View {
             categoryId: nil,
             title: title,
             scheduledDate: isDateEnabled ? selectedDate : Date(),
+            endDate: isEndDateEnabled ? endDate : nil,
             scheduledTime: isTimeEnabled ? selectedTime : nil,
             repeatType: repeatType,
-            priority: priority,
+            priority: .none,
             isCompleted: false,
             estimatedDuration: estimatedDuration,
             createdAt: Date()

@@ -59,9 +59,11 @@ class NotificationManager {
             from: taskDate
         )
         
+        // Subtract 5 mins from scheduledTime
+        let notificationTime = Calendar.current.date(byAdding: .minute, value: -5, to: scheduledTime) ?? scheduledTime
         let timeComponents = Calendar.current.dateComponents(
             [.hour, .minute],
-            from: scheduledTime
+            from: notificationTime
         )
         
         dateComponents.hour = timeComponents.hour
