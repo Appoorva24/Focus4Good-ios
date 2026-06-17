@@ -165,21 +165,29 @@ class UserStore {
         isLoading = false
     }
     
-    func updateProfile(fullName: String, profileImageUrl: String?) async {
+    func updateProfile(fullName: String, email: String? = nil, profileImageUrl: String?) async {
         guard let userId = currentUser?.id else { return }
         do {
+            var updates: [String: String] = [
+                "full_name": fullName,
+                "profile_image_url": profileImageUrl ?? ""
+            ]
+            if let email {
+                updates["email"] = email
+            }
+            
             try await client
                 .from("profiles")
-                .update([
-                    "full_name": fullName,
-                    "profile_image_url": profileImageUrl ?? ""
-                ])
+                .update(updates)
                 .eq("id", value: userId.uuidString)
                 .execute()
             
             // Update local state
             currentUser?.fullName = fullName
             currentUser?.profileImageUrl = profileImageUrl
+            if let email {
+                currentUser?.email = email
+            }
         } catch {
             errorMessage = error.localizedDescription
         }

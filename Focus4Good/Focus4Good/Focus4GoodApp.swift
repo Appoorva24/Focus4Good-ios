@@ -30,6 +30,9 @@ struct Focus4GoodApp: App {
 
     // ── Navigation state ────────────────────────────────────────────
     @State private var appState: AppState = .splash
+    
+    // ── Scene phase (for re-engagement notifications) ───────────────
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
@@ -78,7 +81,30 @@ struct Focus4GoodApp: App {
                 Task { _ = await NotificationManager.shared.requestPermission() }
             }
         }
+        // ── Re-engagement notifications: schedule on background, cancel on active ──
+        .onChange(of: scenePhase) { _, newPhase in
+            switch newPhase {
+            case .background:
+                // User left the app — schedule catchy comeback notifications
+                Task {
+                    let streak = userStore.currentUser?.currentStreak ?? 0
+                    let points = userStore.currentUser?.focusPoints ?? 0
+                    let level  = userStore.currentUser?.currentLevel ?? 1
+                    await NotificationManager.shared.scheduleReengagementNotifications(
+                        streak: streak,
+                        points: points,
+                        level: level
+                    )
+                }
+            case .active:
+                // User is back — cancel any pending re-engagement notifications
+                NotificationManager.shared.cancelReengagementNotifications()
+            default:
+                break
+            }
+        }
     }
+
 
     // MARK: - Helpers
 
