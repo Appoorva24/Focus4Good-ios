@@ -48,6 +48,8 @@ struct BraindumpWriteView: View {
         } message: {
             Text("Give a title to find it easily later.")
         }
+        .toolbar(selectedMode == .draw ? .hidden : .visible, for: .tabBar)
+        .animation(.easeInOut(duration: 0.25), value: selectedMode)
         .confirmationDialog(
             "Discard this dump?",
             isPresented: $showDiscardConfirmation,
