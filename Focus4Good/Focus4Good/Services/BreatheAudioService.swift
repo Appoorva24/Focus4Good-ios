@@ -1,40 +1,33 @@
 @preconcurrency import AVFoundation
 
-/// This service handles the voice guidance for the Breathing session.
-/// It uses high-quality text-to-speech to guide the user through Inhaling, Holding, and Exhaling.
+// MARK: - BreatheAudioService
+
+/// Provides a full guided breathing experience using AVSpeechSynthesizer
+/// with a gentle, calming female voice.
+
 @MainActor
 class BreatheAudioService: NSObject, AVSpeechSynthesizerDelegate {
 
     static let shared = BreatheAudioService()
 
-    /// A callback that is triggered when the AI finishes speaking a sentence.
-    /// Used by the UI to wait before moving to the next breathing phase.
-    var onSpeechFinished: (() -> Void)?
-
     // MARK: - Private State
+
+
+    //synthesizer - takes any text and convert that into speech
     private let synthesizer = AVSpeechSynthesizer()
     private var selectedVoice: AVSpeechSynthesisVoice?
 
     private override init() {
         super.init()
         synthesizer.delegate = self
-        // Try to pick a gentle female voice for a more relaxing experience
         selectedVoice = pickFemaleVoice()
-    }
-
-    // MARK: - AVSpeechSynthesizerDelegate
-
-    /// This is called automatically by iOS when a voice instruction finishes.
-    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
-        Task { @MainActor in
-            self.onSpeechFinished?()
-        }
     }
 
     // MARK: - Voice Selection
 
-    /// Attempts to find premium, high-quality female voices like "Zoe" or "Ava".
+    /// Pick the best available female voice for a calm, gentle experience.
     private func pickFemaleVoice() -> AVSpeechSynthesisVoice? {
+        // Preferred female voices in priority order (premium → enhanced → default)
         let preferred: [String] = [
             "com.apple.voice.premium.en-US.Zoe",
             "com.apple.voice.premium.en-US.Ava",
@@ -51,13 +44,13 @@ class BreatheAudioService: NSObject, AVSpeechSynthesizerDelegate {
             }
         }
 
-        // Fallback to default US English if no premium voice is found
+        // Fallback: pick any English female voice, or default English
         return AVSpeechSynthesisVoice(language: "en-US")
     }
 
-    // MARK: - Guided Instructions
+    // MARK: - Full Guided Experience
 
-    /// Welcome message when starting the session.
+    /// Welcome and settle the user before the session begins.
     func speakIntro(cycles: Int) {
         configureAudioSession()
         let text = "Welcome to your breathing space. "
@@ -69,7 +62,7 @@ class BreatheAudioService: NSObject, AVSpeechSynthesizerDelegate {
         speakCalm(text)
     }
 
-    /// Tells the user whether to Inhale, Hold, or Exhale.
+    /// Guide the user through each breathing phase.
     func speakPhase(_ phaseName: String, cycle: Int, totalCycles: Int) {
         configureAudioSession()
 
@@ -96,7 +89,7 @@ class BreatheAudioService: NSObject, AVSpeechSynthesizerDelegate {
         speakCalm(text)
     }
 
-    /// Announce the transition to the next cycle.
+    /// Announce the transition between cycles.
     func speakCycleTransition(currentCycle: Int, totalCycles: Int) {
         configureAudioSession()
         let remaining = totalCycles - currentCycle
@@ -110,7 +103,7 @@ class BreatheAudioService: NSObject, AVSpeechSynthesizerDelegate {
         speakCalm(text)
     }
 
-    /// Final success message when the session is complete.
+    /// Speak a calming completion message.
     func speakCompletion(cycles: Int) {
         configureAudioSession()
         let text = "You did it. \(cycles) \(cycles == 1 ? "round" : "rounds") complete. "
@@ -120,16 +113,8 @@ class BreatheAudioService: NSObject, AVSpeechSynthesizerDelegate {
         speakCalm(text)
     }
 
-    // MARK: - Status & Control
-
-    /// Returns true if the AI is currently talking.
-    var isSpeaking: Bool {
-        synthesizer.isSpeaking
-    }
-
-    /// Stops all speech immediately and clears the audio session.
+    /// Stop all speech immediately.
     func stopAll() {
-        onSpeechFinished = nil
         synthesizer.stopSpeaking(at: .immediate)
         try? AVAudioSession.sharedInstance().setActive(
             false, options: .notifyOthersOnDeactivation
@@ -138,24 +123,25 @@ class BreatheAudioService: NSObject, AVSpeechSynthesizerDelegate {
 
     // MARK: - Private Helpers
 
-    /// Starts speaking a text with a meditative, slow delivery.
+    /// Speak with a gentle, calming delivery.
     private func speakCalm(_ text: String) {
         if synthesizer.isSpeaking {
-            synthesizer.stopSpeaking(at: .word) // Stop naturally at the end of the current word
+            synthesizer.stopSpeaking(at: .immediate)
         }
 
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = selectedVoice
-        utterance.rate = 0.38 // Very slow pace for breathing
-        utterance.pitchMultiplier = 1.05
+        utterance.rate = 0.38              // Very slow, meditative pace
+        utterance.pitchMultiplier = 1.05   // Slightly higher for a softer feel
         utterance.volume = 0.85
         utterance.preUtteranceDelay = 0.3
-        utterance.postUtteranceDelay = 0.5
+        utterance.postUtteranceDelay = 0.5 // Pause after each phrase
 
         synthesizer.speak(utterance)
     }
 
-    /// Configures the phone's audio session to allow playback (even on silent) and dim other background music.
+
+    // managing phone's volume
     private func configureAudioSession() {
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.playback, mode: .default, options: [.duckOthers])

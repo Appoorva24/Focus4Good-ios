@@ -1,39 +1,28 @@
 @preconcurrency import AVFoundation
 
-/// This service handles the voice guidance for the JPMR (Jacobson's Progressive Muscle Relaxation) session.
-/// It uses high-quality text-to-speech to walk the user through tensing and releasing muscles.
+// MARK: - JPMRAudioService
+
+/// Provides guided voice instructions throughout a JPMR session
+/// using AVSpeechSynthesizer with a gentle, calming female voice.
+
 @MainActor
 class JPMRAudioService: NSObject, AVSpeechSynthesizerDelegate {
 
     static let shared = JPMRAudioService()
 
-    /// A callback that is triggered when the AI finishes speaking a sentence.
-    /// Used by the UI to wait for the voice to finish before moving to the next muscle group.
-    var onSpeechFinished: (() -> Void)?
-
     // MARK: - Private State
+
     private let synthesizer = AVSpeechSynthesizer()
     private var selectedVoice: AVSpeechSynthesisVoice?
 
     private override init() {
         super.init()
         synthesizer.delegate = self
-        // Try to pick a gentle female voice for a more relaxing experience
         selectedVoice = pickFemaleVoice()
-    }
-
-    // MARK: - AVSpeechSynthesizerDelegate
-
-    /// This is called automatically by iOS when a voice instruction finishes.
-    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
-        Task { @MainActor in
-            self.onSpeechFinished?()
-        }
     }
 
     // MARK: - Voice Selection
 
-    /// Attempts to find premium, high-quality female voices like "Zoe" or "Ava".
     private func pickFemaleVoice() -> AVSpeechSynthesisVoice? {
         let preferred: [String] = [
             "com.apple.voice.premium.en-US.Zoe",
@@ -51,13 +40,12 @@ class JPMRAudioService: NSObject, AVSpeechSynthesizerDelegate {
             }
         }
 
-        // Fallback to default US English if no premium voice is found
         return AVSpeechSynthesisVoice(language: "en-US")
     }
 
-    // MARK: - Guided Instructions
+    // MARK: - Guided Experience
 
-    /// Welcome message when starting the session.
+    /// Welcome message as preparation begins.
     func speakPreparation(groupCount: Int) {
         configureAudioSession()
         let text = "Welcome to your progressive muscle relaxation session. "
@@ -67,7 +55,7 @@ class JPMRAudioService: NSObject, AVSpeechSynthesizerDelegate {
         speakCalm(text)
     }
 
-    /// Tells the user to tense a specific muscle.
+    /// Instruct the user to tense a muscle group.
     func speakTense(muscleName: String, instruction: String) {
         configureAudioSession()
         let text = "\(muscleName). "
@@ -77,7 +65,7 @@ class JPMRAudioService: NSObject, AVSpeechSynthesizerDelegate {
         speakCalm(text)
     }
 
-    /// Tells the user to release the tension and relax.
+    /// Instruct the user to release and rest.
     func speakRest(muscleName: String, releaseNote: String) {
         configureAudioSession()
         let text = "Release. Let go completely. "
@@ -86,7 +74,7 @@ class JPMRAudioService: NSObject, AVSpeechSynthesizerDelegate {
         speakCalm(text)
     }
 
-    /// Guides the transition to the next muscle group in the list.
+    /// Announce the transition to the next muscle group.
     func speakGroupTransition(nextName: String, currentIndex: Int, totalGroups: Int) {
         configureAudioSession()
         let remaining = totalGroups - currentIndex
@@ -99,15 +87,16 @@ class JPMRAudioService: NSObject, AVSpeechSynthesizerDelegate {
         speakCalm(text)
     }
 
-    /// Final instructions for ending the session.
+    /// Guide the user through ending steps.
     func speakEndingStep(title: String, instruction: String) {
         configureAudioSession()
+        // Clean up newlines from instruction text
         let cleaned = instruction.replacingOccurrences(of: "\n", with: ". ")
         let text = "\(title). \(cleaned)"
         speakCalm(text)
     }
 
-    /// Success message when the whole session is complete.
+    /// Congratulatory closing message.
     func speakCompletion(groupCount: Int) {
         configureAudioSession()
         let text = "Wonderful. You've completed your progressive muscle relaxation session, "
@@ -117,16 +106,8 @@ class JPMRAudioService: NSObject, AVSpeechSynthesizerDelegate {
         speakCalm(text)
     }
 
-    // MARK: - Status & Control
-
-    /// Returns true if the AI is currently talking.
-    var isSpeaking: Bool {
-        synthesizer.isSpeaking
-    }
-
-    /// Stops all speech immediately and clears the audio session.
+    /// Stop all speech immediately.
     func stopAll() {
-        onSpeechFinished = nil
         synthesizer.stopSpeaking(at: .immediate)
         try? AVAudioSession.sharedInstance().setActive(
             false, options: .notifyOthersOnDeactivation
@@ -135,15 +116,14 @@ class JPMRAudioService: NSObject, AVSpeechSynthesizerDelegate {
 
     // MARK: - Private Helpers
 
-    /// Starts speaking a text with calm, slow, and soothing settings.
     private func speakCalm(_ text: String) {
         if synthesizer.isSpeaking {
-            synthesizer.stopSpeaking(at: .word) // Stop naturally at the end of the current word
+            synthesizer.stopSpeaking(at: .immediate)
         }
 
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = selectedVoice
-        utterance.rate = 0.38 // Slow speed for relaxation
+        utterance.rate = 0.38
         utterance.pitchMultiplier = 1.05
         utterance.volume = 0.85
         utterance.preUtteranceDelay = 0.3
@@ -152,11 +132,9 @@ class JPMRAudioService: NSObject, AVSpeechSynthesizerDelegate {
         synthesizer.speak(utterance)
     }
 
-    /// Configures the phone's audio session to allow playback (even on silent) and dim other background music.
     private func configureAudioSession() {
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.playback, mode: .default, options: [.duckOthers])
         try? session.setActive(true)
     }
 }
-

@@ -1,15 +1,12 @@
 import SwiftUI
 
-/// This view displays all the brain dump notes saved inside a specific folder.
 struct BraindumpEntriesView: View {
 
     let folder: BrainDumpFolder
 
     @Environment(CalmCentreStore.self) private var store
-    // State to track which entry is selected for viewing in a sheet
     @State private var selectedEntry: BrainDumpEntry?
 
-    // Filters the store's entries to only show ones belonging to this folder
     private var entries: [BrainDumpEntry] {
         store.brainDumpEntries(in: folder)
     }
@@ -17,18 +14,23 @@ struct BraindumpEntriesView: View {
     var body: some View {
         List {
             Section {
-                // Loop through all entries in this folder
                 ForEach(entries) { entry in
                     Button { selectedEntry = entry } label: {
                         Label {
                             VStack(alignment: .leading, spacing: 4) {
-                                // Show a preview of the note content
-                                Text(entry.content)
-                                    .lineLimit(2)
-                                    .font(.body)
-                                    .foregroundStyle(.primary)
+                                if let title = entry.title, !title.isEmpty {
+                                    Text(title)
+                                        .lineLimit(1)
+                                        .font(.body)
+                                        .fontWeight(.medium)
+                                        .foregroundStyle(.primary)
+                                } else {
+                                    Text(entry.content)
+                                        .lineLimit(2)
+                                        .font(.body)
+                                        .foregroundStyle(.primary)
+                                }
 
-                                // Show when the note was created
                                 Text(entry.createdAt, format: .dateTime.day().month(.wide).year())
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
@@ -50,7 +52,6 @@ struct BraindumpEntriesView: View {
         .listStyle(.insetGrouped)
         .navigationTitle(folder.name)
         .toolbar {
-            // Button to open the editor and create a NEW entry in this folder
             ToolbarItem(placement: .topBarTrailing) {
                 NavigationLink {
                     BraindumpEditorView(folder: folder)
@@ -60,19 +61,16 @@ struct BraindumpEntriesView: View {
                 }
             }
 
-            // Standard Edit button for deleting rows
             if !entries.isEmpty {
                 ToolbarItem(placement: .topBarLeading) {
                     EditButton()
                 }
             }
         }
-        // Shows the full note content in a popup sheet when tapped
         .sheet(item: $selectedEntry) { entry in
             entryDetailSheet(entry)
         }
         .overlay {
-            // Show an empty state message if the folder has no notes
             if entries.isEmpty {
                 VStack(spacing: 12) {
                     Image(systemName: "doc.text")
@@ -88,7 +86,6 @@ struct BraindumpEntriesView: View {
         }
     }
 
-    /// The popup sheet that displays the full text of a selected note
     private func entryDetailSheet(_ entry: BrainDumpEntry) -> some View {
         NavigationStack {
             ScrollView {
@@ -97,13 +94,19 @@ struct BraindumpEntriesView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
+                    if let title = entry.title, !title.isEmpty {
+                        Text(title)
+                            .font(.title3)
+                            .fontWeight(.semibold)
+                    }
+
                     Text(entry.content)
                         .font(.body)
                 }
                 .padding()
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .navigationTitle("Entry")
+            .navigationTitle(entry.title ?? "Entry")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -114,10 +117,9 @@ struct BraindumpEntriesView: View {
         }
     }
 
-    /// Deletes a note from the Supabase backend
     private func deleteEntry(at offsets: IndexSet) {
         for entry in offsets.map({ entries[$0] }) {
-            Task { await store.deleteBrainDumpEntry(entry) }
+            store.deleteBrainDumpEntry(entry)
         }
     }
 }
@@ -128,6 +130,5 @@ struct BraindumpEntriesView: View {
             folder: BrainDumpFolder(userId: UUID(), name: "Random Thoughts", entryCount: 2)
         )
         .environment(CalmCentreStore.shared)
-        .environment(UserStore.shared)
     }
 }

@@ -46,14 +46,6 @@ struct CalmCentreView: View {
                     .foregroundStyle(Color.accentColor)
 
                 Spacer()
-
-                Text("Top Choice")
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(Color.accentColor)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 5)
-                    .background(Capsule().fill(Color.accentColor.opacity(0.15)))
             }
 
             Text("Braindump")

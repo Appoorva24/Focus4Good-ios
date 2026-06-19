@@ -13,7 +13,7 @@ struct BraindumpPasswordView: View {
 
     var body: some View {
         if isUnlocked {
-            BraindumpFoldersView()
+            BraindumpHomeView()
         } else {
             pinEntryScreen
         }
@@ -56,11 +56,6 @@ struct BraindumpPasswordView: View {
             Text(screenTitle)
                 .font(.title3)
                 .fontWeight(.bold)
-
-            Text(screenSubtitle)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
 
             HStack(spacing: 16) {
                 ForEach(0..<pinLength, id: \.self) { index in
