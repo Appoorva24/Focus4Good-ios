@@ -111,4 +111,16 @@ class CalmCentreStore {
             brainDumpFolders[index].entryCount = max(0, brainDumpFolders[index].entryCount - 1)
         }
     }
+
+    func clearData() {
+        breathingSessions.removeAll()
+        jpmrSessions.removeAll()
+        guidedMeditationSessions.removeAll()
+        asmrSounds.removeAll()
+        favouriteAsmrSoundIds.removeAll()
+        brainDumpFolders.removeAll()
+        brainDumpEntries.removeAll()
+        activeAsmrSound = nil
+        errorMessage = nil
+    }
 }
