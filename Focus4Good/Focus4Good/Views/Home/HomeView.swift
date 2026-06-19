@@ -21,7 +21,7 @@ struct HomeView: View {
         
         return taskStore.todaysTasks
             .filter { task in
-                if task.isCompleted { return false }
+                if taskStore.isTaskCompleted(task, on: now) { return false }
                 guard let scheduledTime = task.scheduledTime else { return true } // Show tasks with no time
                 let taskHour = cal.component(.hour, from: scheduledTime)
                 let taskMinute = cal.component(.minute, from: scheduledTime)
@@ -38,9 +38,11 @@ struct HomeView: View {
     }
 
     private var todayGoalProgress: Double {
-        let total = taskStore.todaysTasks.count
+        let today = Date()
+        let todayTasks = taskStore.todaysTasks
+        let total = todayTasks.count
         guard total > 0 else { return 0 }
-        return Double(taskStore.todaysTasks.filter { $0.isCompleted }.count) / Double(total)
+        return Double(todayTasks.filter { taskStore.isTaskCompleted($0, on: today) }.count) / Double(total)
     }
 
     private var focusPointsProgress: Double {
@@ -140,7 +142,7 @@ struct HomeView: View {
                                     .stroke(AppTheme.orange, lineWidth: 1.5)
                                     .frame(width: 22, height: 22)
                                     .overlay {
-                                        if task.isCompleted {
+                                        if taskStore.isTaskCompleted(task, on: Date()) {
                                             Image(systemName: "checkmark")
                                                 .font(.caption.bold())
                                                 .foregroundStyle(AppTheme.orange)

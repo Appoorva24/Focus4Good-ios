@@ -91,6 +91,7 @@ class UserStore {
         // Clear ALL cached store data
         TaskStore.shared.tasks = []
         TaskStore.shared.categories = []
+        TaskStore.shared.taskCompletions = [:]
         ProgressStore.shared.clearData()
         CommunityStore.shared.clearData()
         CalmCentreStore.shared.clearData()
@@ -103,7 +104,10 @@ class UserStore {
 
     // MARK: - Bulk data load (called after every auth)
     private func loadUserData(userId: UUID) async {
-        async let tasks: ()       = TaskStore.shared.fetchTasks(userId: userId)
+        // Fetch tasks first since completions depend on task IDs
+        await TaskStore.shared.fetchTasks(userId: userId)
+        await TaskStore.shared.fetchTaskCompletions(userId: userId)
+        
         async let progress: ()    = ProgressStore.shared.fetchProgress(userId: userId)
         async let communities: () = CommunityStore.shared.fetchCommunities()
         async let categories: ()  = CommunityStore.shared.fetchCommunityCategories()
@@ -116,7 +120,7 @@ class UserStore {
         async let asmr: ()        = CalmCentreStore.shared.fetchAsmrSounds()
         async let folders: ()     = CalmCentreStore.shared.fetchBrainDumpFolders(userId: userId)
         async let entries: ()     = CalmCentreStore.shared.fetchBrainDumpEntries(userId: userId)
-        _ = await (tasks, progress, communities, categories, ngos, events, regs, breathing, jpmr, meditation, asmr, folders, entries)
+        _ = await (progress, communities, categories, ngos, events, regs, breathing, jpmr, meditation, asmr, folders, entries)
     }
     
     // MARK: - Profile CRUD

@@ -97,6 +97,17 @@ struct AddTaskSheet: View {
         }
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
+        .alert("Error Saving Task",
+               isPresented: Binding(
+                   get: { taskStore.errorMessage != nil },
+                   set: { if !$0 { taskStore.errorMessage = nil } }
+               ),
+               presenting: taskStore.errorMessage
+        ) { _ in
+            Button("OK", role: .cancel) {}
+        } message: { message in
+            Text(message)
+        }
     }
 
     private func pickerRow(icon: String, label: String, value: String, action: @escaping () -> Void) -> some View {
@@ -114,9 +125,9 @@ struct AddTaskSheet: View {
     private func saveTask() {
         guard !title.isEmpty else { return }
         
-        // Guard: must have an authenticated user — never fall back to dummy data
+        // Guard: must have an authenticated user
         guard let userId = userStore.currentUser?.id else {
-            print("❌ Cannot save task: no authenticated user")
+            taskStore.errorMessage = "Cannot save task: no authenticated user"
             return
         }
         
@@ -134,12 +145,17 @@ struct AddTaskSheet: View {
             createdAt: Date()
         )
         
-        // Await the insert BEFORE dismissing so the environment stays alive
         Task {
+            // Clear previous errors
+            taskStore.errorMessage = nil
+            
             await taskStore.addTask(task)
-            // Dismiss only after the insert succeeds
+            
+            // Only dismiss if there's no error
             await MainActor.run {
-                dismiss()
+                if taskStore.errorMessage == nil {
+                    dismiss()
+                }
             }
         }
     }

@@ -123,3 +123,23 @@ extension UserTask: Codable {
     }
 }
 
+// MARK: - Task Completion (per-day tracking for repeating tasks)
+
+struct TaskCompletion: Codable {
+    var id: UUID
+    var taskId: UUID
+    var completedDate: String  // "yyyy-MM-dd"
+    
+    enum CodingKeys: String, CodingKey {
+        case id
+        case taskId = "task_id"
+        case completedDate = "completed_date"
+    }
+    
+    init(id: UUID = UUID(), taskId: UUID, completedDate: String) {
+        self.id = id
+        self.taskId = taskId
+        self.completedDate = completedDate
+    }
+}
+

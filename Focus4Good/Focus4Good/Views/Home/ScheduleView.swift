@@ -13,8 +13,10 @@ struct ScheduleView: View {
     private var tasksForSelectedDate: [UserTask] {
         taskStore.tasks(for: selectedDate)
             .sorted { task1, task2 in
-                if task1.isCompleted != task2.isCompleted {
-                    return !task1.isCompleted && task2.isCompleted
+                let c1 = taskStore.isTaskCompleted(task1, on: selectedDate)
+                let c2 = taskStore.isTaskCompleted(task2, on: selectedDate)
+                if c1 != c2 {
+                    return !c1 && c2
                 }
                 guard let time1 = task1.scheduledTime else { return false }
                 guard let time2 = task2.scheduledTime else { return true }
@@ -56,9 +58,12 @@ struct ScheduleView: View {
             PomodoroView(task: task)
         }
         .onAppear {
-            // Refresh tasks whenever the schedule is opened
+            // Refresh tasks and completions whenever the schedule is opened
             guard let userId = userStore.currentUser?.id else { return }
-            Task { await taskStore.fetchTasks(userId: userId) }
+            Task {
+                await taskStore.fetchTasks(userId: userId)
+                await taskStore.fetchTaskCompletions(userId: userId)
+            }
         }
     }
 
@@ -154,14 +159,14 @@ struct ScheduleView: View {
         List {
             Section {
                 ForEach(tasksForSelectedDate) { task in
-                    TaskRowView(task: task, selectedTask: $selectedTask)
+                    TaskRowView(task: task, date: selectedDate, selectedTask: $selectedTask)
                 }
             } header: {
                 HStack {
                     Text(selectedDate.formatted(date: .abbreviated, time: .omitted))
                         .font(.headline).foregroundStyle(AppTheme.textPrimary).textCase(nil)
                     Spacer()
-                    let remaining = tasksForSelectedDate.filter { !$0.isCompleted }.count
+                    let remaining = tasksForSelectedDate.filter { !taskStore.isTaskCompleted($0, on: selectedDate) }.count
                     if remaining > 0 {
                         Text("\(remaining) Remaining").font(.caption.bold()).foregroundStyle(AppTheme.orange)
                     }
@@ -187,19 +192,24 @@ struct ScheduleView: View {
 
 struct TaskRowView: View {
     let task: UserTask
+    let date: Date
     @Binding var selectedTask: UserTask?
     @Environment(TaskStore.self) private var taskStore
+
+    private var isCompleted: Bool {
+        taskStore.isTaskCompleted(task, on: date)
+    }
 
     var body: some View {
         HStack(spacing: 14) {
             Button {
-                Task { await taskStore.toggleCompletion(for: task) }
+                Task { await taskStore.toggleCompletion(for: task, on: date) }
             } label: {
                 ZStack {
                     RoundedRectangle(cornerRadius: 6)
-                        .stroke(task.isCompleted ? AppTheme.orange : Color(.systemGray3), lineWidth: 1.5)
+                        .stroke(isCompleted ? AppTheme.orange : Color(.systemGray3), lineWidth: 1.5)
                         .frame(width: 22, height: 22)
-                    if task.isCompleted {
+                    if isCompleted {
                         Image(systemName: "checkmark").font(.caption.bold()).foregroundStyle(AppTheme.orange)
                     }
                 }
@@ -209,8 +219,8 @@ struct TaskRowView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(task.title)
                     .font(.subheadline.weight(.medium))
-                    .foregroundStyle(task.isCompleted ? AppTheme.textSecondary : AppTheme.textPrimary)
-                    .strikethrough(task.isCompleted)
+                    .foregroundStyle(isCompleted ? AppTheme.textSecondary : AppTheme.textPrimary)
+                    .strikethrough(isCompleted)
                     .lineLimit(1)
 
                 HStack(spacing: 8) {
@@ -236,7 +246,7 @@ struct TaskRowView: View {
 
             Spacer()
 
-            if !task.isCompleted {
+            if !isCompleted {
                 Button { selectedTask = task } label: {
                     Image(systemName: "timer").font(.title3).foregroundStyle(AppTheme.orange)
                 }
@@ -245,8 +255,6 @@ struct TaskRowView: View {
         }
         .padding(.vertical, 4)
     }
-
-
 
     private func tagView(_ text: String, color: Color) -> some View {
         Text(text).font(.caption2.bold()).foregroundStyle(color)
