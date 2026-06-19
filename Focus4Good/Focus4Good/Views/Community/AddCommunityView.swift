@@ -18,6 +18,10 @@ struct AddCommunityView: View {
     @State private var showCamera = false
     @State private var showPhotoPicker = false
 
+    @State private var isSubmitting = false
+    @State private var errorMessage: String?
+    @State private var showErrorAlert = false
+
     var body: some View {
         NavigationStack {
             VStack {
@@ -134,12 +138,20 @@ struct AddCommunityView: View {
                 Button {
                     Task {
                         guard let userId = userStore.currentUser?.id else { return }
+                        isSubmitting = true
                         
                         // Upload cover image to Supabase Storage if present
                         var uploadedCoverUrl: String?
                         if let imageData = coverImageData {
                             let path = "communities/\(userId.uuidString)/\(UUID().uuidString).jpg"
-                            uploadedCoverUrl = try? await communityStore.uploadImage(data: imageData, path: path)
+                            do {
+                                uploadedCoverUrl = try await communityStore.uploadImage(data: imageData, path: path)
+                            } catch {
+                                isSubmitting = false
+                                errorMessage = "Failed to upload cover image. Please verify that the 'community-images' storage bucket is created in your Supabase dashboard and set to public.\n\nError: \(error.localizedDescription)"
+                                showErrorAlert = true
+                                return
+                            }
                         }
                         
                         await communityStore.createCommunity(
@@ -150,18 +162,26 @@ struct AddCommunityView: View {
                             userId: userId,
                             coverImageUrl: uploadedCoverUrl
                         )
+                        isSubmitting = false
                         addCommunity = false
                     }
                 } label: {
-                    Text("Create Community")
-                        .font(.headline)
-                        .foregroundStyle(Color.primary)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 40)
-                        .background(nameOfCommunity.isEmpty ? AppTheme.orange.opacity(0.4) : AppTheme.orange)
-                        .clipShape(RoundedRectangle(cornerRadius: 25))
+                    HStack {
+                        if isSubmitting {
+                            ProgressView()
+                                .tint(.primary)
+                                .padding(.trailing, 8)
+                        }
+                        Text(isSubmitting ? "Creating..." : "Create Community")
+                            .font(.headline)
+                            .foregroundStyle(Color.primary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 40)
+                    .background(nameOfCommunity.isEmpty || isSubmitting ? AppTheme.orange.opacity(0.4) : AppTheme.orange)
+                    .clipShape(RoundedRectangle(cornerRadius: 25))
                 }
-                .disabled(nameOfCommunity.isEmpty)
+                .disabled(nameOfCommunity.isEmpty || isSubmitting)
                 .padding(.horizontal)
                 .padding(.top, 8)
 
@@ -195,6 +215,11 @@ struct AddCommunityView: View {
                         coverImage = Image(uiImage: uiImage)
                     }
                 }
+            }
+            .alert("Upload Failed", isPresented: $showErrorAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(errorMessage ?? "An unknown error occurred.")
             }
         }
     }

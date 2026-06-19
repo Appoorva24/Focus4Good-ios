@@ -13,7 +13,7 @@ struct CommunityRowView: View {
     }
 
     private var isJoined: Bool {
-        communityStore.isMember(communityId: community.id, userId: currentUserId)
+        community.creatorId == currentUserId || communityStore.isMember(communityId: community.id, userId: currentUserId)
     }
 
     /// Posts belonging to this community
@@ -136,7 +136,11 @@ struct CommunityDetailView: View {
     @Environment(UserStore.self) private var userStore
     @Environment(\.dismiss) private var dismiss
     @State private var showLeaveAlert = false
+    @State private var showDissolveAlert = false
+    @State private var showTransferSheet = false
     @State private var showAddPost = false
+    @State private var showMembersSheet = false
+    @State private var showPostsSheet = false
 
     private var posts: [Post] {
         communityStore.posts(in: community)
@@ -146,8 +150,12 @@ struct CommunityDetailView: View {
         userStore.currentUser?.id ?? UUID()
     }
 
+    private var otherMembers: [CommunityMember] {
+        communityStore.communityMembers.filter { $0.communityId == community.id && $0.userId != currentUserId }
+    }
+
     private var isJoined: Bool {
-        communityStore.isMember(communityId: community.id, userId: currentUserId)
+        community.creatorId == currentUserId || communityStore.isMember(communityId: community.id, userId: currentUserId)
     }
 
     var body: some View {
@@ -185,21 +193,32 @@ struct CommunityDetailView: View {
 
                     // Native-style Stats Row
                     HStack(spacing: 40) {
-                        VStack(spacing: 4) {
-                            Text("\(community.memberCount)")
-                                .font(.headline)
-                            Text("Members")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                        Button {
+                            showMembersSheet = true
+                        } label: {
+                            VStack(spacing: 4) {
+                                Text("\(community.memberCount)")
+                                    .font(.headline)
+                                Text("Members")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
+                        .buttonStyle(.plain)
 
-                        VStack(spacing: 4) {
-                            Text(community.isPrivate && !isJoined ? "—" : "\(posts.count)")
-                                .font(.headline)
-                            Text("Posts")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                        Button {
+                            showPostsSheet = true
+                        } label: {
+                            VStack(spacing: 4) {
+                                Text(community.isPrivate && !isJoined ? "—" : "\(posts.count)")
+                                    .font(.headline)
+                                Text("Posts")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
+                        .buttonStyle(.plain)
+                        .disabled(community.isPrivate && !isJoined)
                     }
                     .padding(.top, 8)
                 }
@@ -295,7 +314,15 @@ struct CommunityDetailView: View {
                         }
                         
                         Button {
-                            showLeaveAlert = true
+                            if community.creatorId == currentUserId {
+                                if otherMembers.isEmpty {
+                                    showDissolveAlert = true
+                                } else {
+                                    showTransferSheet = true
+                                }
+                            } else {
+                                showLeaveAlert = true
+                            }
                         } label: {
                             Image(systemName: "rectangle.portrait.and.arrow.right")
                                 .foregroundStyle(.red)
@@ -312,6 +339,9 @@ struct CommunityDetailView: View {
                 }
             }
         }
+        .task {
+            await communityStore.fetchMembers(communityId: community.id)
+        }
         .alert("Leave Community", isPresented: $showLeaveAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Leave", role: .destructive) {
@@ -324,8 +354,32 @@ struct CommunityDetailView: View {
         } message: {
             Text("Are you sure you want to leave \"\(community.name)\"?")
         }
+        .alert("Leave & Dissolve Community", isPresented: $showDissolveAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Leave & Dissolve", role: .destructive) {
+                Task {
+                    await communityStore.dissolveCommunity(community)
+                    selectedTab = .forYou
+                    dismiss()
+                }
+            }
+        } message: {
+            Text("You are the only member left. If you leave, this community will be dissolved. Are you sure you want to leave and dissolve \"\(community.name)\"?")
+        }
+        .sheet(isPresented: $showTransferSheet) {
+            TransferOwnershipSheet(community: community, otherMembers: otherMembers) {
+                selectedTab = .forYou
+                dismiss()
+            }
+        }
         .sheet(isPresented: $showAddPost) {
             AddPostView(isPresented: $showAddPost, community: community)
+        }
+        .sheet(isPresented: $showMembersSheet) {
+            CommunityMembersSheet(community: community)
+        }
+        .sheet(isPresented: $showPostsSheet) {
+            CommunityPostsSheet(community: community)
         }
     }
 }

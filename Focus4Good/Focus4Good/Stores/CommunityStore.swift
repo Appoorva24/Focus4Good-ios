@@ -103,9 +103,10 @@ class CommunityStore {
                 .order("created_at", ascending: false)
                 .execute()
                 .value
+            let populated = await populatePostAuthors(fetched)
             // Merge — don't overwrite posts from other communities
             let existingOther = posts.filter { $0.communityId != communityId }
-            posts = existingOther + fetched
+            posts = existingOther + populated
         } catch {
             errorMessage = "Failed to load posts: \(error.localizedDescription)"
         }
@@ -150,6 +151,11 @@ class CommunityStore {
                 .value
             let existingOther = postLikes.filter { $0.postId != postId }
             postLikes = existingOther + fetched
+            
+            // Sync local likeCount with fetched database count
+            if let index = posts.firstIndex(where: { $0.id == postId }) {
+                posts[index].likeCount = fetched.count
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -164,8 +170,9 @@ class CommunityStore {
                 .order("created_at", ascending: true)
                 .execute()
                 .value
+            let populated = await populateCommentAuthors(fetched)
             let existingOther = postComments.filter { $0.postId != postId }
-            postComments = existingOther + fetched
+            postComments = existingOther + populated
         } catch {
             errorMessage = "Failed to load comments: \(error.localizedDescription)"
         }
@@ -267,10 +274,14 @@ class CommunityStore {
             likeCount: 0, createdAt: Date()
         )
         do {
-            let inserted: Post = try await client
+            var inserted: Post = try await client
                 .from("posts")
                 .insert(post)
                 .select().single().execute().value
+            let populated = await populatePostAuthors([inserted])
+            if let first = populated.first {
+                inserted = first
+            }
             posts.insert(inserted, at: 0)
         } catch {
             errorMessage = "Failed to create post: \(error.localizedDescription)"
@@ -352,10 +363,14 @@ class CommunityStore {
             userId: userId, postId: postId, content: content, createdAt: Date()
         )
         do {
-            let inserted: PostComment = try await client
+            var inserted: PostComment = try await client
                 .from("post_comments")
                 .insert(comment)
                 .select().single().execute().value
+            let populated = await populateCommentAuthors([inserted])
+            if let first = populated.first {
+                inserted = first
+            }
             postComments.append(inserted)
         } catch {
             errorMessage = "Failed to add comment: \(error.localizedDescription)"
@@ -404,6 +419,121 @@ class CommunityStore {
                 savedPostIds.remove(postId) // revert
                 errorMessage = error.localizedDescription
             }
+        }
+    }
+
+    // MARK: - Ownership & Dissolution
+    func fetchProfiles(for userIds: [UUID]) async -> [User] {
+        guard !userIds.isEmpty else { return [] }
+        let idStrings = userIds.map { $0.uuidString }
+        do {
+            let fetched: [User] = try await client
+                .from("profiles")
+                .select()
+                .in("id", values: idStrings)
+                .execute()
+                .value
+            return fetched
+        } catch {
+            errorMessage = "Failed to fetch profiles: \(error.localizedDescription)"
+            return []
+        }
+    }
+
+    func transferOwnership(of community: Community, to newOwnerId: UUID) async {
+        do {
+            try await client
+                .from("communities")
+                .update(["creator_id": newOwnerId.uuidString])
+                .eq("id", value: community.id.uuidString)
+                .execute()
+
+            // Try updating role in database
+            _ = try? await client
+                .from("community_members")
+                .update(["role": "admin"])
+                .eq("community_id", value: community.id.uuidString)
+                .eq("user_id", value: newOwnerId.uuidString)
+                .execute()
+
+            // Update local state
+            if let index = communities.firstIndex(where: { $0.id == community.id }) {
+                communities[index].creatorId = newOwnerId
+            }
+            if let index = communityMembers.firstIndex(where: { $0.communityId == community.id && $0.userId == newOwnerId }) {
+                communityMembers[index].role = "admin"
+            }
+        } catch {
+            errorMessage = "Failed to transfer ownership: \(error.localizedDescription)"
+        }
+    }
+
+    func dissolveCommunity(_ community: Community) async {
+        do {
+            // Delete members
+            try await client
+                .from("community_members")
+                .delete()
+                .eq("community_id", value: community.id.uuidString)
+                .execute()
+
+            // Delete posts (posts are dependent)
+            try await client
+                .from("posts")
+                .delete()
+                .eq("community_id", value: community.id.uuidString)
+                .execute()
+
+            // Delete community itself
+            try await client
+                .from("communities")
+                .delete()
+                .eq("id", value: community.id.uuidString)
+                .execute()
+
+            // Update local state
+            communities.removeAll { $0.id == community.id }
+            communityMembers.removeAll { $0.communityId == community.id }
+            posts.removeAll { $0.communityId == community.id }
+        } catch {
+            errorMessage = "Failed to dissolve community: \(error.localizedDescription)"
+        }
+    }
+
+    // MARK: - Post & Comment Profile Population Helpers
+    func populatePostAuthors(_ postsToPopulate: [Post]) async -> [Post] {
+        let authorIds = Array(Set(postsToPopulate.map { $0.authorId }))
+        guard !authorIds.isEmpty else { return postsToPopulate }
+        
+        let profiles = await fetchProfiles(for: authorIds)
+        
+        return postsToPopulate.map { post in
+            var updatedPost = post
+            if let profile = profiles.first(where: { $0.id == post.authorId }) {
+                updatedPost.authorName = profile.fullName
+                updatedPost.authorImageUrl = profile.profileImageUrl
+            } else {
+                updatedPost.authorName = "Anonymous"
+            }
+            return updatedPost
+        }
+    }
+
+    func populateCommentAuthors(_ commentsToPopulate: [PostComment]) async -> [PostComment] {
+        let userIds = Array(Set(commentsToPopulate.map { $0.userId }))
+        guard !userIds.isEmpty else { return commentsToPopulate }
+        
+        let profiles = await fetchProfiles(for: userIds)
+        
+        return commentsToPopulate.map { comment in
+            var updatedComment = comment
+            if let profile = profiles.first(where: { $0.id == comment.userId }) {
+                updatedComment.authorName = profile.fullName
+                updatedComment.authorImageUrl = profile.profileImageUrl
+            } else {
+                updatedComment.authorName = "Anonymous"
+            }
+            return updatedComment
         }
     }
 

@@ -5,15 +5,9 @@ enum CommunityTab: String, CaseIterable {
     case yourCommunities = "Your Communities"
 }
 
-enum PostFilterTab: String, CaseIterable {
-    case allPosts = "Recent Posts"
-    case savedPosts = "Saved Posts"
-}
-
 struct CommunityHome: View {
     @State private var addCommunity: Bool = false
     @State private var showRecentPosts: Bool = false
-    @State private var postFilter: PostFilterTab = .allPosts
     @State private var selectedTab: CommunityTab = .forYou
 
     @Environment(CommunityStore.self) private var communities
@@ -156,32 +150,20 @@ struct CommunityHome: View {
             }
             .navigationDestination(isPresented: $showRecentPosts) {
                 VStack(spacing: 0) {
-                    Picker("Filter", selection: $postFilter) {
-                        ForEach(PostFilterTab.allCases, id: \.self) { filter in
-                            Text(filter.rawValue).tag(filter)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .padding()
-                    
                     ScrollView {
-                        let filteredPosts = postFilter == .allPosts ? communities.posts : communities.posts.filter {
-                            communities.isSaved(postId: $0.id, userId: currentUserId)
-                        }
-                        
-                        if filteredPosts.isEmpty {
+                        if communities.posts.isEmpty {
                             VStack(spacing: 12) {
-                                Image(systemName: "bookmark.slash")
+                                Image(systemName: "text.bubble")
                                     .font(.system(size: 40))
                                     .foregroundStyle(.gray.opacity(0.4))
                                     .padding(.top, 40)
-                                Text(postFilter == .savedPosts ? "No saved posts yet" : "No posts available")
+                                Text("No posts available")
                                     .font(.headline)
                                     .foregroundStyle(.secondary)
                             }
                         } else {
                             LazyVStack(spacing: 16) {
-                                ForEach(filteredPosts) { post in
+                                ForEach(communities.posts) { post in
                                     CommunityPostRowView(post: post)
                                 }
                             }
@@ -192,13 +174,22 @@ struct CommunityHome: View {
                 .navigationTitle("Recent Posts")
                 .navigationBarTitleDisplayMode(.inline)
             }
-            .onAppear {
-                if !hasInitializedSnapshot {
-                    updateSnapshot()
-                    hasInitializedSnapshot = true
+            .task {
+                await communities.fetchCommunities()
+                await communities.fetchAllMembers()
+                await communities.fetchSavedPosts(userId: currentUserId)
+                for community in communities.communities {
+                    await communities.fetchPosts(communityId: community.id)
                 }
+                updateSnapshot()
             }
             .onChange(of: selectedTab) { _, _ in
+                updateSnapshot()
+            }
+            .onChange(of: communities.communities) { _, _ in
+                updateSnapshot()
+            }
+            .onChange(of: communities.communityMembers) { _, _ in
                 updateSnapshot()
             }
         }

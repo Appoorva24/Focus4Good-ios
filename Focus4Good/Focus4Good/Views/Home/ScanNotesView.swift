@@ -194,9 +194,10 @@ struct DocumentScannerView: UIViewControllerRepresentable {
                     let text = await recognizeText(from: image)
                     allText += text + "\n"
                 }
+                let finalFormattedText = allText
                 await MainActor.run {
-                    parent.recognizedText = allText
-                    parent.onComplete(allText)
+                    parent.recognizedText = finalFormattedText
+                    parent.onComplete(finalFormattedText)
                 }
             }
         }

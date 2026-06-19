@@ -11,7 +11,12 @@ class UserStore {
     var isAuthenticated = false
     var isLoading = false
     var errorMessage: String?
+    /// True once restoreSession() has finished (success or failure).
+    /// The splash screen waits for this before deciding where to navigate.
     var isSessionReady = false
+    /// Set to true when 100 bonus points are awarded on first classroom visit.
+    /// VirtualClassroomView triggers this; MainTabView shows the popup.
+    var showNewUserBonusPopup = false
     
     static let shared = UserStore()
     
@@ -91,23 +96,40 @@ class UserStore {
         // Clear ALL cached store data
         TaskStore.shared.tasks = []
         TaskStore.shared.categories = []
-        TaskStore.shared.taskCompletions = [:]
         ProgressStore.shared.clearData()
         CommunityStore.shared.clearData()
         CalmCentreStore.shared.clearData()
         VolunteerStore.shared.clearData()
+        ClassroomStore.shared.clearData()
         // Cancel pending notifications
         NotificationManager.shared.cancelAllNotifications()
     }
 
-
+    // MARK: - Grant Focus Points (called from VirtualClassroomView on first visit)
+    /// Adds `amount` focus points to the current user in Supabase and returns true on success.
+    @discardableResult
+    func grantBonusPoints(_ amount: Int) async -> Bool {
+        guard var user = currentUser else { return false }
+        let newPoints = user.focusPoints + amount
+        do {
+            try await client
+                .from("profiles")
+                .update(["focus_points": newPoints])
+                .eq("id", value: user.id.uuidString)
+                .execute()
+            user.focusPoints = newPoints
+            currentUser = user
+            print("🎁 Granted \(amount) bonus focus points")
+            return true
+        } catch {
+            print("❌ Failed to grant bonus points: \(error)")
+            return false
+        }
+    }
 
     // MARK: - Bulk data load (called after every auth)
     private func loadUserData(userId: UUID) async {
-        // Fetch tasks first since completions depend on task IDs
-        await TaskStore.shared.fetchTasks(userId: userId)
-        await TaskStore.shared.fetchTaskCompletions(userId: userId)
-        
+        async let tasks: ()       = TaskStore.shared.fetchTasks(userId: userId)
         async let progress: ()    = ProgressStore.shared.fetchProgress(userId: userId)
         async let communities: () = CommunityStore.shared.fetchCommunities()
         async let categories: ()  = CommunityStore.shared.fetchCommunityCategories()
@@ -120,7 +142,9 @@ class UserStore {
         async let asmr: ()        = CalmCentreStore.shared.fetchAsmrSounds()
         async let folders: ()     = CalmCentreStore.shared.fetchBrainDumpFolders(userId: userId)
         async let entries: ()     = CalmCentreStore.shared.fetchBrainDumpEntries(userId: userId)
-        _ = await (progress, communities, categories, ngos, events, regs, breathing, jpmr, meditation, asmr, folders, entries)
+        async let members: ()     = CommunityStore.shared.fetchAllMembers()
+        async let saved: ()       = CommunityStore.shared.fetchSavedPosts(userId: userId)
+        _ = await (tasks, progress, communities, categories, ngos, events, regs, breathing, jpmr, meditation, asmr, folders, entries, members, saved)
     }
     
     // MARK: - Profile CRUD
@@ -141,21 +165,29 @@ class UserStore {
         isLoading = false
     }
     
-    func updateProfile(fullName: String, profileImageUrl: String?) async {
+    func updateProfile(fullName: String, email: String? = nil, profileImageUrl: String?) async {
         guard let userId = currentUser?.id else { return }
         do {
+            var updates: [String: String] = [
+                "full_name": fullName,
+                "profile_image_url": profileImageUrl ?? ""
+            ]
+            if let email {
+                updates["email"] = email
+            }
+            
             try await client
                 .from("profiles")
-                .update([
-                    "full_name": fullName,
-                    "profile_image_url": profileImageUrl ?? ""
-                ])
+                .update(updates)
                 .eq("id", value: userId.uuidString)
                 .execute()
             
             // Update local state
             currentUser?.fullName = fullName
             currentUser?.profileImageUrl = profileImageUrl
+            if let email {
+                currentUser?.email = email
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
