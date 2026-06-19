@@ -61,11 +61,12 @@ struct ASMRPlayerView: View {
         .background(Color(.systemBackground))
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
-            if store.activeAsmrSound?.id == sound.id, audio.isPlaying {
-                isPlaying = true
+            if audio.isLoaded(soundName: sound.name) {
+                // Same sound is already loaded (playing or paused) — resume from current position
+                isPlaying = audio.isPlaying
                 duration = audio.duration
                 currentTime = audio.currentTime
-                startTimer()
+                if isPlaying { startTimer() }
             } else {
                 startPlaying()
             }
@@ -135,6 +136,8 @@ struct ASMRPlayerView: View {
                 Image(systemName: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
                     .font(.title2)
                     .foregroundStyle(.primary)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
 
@@ -157,6 +160,8 @@ struct ASMRPlayerView: View {
                 Image(systemName: "arrow.counterclockwise")
                     .font(.title2)
                     .foregroundStyle(.primary)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         }

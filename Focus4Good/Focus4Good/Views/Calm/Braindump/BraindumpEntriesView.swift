@@ -18,10 +18,18 @@ struct BraindumpEntriesView: View {
                     Button { selectedEntry = entry } label: {
                         Label {
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(entry.content)
-                                    .lineLimit(2)
-                                    .font(.body)
-                                    .foregroundStyle(.primary)
+                                if let title = entry.title, !title.isEmpty {
+                                    Text(title)
+                                        .lineLimit(1)
+                                        .font(.body)
+                                        .fontWeight(.medium)
+                                        .foregroundStyle(.primary)
+                                } else {
+                                    Text(entry.content)
+                                        .lineLimit(2)
+                                        .font(.body)
+                                        .foregroundStyle(.primary)
+                                }
 
                                 Text(entry.createdAt, format: .dateTime.day().month(.wide).year())
                                     .font(.caption)
@@ -86,13 +94,19 @@ struct BraindumpEntriesView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
+                    if let title = entry.title, !title.isEmpty {
+                        Text(title)
+                            .font(.title3)
+                            .fontWeight(.semibold)
+                    }
+
                     Text(entry.content)
                         .font(.body)
                 }
                 .padding()
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .navigationTitle("Entry")
+            .navigationTitle(entry.title ?? "Entry")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {

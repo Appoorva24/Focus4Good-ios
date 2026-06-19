@@ -23,9 +23,15 @@ class ASMRAudioService: @unchecked Sendable {
 
     private var audioPlayer: AVAudioPlayer?
     private(set) var isPlaying = false
+    private(set) var currentSoundName: String?
 
     private init() {}
 
+
+    /// Whether the given sound is already loaded (playing or paused).
+    func isLoaded(soundName: String) -> Bool {
+        currentSoundName == soundName && audioPlayer != nil
+    }
 
     func play(soundName: String) {
         stop()
@@ -52,6 +58,7 @@ class ASMRAudioService: @unchecked Sendable {
             audioPlayer?.volume = 0.5
             audioPlayer?.prepareToPlay()
             audioPlayer?.play()
+            currentSoundName = soundName
             isPlaying = true
         } catch {
             print("ASMRAudioService: failed to play — \(error)")
@@ -71,6 +78,7 @@ class ASMRAudioService: @unchecked Sendable {
     func stop() {
         audioPlayer?.stop()
         audioPlayer = nil
+        currentSoundName = nil
         isPlaying = false
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }

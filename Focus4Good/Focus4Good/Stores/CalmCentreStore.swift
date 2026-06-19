@@ -93,9 +93,9 @@ class CalmCentreStore {
     }
 
     // MARK: - Brain Dump Entries
-    func addBrainDumpEntry(content: String, userId: UUID, folderId: UUID? = nil) async {
+    func addBrainDumpEntry(content: String, drawingData: Data? = nil, title: String? = nil, userId: UUID, folderId: UUID? = nil) async {
         let points = 10
-        brainDumpEntries.append(BrainDumpEntry(userId: userId, folderId: folderId, content: content, pointsEarned: points, createdAt: Date()))
+        brainDumpEntries.append(BrainDumpEntry(userId: userId, folderId: folderId, title: title, content: content, drawingData: drawingData, pointsEarned: points, createdAt: Date()))
         if let folderId, let index = brainDumpFolders.firstIndex(where: { $0.id == folderId }) { brainDumpFolders[index].entryCount += 1 }
         await UserStore.shared.updateFocusPoints(by: points)
         await ProgressStore.shared.addPointsEarned(points: points, userId: userId)

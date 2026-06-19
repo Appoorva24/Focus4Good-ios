@@ -60,8 +60,10 @@ struct BrainDumpFolder: Identifiable, Codable, Hashable {
 struct BrainDumpEntry: Identifiable, Codable, Hashable {
     var id: UUID = UUID()
     var userId: UUID
-    var folderId: UUID?  
+    var folderId: UUID?
+    var title: String?
     var content: String
+    var drawingData: Data?
     var pointsEarned: Int
     var createdAt: Date
 }
