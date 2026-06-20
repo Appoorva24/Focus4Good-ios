@@ -27,8 +27,11 @@ struct AuthView: View {
         ZStack {
             Color(.systemBackground).ignoresSafeArea()
 
-            ScrollView {
-                VStack(spacing: 32) {
+            if userStore.isMfaRequired {
+                TwoFactorVerifyView()
+            } else {
+                ScrollView {
+                    VStack(spacing: 32) {
                     Spacer().frame(height: 40)
 
                     // ── Logo / Header ─────────────────────────────
@@ -145,6 +148,7 @@ struct AuthView: View {
 
                     Spacer()
                 }
+            }
             }
         }
         // Watch for successful authentication → notify parent

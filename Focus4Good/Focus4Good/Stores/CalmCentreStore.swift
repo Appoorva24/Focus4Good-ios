@@ -1,4 +1,5 @@
 import Foundation
+import Supabase
 
 @Observable
 class CalmCentreStore {
@@ -12,6 +13,9 @@ class CalmCentreStore {
     var brainDumpFolders: [BrainDumpFolder] = []
     var brainDumpEntries: [BrainDumpEntry] = []
     var activeAsmrSound: AsmrSound?
+    var jpmrVideoUrl: String?
+    var isLoadingVideo = false
+    var videoErrorMessage: String?
     var isLoading = false
     var errorMessage: String?
 
@@ -36,6 +40,25 @@ class CalmCentreStore {
     private init() {}
 
     // MARK: - Fetch
+
+    func fetchJpmrVideoUrl() async {
+        isLoadingVideo = true
+        defer { isLoadingVideo = false }
+        do {
+            let videos: [JpmrVideo] = try await SupabaseManager.shared.client
+                .from("jpmr_videos")
+                .select()
+                .limit(1)
+                .execute()
+                .value
+            jpmrVideoUrl = videos.first?.videoUrl
+            videoErrorMessage = nil
+        } catch {
+            print("Failed to fetch JPMR video URL: \(error)")
+            videoErrorMessage = error.localizedDescription
+        }
+    }
+
     func fetchBreathingSessions(userId: UUID) async { isLoading = true; isLoading = false }
     func fetchJpmrSessions(userId: UUID) async { isLoading = true; isLoading = false }
     func fetchGuidedMeditationSessions(userId: UUID) async { isLoading = true; isLoading = false }

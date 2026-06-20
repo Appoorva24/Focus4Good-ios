@@ -124,6 +124,7 @@ struct JPMRSessionView: View {
     @State private var endingIndex    = 0
     @State private var isRunning      = false
     @State private var showCompletion = false
+    @State private var showVideoTutorial = false
     @State private var elapsedSeconds = 0
     @State private var timer: Timer?
 
@@ -174,6 +175,9 @@ struct JPMRSessionView: View {
         .onDisappear {
             stopTimer()
             JPMRAudioService.shared.stopAll()
+        }
+        .navigationDestination(isPresented: $showVideoTutorial) {
+            JPMRVideoView()
         }
     }
 
@@ -344,6 +348,14 @@ struct JPMRSessionView: View {
                         if activePreset == preset { Image(systemName: "checkmark") }
                     }
                 }
+            }
+
+            Divider()
+
+            Button {
+                showVideoTutorial = true
+            } label: {
+                Label("Video Tutorial", systemImage: "play.rectangle.fill")
             }
         } label: {
             HStack(spacing: 4) {

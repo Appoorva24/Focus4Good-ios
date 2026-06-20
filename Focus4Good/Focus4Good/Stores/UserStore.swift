@@ -1,5 +1,6 @@
 import Foundation
 import Supabase
+import Auth
 
 @MainActor
 @Observable
@@ -12,6 +13,10 @@ class UserStore {
     var isLoading = false
     var errorMessage: String?
     var isSessionReady = false
+    var hasMfaEnabled = false
+    var isMfaRequired = false
+    var currentMfaFactorId: String?
+
     
     static let shared = UserStore()
     
@@ -70,6 +75,19 @@ class UserStore {
                 email: email,
                 password: password
             )
+            
+            // Check MFA Level
+            let aal = try await client.auth.mfa.getAuthenticatorAssuranceLevel()
+            if aal.currentLevel == "aal1" && aal.nextLevel == "aal2" {
+                let factors = try await client.auth.mfa.listFactors()
+                if let totpFactor = factors.all.first(where: { $0.factorType == "totp" && $0.status == .verified }) {
+                    self.currentMfaFactorId = totpFactor.id
+                    self.isMfaRequired = true
+                    self.isLoading = false
+                    return
+                }
+            }
+            
             let userId = session.user.id
             await fetchCurrentUser(userId: userId)
             isAuthenticated = true
@@ -101,6 +119,57 @@ class UserStore {
     }
 
 
+    // MARK: - MFA Methods
+    func checkMFAStatus() async {
+        do {
+            let factors = try await client.auth.mfa.listFactors()
+            hasMfaEnabled = factors.all.contains { $0.factorType == "totp" && $0.status == .verified }
+        } catch {
+            print("Failed to check MFA status: \(error)")
+        }
+    }
+    
+    func enrollMFA() async throws -> AuthMFAEnrollResponse {
+        let uniqueName = "Focus4Good-\(UUID().uuidString.prefix(6))"
+        return try await client.auth.mfa.enroll(params: .totp(issuer: "Focus4Good", friendlyName: uniqueName))
+    }
+    
+    func verifyMFAEnrollment(factorId: String, code: String) async throws {
+        let challenge = try await client.auth.mfa.challenge(params: MFAChallengeParams(factorId: factorId))
+        try await client.auth.mfa.verify(params: MFAVerifyParams(factorId: factorId, challengeId: challenge.id, code: code))
+        await checkMFAStatus()
+    }
+    
+    func unenrollMFA() async throws {
+        let factors = try await client.auth.mfa.listFactors()
+        if let totpFactor = factors.all.first(where: { $0.factorType == "totp" && $0.status == .verified }) {
+            try await client.auth.mfa.unenroll(params: MFAUnenrollParams(factorId: totpFactor.id))
+            await checkMFAStatus()
+        }
+    }
+    
+    func verifyLoginMFA(code: String) async {
+        guard let factorId = currentMfaFactorId else { return }
+        isLoading = true
+        errorMessage = nil
+        do {
+            let challenge = try await client.auth.mfa.challenge(params: MFAChallengeParams(factorId: factorId))
+            try await client.auth.mfa.verify(params: MFAVerifyParams(factorId: factorId, challengeId: challenge.id, code: code))
+            
+            let session = try await client.auth.session
+            let userId = session.user.id
+            await fetchCurrentUser(userId: userId)
+            
+            self.isMfaRequired = false
+            self.currentMfaFactorId = nil
+            self.isAuthenticated = true
+            
+            await loadUserData(userId: userId)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isLoading = false
+    }
 
     // MARK: - Bulk data load (called after every auth)
     private func loadUserData(userId: UUID) async {
@@ -135,6 +204,7 @@ class UserStore {
                 .execute()
                 .value
             currentUser = user
+            await checkMFAStatus()
         } catch {
             errorMessage = "Failed to load profile: \(error.localizedDescription)"
         }

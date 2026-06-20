@@ -7,6 +7,8 @@ struct ProfileView: View {
     @State private var showEditProfile = false
     @State private var showNotificationsAlert = false
     @State private var showTimezoneAlert = false
+    @State private var showTwoFactorSetup = false
+    @State private var showUnenrollAlert = false
 
     private var userName: String { userStore.currentUser?.fullName ?? "Loading…" }
     private var userEmail: String { userStore.currentUser?.email ?? "" }
@@ -43,6 +45,13 @@ struct ProfileView: View {
                     }
                     settingsRow(icon: "globe", label: "Timezone") {
                         showTimezoneAlert = true
+                    }
+                    settingsRow(icon: "lock.shield", label: "Two-Factor Auth") {
+                        if userStore.hasMfaEnabled {
+                            showUnenrollAlert = true
+                        } else {
+                            showTwoFactorSetup = true
+                        }
                     }
                 } header: { Text("App Settings").textCase(nil) }
 
@@ -81,8 +90,19 @@ struct ProfileView: View {
         .alert("Timezone", isPresented: $showTimezoneAlert) {
             Button("OK", role: .cancel) {}
         } message: { Text("Current timezone: New Delhi (IST)") }
+        .alert("Disable 2FA?", isPresented: $showUnenrollAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Disable", role: .destructive) {
+                Task {
+                    try? await userStore.unenrollMFA()
+                }
+            }
+        } message: { Text("Are you sure you want to disable Two-Factor Authentication?") }
         .sheet(isPresented: $showEditProfile) {
             EditProfileView()
+        }
+        .sheet(isPresented: $showTwoFactorSetup) {
+            TwoFactorSetupView()
         }
     }
 
@@ -94,6 +114,13 @@ struct ProfileView: View {
                     .frame(width: 28, height: 28)
                 Text(label).font(.subheadline).foregroundStyle(AppTheme.textPrimary)
                 Spacer()
+                
+                if label == "Two-Factor Auth" {
+                    Text(userStore.hasMfaEnabled ? "Enabled" : "Disabled")
+                        .font(.caption)
+                        .foregroundStyle(userStore.hasMfaEnabled ? AppTheme.orange : AppTheme.textSecondary)
+                }
+                
                 Image(systemName: "chevron.right").font(.caption).foregroundStyle(AppTheme.textSecondary)
             }
         }
