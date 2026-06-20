@@ -143,8 +143,8 @@ struct ForgotPasswordView: View {
             .frame(maxWidth: .infinity)
             .frame(height: 56)
             .foregroundStyle(.white)
-            .background(Capsule().fill(code.count != 6 ? AppTheme.orange.opacity(0.4) : AppTheme.orange))
-            .disabled(code.count != 6 || isLoading)
+            .background(Capsule().fill(code.isEmpty ? AppTheme.orange.opacity(0.4) : AppTheme.orange))
+            .disabled(code.isEmpty || isLoading)
             .padding(.horizontal, 24)
             .padding(.top, 8)
         }
