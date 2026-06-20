@@ -7,7 +7,7 @@ struct ProfileView: View {
     @State private var showEditProfile = false
     @State private var showNotificationsAlert = false
     @State private var showTimezoneAlert = false
-    @State private var showTwoFactorSetup = false
+    @State private var showEnrollAlert = false
     @State private var showUnenrollAlert = false
 
     private var userName: String { userStore.currentUser?.fullName ?? "Loading…" }
@@ -46,11 +46,11 @@ struct ProfileView: View {
                     settingsRow(icon: "globe", label: "Timezone") {
                         showTimezoneAlert = true
                     }
-                    settingsRow(icon: "lock.shield", label: "Two-Factor Auth") {
+                    settingsRow(icon: "lock.shield", label: "Email 2FA") {
                         if userStore.hasMfaEnabled {
                             showUnenrollAlert = true
                         } else {
-                            showTwoFactorSetup = true
+                            showEnrollAlert = true
                         }
                     }
                 } header: { Text("App Settings").textCase(nil) }
@@ -90,19 +90,24 @@ struct ProfileView: View {
         .alert("Timezone", isPresented: $showTimezoneAlert) {
             Button("OK", role: .cancel) {}
         } message: { Text("Current timezone: New Delhi (IST)") }
-        .alert("Disable 2FA?", isPresented: $showUnenrollAlert) {
+        .alert("Disable Email 2FA?", isPresented: $showUnenrollAlert) {
             Button("Cancel", role: .cancel) {}
             Button("Disable", role: .destructive) {
                 Task {
-                    try? await userStore.unenrollMFA()
+                    try? await userStore.unenrollEmailMFA()
                 }
             }
-        } message: { Text("Are you sure you want to disable Two-Factor Authentication?") }
+        } message: { Text("Are you sure you want to disable Email Two-Factor Authentication?") }
+        .alert("Enable Email 2FA?", isPresented: $showEnrollAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Enable") {
+                Task {
+                    try? await userStore.enrollEmailMFA()
+                }
+            }
+        } message: { Text("We will send a 6-digit code to your email every time you log in.") }
         .sheet(isPresented: $showEditProfile) {
             EditProfileView()
-        }
-        .sheet(isPresented: $showTwoFactorSetup) {
-            TwoFactorSetupView()
         }
     }
 
@@ -115,7 +120,7 @@ struct ProfileView: View {
                 Text(label).font(.subheadline).foregroundStyle(AppTheme.textPrimary)
                 Spacer()
                 
-                if label == "Two-Factor Auth" {
+                if label == "Email 2FA" {
                     Text(userStore.hasMfaEnabled ? "Enabled" : "Disabled")
                         .font(.caption)
                         .foregroundStyle(userStore.hasMfaEnabled ? AppTheme.orange : AppTheme.textSecondary)

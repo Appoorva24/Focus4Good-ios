@@ -3,6 +3,7 @@ import SwiftUI
 struct TwoFactorVerifyView: View {
     @Environment(UserStore.self) private var userStore
     @State private var code: String = ""
+    var email: String
     
     var body: some View {
         VStack(spacing: 32) {
@@ -19,7 +20,7 @@ struct TwoFactorVerifyView: View {
                 Text("Two-Factor Authentication")
                     .font(.title2.bold())
                 
-                Text("Enter the 6-digit code from your authenticator app to continue.")
+                Text("Enter the 6-digit code sent to your email to continue.")
                     .font(.subheadline)
                     .foregroundStyle(AppTheme.textSecondary)
                     .multilineTextAlignment(.center)
@@ -53,7 +54,7 @@ struct TwoFactorVerifyView: View {
             
             Button {
                 Task {
-                    await userStore.verifyLoginMFA(code: code)
+                    await userStore.verifyLoginMFA(email: email, code: code)
                 }
             } label: {
                 Group {

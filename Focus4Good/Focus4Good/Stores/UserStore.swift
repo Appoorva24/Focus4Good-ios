@@ -76,16 +76,18 @@ class UserStore {
                 password: password
             )
             
-            // Check MFA Level
-            let aal = try await client.auth.mfa.getAuthenticatorAssuranceLevel()
-            if aal.currentLevel == "aal1" && aal.nextLevel == "aal2" {
-                let factors = try await client.auth.mfa.listFactors()
-                if let totpFactor = factors.all.first(where: { $0.factorType == "totp" && $0.status == .verified }) {
-                    self.currentMfaFactorId = totpFactor.id
-                    self.isMfaRequired = true
-                    self.isLoading = false
-                    return
-                }
+            // Check Custom Email 2FA Level
+            let isEmail2FAEnabled = session.user.userMetadata["email_2fa_enabled"]?.boolValue ?? false
+            if isEmail2FAEnabled {
+                self.isMfaRequired = true
+                self.isLoading = false
+                
+                // Call Edge Function to send OTP
+                _ = try await client.functions.invoke(
+                    "send-otp",
+                    options: .init(body: ["email": email])
+                )
+                return
             }
             
             let userId = session.user.id
@@ -117,56 +119,58 @@ class UserStore {
         // Cancel pending notifications
         NotificationManager.shared.cancelAllNotifications()
     }
-
-
-    // MARK: - MFA Methods
+    
+    // MARK: - Password Reset
+    func sendPasswordResetEmail(email: String) async throws {
+        try await client.auth.resetPasswordForEmail(email)
+    }
+    
+    func verifyPasswordResetOTP(email: String, code: String) async throws {
+        _ = try await client.auth.verifyOTP(email: email, token: code, type: .recovery)
+    }
+    
+    func updateUserPassword(newPassword: String) async throws {
+        _ = try await client.auth.update(user: UserAttributes(password: newPassword))
+    }
+    // MARK: - Email 2FA Methods
     func checkMFAStatus() async {
         do {
-            let factors = try await client.auth.mfa.listFactors()
-            hasMfaEnabled = factors.all.contains { $0.factorType == "totp" && $0.status == .verified }
+            let session = try await client.auth.session
+            hasMfaEnabled = session.user.userMetadata["email_2fa_enabled"]?.boolValue ?? false
         } catch {
-            print("Failed to check MFA status: \(error)")
+            hasMfaEnabled = false
         }
     }
     
-    func enrollMFA() async throws -> AuthMFAEnrollResponse {
-        let uniqueName = "Focus4Good-\(UUID().uuidString.prefix(6))"
-        return try await client.auth.mfa.enroll(params: .totp(issuer: "Focus4Good", friendlyName: uniqueName))
-    }
-    
-    func verifyMFAEnrollment(factorId: String, code: String) async throws {
-        let challenge = try await client.auth.mfa.challenge(params: MFAChallengeParams(factorId: factorId))
-        try await client.auth.mfa.verify(params: MFAVerifyParams(factorId: factorId, challengeId: challenge.id, code: code))
+    func enrollEmailMFA() async throws {
+        _ = try await client.auth.update(user: UserAttributes(data: ["email_2fa_enabled": .bool(true)]))
         await checkMFAStatus()
     }
     
-    func unenrollMFA() async throws {
-        let factors = try await client.auth.mfa.listFactors()
-        if let totpFactor = factors.all.first(where: { $0.factorType == "totp" && $0.status == .verified }) {
-            try await client.auth.mfa.unenroll(params: MFAUnenrollParams(factorId: totpFactor.id))
-            await checkMFAStatus()
-        }
+    func unenrollEmailMFA() async throws {
+        _ = try await client.auth.update(user: UserAttributes(data: ["email_2fa_enabled": .bool(false)]))
+        await checkMFAStatus()
     }
     
-    func verifyLoginMFA(code: String) async {
-        guard let factorId = currentMfaFactorId else { return }
+    func verifyLoginMFA(email: String, code: String) async {
         isLoading = true
         errorMessage = nil
         do {
-            let challenge = try await client.auth.mfa.challenge(params: MFAChallengeParams(factorId: factorId))
-            try await client.auth.mfa.verify(params: MFAVerifyParams(factorId: factorId, challengeId: challenge.id, code: code))
+            // Call Edge Function to verify OTP
+            _ = try await client.functions.invoke(
+                "verify-otp",
+                options: .init(body: ["email": email, "otp": code])
+            )
             
             let session = try await client.auth.session
             let userId = session.user.id
             await fetchCurrentUser(userId: userId)
             
-            self.isMfaRequired = false
-            self.currentMfaFactorId = nil
-            self.isAuthenticated = true
-            
+            isAuthenticated = true
+            isMfaRequired = false
             await loadUserData(userId: userId)
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = "Invalid or expired OTP."
         }
         isLoading = false
     }
