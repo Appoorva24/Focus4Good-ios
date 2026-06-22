@@ -142,14 +142,14 @@ struct MainTabView: View {
                 Tab("Home", systemImage: "house.fill", value: .home) {
                     HomeView()
                 }
-                Tab("Progress", systemImage: "chart.bar.fill", value: .progress) {
-                    ProgressTrackerView()
-                }
                 Tab("Calm", systemImage: "figure.mind.and.body", value: .calm) {
                     CalmCentreView()
                 }
                 Tab("Community", systemImage: "person.3.fill", value: .community) {
                     CommunityHome()
+                }
+                Tab("Progress", systemImage: "chart.bar.fill", value: .progress) {
+                    ProgressTrackerView()
                 }
             }
             .tint(AppTheme.orange)

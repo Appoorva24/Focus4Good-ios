@@ -1,551 +1,180 @@
 import SwiftUI
-import PhotosUI
-
-// MARK: - Local Profile Image Helper
-
-/// Saves and loads profile images to/from the app's documents directory
-enum ProfileImageStore {
-    private static var fileURL: URL {
-        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("profile_photo.jpg")
-    }
-
-    static func save(_ image: UIImage) {
-        guard let data = image.jpegData(compressionQuality: 0.8) else { return }
-        try? data.write(to: fileURL)
-    }
-
-    static func load() -> UIImage? {
-        guard FileManager.default.fileExists(atPath: fileURL.path) else { return nil }
-        return UIImage(contentsOfFile: fileURL.path)
-    }
-
-    static func delete() {
-        try? FileManager.default.removeItem(at: fileURL)
-    }
-}
-
-// MARK: - Email Validation
-
-extension String {
-    var isValidEmail: Bool {
-        let pattern = #"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"#
-        return self.range(of: pattern, options: .regularExpression) != nil
-    }
-}
-
-// MARK: - Profile View (Apple Health Style)
 
 struct ProfileView: View {
     @Environment(UserStore.self) private var userStore
     @Environment(\.dismiss) private var dismiss
-
-    @State private var showEditProfile = false
     @State private var showSignOutAlert = false
-    @State private var profileUIImage: UIImage?
+    @State private var showEditProfile = false
+    @State private var showNotificationsAlert = false
+    @State private var showTimezoneAlert = false
+    @State private var showEnrollAlert = false
+    @State private var showUnenrollAlert = false
 
-    private var userName: String { userStore.currentUser?.fullName ?? "User" }
+    private var userName: String { userStore.currentUser?.fullName ?? "Loading…" }
     private var userEmail: String { userStore.currentUser?.email ?? "" }
-    private var userInitials: String {
-        let parts = userName.split(separator: " ")
-        let initials = parts.prefix(2).compactMap { $0.first }.map { String($0) }.joined()
-        return initials.isEmpty ? "U" : initials.uppercased()
-    }
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 0) {
-                    // ── Profile Photo Section ─────────────────────────
-                    profilePhotoSection
-                        .padding(.top, 24)
-                        .padding(.bottom, 28)
-
-                    // ── Account Section ────────────────────────────────
-                    sectionHeader("Account")
-                    groupedCard {
-                        profileRow(icon: "person.fill", label: "Name", value: userName)
-                        rowDivider
-                        profileRow(icon: "envelope.fill", label: "Email", value: userEmail)
-                        rowDivider
-                        profileRow(icon: "pencil", label: "Edit Profile") {
-                            showEditProfile = true
+            List {
+                // User Card
+                Section {
+                    HStack(spacing: 14) {
+                        ZStack {
+                            Circle().fill(AppTheme.orange.opacity(0.15)).frame(width: 56, height: 56)
+                            Image(systemName: "person.fill").font(.title2).foregroundStyle(AppTheme.orange)
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(userName).font(.headline)
+                            Text(userEmail).font(.caption).foregroundStyle(AppTheme.textSecondary)
                         }
                     }
+                    .padding(.vertical, 6)
+                }
 
-                    // ── App Settings Section ──────────────────────────
-                    sectionHeader("App Settings")
-                    groupedCard {
-                        navigationRow(icon: "bell.fill", label: "Notifications") {
-                            openAppSettings()
+                // Profile Section
+                Section {
+                    settingsRow(icon: "person", label: "Edit Profile") {
+                        showEditProfile = true
+                    }
+                } header: { Text("Profile").textCase(nil) }
+
+                // App Settings Section
+                Section {
+                    settingsRow(icon: "bell", label: "Notifications") {
+                        showNotificationsAlert = true
+                    }
+                    settingsRow(icon: "globe", label: "Timezone") {
+                        showTimezoneAlert = true
+                    }
+                    settingsRow(icon: "lock.shield", label: "Email 2FA") {
+                        if userStore.hasMfaEnabled {
+                            showUnenrollAlert = true
+                        } else {
+                            showEnrollAlert = true
                         }
                     }
+                } header: { Text("App Settings").textCase(nil) }
 
-                    // ── Privacy Section ───────────────────────────────
-                    sectionHeader("Privacy")
-                    groupedCard {
-                        NavigationLink {
-                            DataPrivacyView()
-                        } label: {
-                            navigationRowContent(icon: "lock.shield.fill", label: "Data & Privacy")
-                        }
-                        .buttonStyle(.plain)
-
-                        rowDivider
-
-                        NavigationLink {
-                            PermissionsView()
-                        } label: {
-                            navigationRowContent(icon: "hand.raised.fill", label: "Permissions")
-                        }
-                        .buttonStyle(.plain)
-                    }
-
-                    // ── Privacy Note ──────────────────────────────────
-                    Text("Your data is stored securely and can only be\nshared with your permission.")
-                        .font(.caption)
-                        .foregroundStyle(AppTheme.textSecondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.top, 16)
-                        .padding(.horizontal, 32)
-
-                    // ── Sign Out ──────────────────────────────────────
-                    Button {
+                // Sign Out
+                Section {
+                    Button(role: .destructive) {
                         showSignOutAlert = true
                     } label: {
                         Text("Sign Out")
-                            .font(.body)
-                            .foregroundStyle(.red)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color(.secondarySystemGroupedBackground))
-                            )
+                            .frame(maxWidth: .infinity, alignment: .center)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 24)
-                    .padding(.bottom, 40)
                 }
             }
-            .background(Color(.systemGroupedBackground))
+            .listStyle(.insetGrouped)
+            .navigationTitle("Account")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         dismiss()
                     } label: {
                         Image(systemName: "xmark")
-                            .font(.body.weight(.medium))
+                            .font(.subheadline.bold())
                             .foregroundStyle(AppTheme.textSecondary)
-                            .frame(width: 32, height: 32)
-                            .background(Circle().fill(Color(.tertiarySystemFill)))
                     }
                 }
-            }
-            .onAppear {
-                // Load saved profile image
-                profileUIImage = ProfileImageStore.load()
             }
         }
         .alert("Sign Out?", isPresented: $showSignOutAlert) {
             Button("Cancel", role: .cancel) {}
-            Button("Sign Out", role: .destructive) {
-                userStore.signOut()
-                dismiss()
+            Button("Sign Out", role: .destructive) { userStore.signOut() }
+        } message: { Text("Are you sure you want to sign out?") }
+        .alert("Notifications", isPresented: $showNotificationsAlert) {
+            Button("OK", role: .cancel) {}
+        } message: { Text("Notification settings will be available when backend is connected.") }
+        .alert("Timezone", isPresented: $showTimezoneAlert) {
+            Button("OK", role: .cancel) {}
+        } message: { Text("Current timezone: New Delhi (IST)") }
+        .alert("Disable Email 2FA?", isPresented: $showUnenrollAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Disable", role: .destructive) {
+                Task {
+                    try? await userStore.unenrollEmailMFA()
+                }
             }
-        } message: {
-            Text("Are you sure you want to sign out?")
-        }
-        .sheet(isPresented: $showEditProfile, onDismiss: {
-            // Reload image after edit sheet closes
-            profileUIImage = ProfileImageStore.load()
-        }) {
-            EditProfileSheet()
-        }
-    }
-
-    // MARK: - Profile Photo Section
-
-    private var profilePhotoSection: some View {
-        VStack(spacing: 16) {
-            if let profileUIImage {
-                Image(uiImage: profileUIImage)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 110, height: 110)
-                    .clipShape(Circle())
-                    .shadow(color: AppTheme.orange.opacity(0.2), radius: 12, y: 4)
-            } else {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [AppTheme.orange.opacity(0.3), AppTheme.orange.opacity(0.15)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 110, height: 110)
-                    .overlay(
-                        Text(userInitials)
-                            .font(.system(size: 38, weight: .semibold, design: .rounded))
-                            .foregroundStyle(AppTheme.orange)
-                    )
-                    .shadow(color: AppTheme.orange.opacity(0.2), radius: 12, y: 4)
+        } message: { Text("Are you sure you want to disable Email Two-Factor Authentication?") }
+        .alert("Enable Email 2FA?", isPresented: $showEnrollAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Enable") {
+                Task {
+                    try? await userStore.enrollEmailMFA()
+                }
             }
-
-            VStack(spacing: 4) {
-                Text(userName)
-                    .font(.title3.bold())
-                    .foregroundStyle(AppTheme.textPrimary)
-                Text(userEmail)
-                    .font(.subheadline)
-                    .foregroundStyle(AppTheme.textSecondary)
-            }
+        } message: { Text("We will send a 6-digit code to your email every time you log in.") }
+        .sheet(isPresented: $showEditProfile) {
+            EditProfileView()
         }
     }
 
-    // MARK: - Reusable Components
-
-    private func sectionHeader(_ title: String) -> some View {
-        HStack {
-            Text(title)
-                .font(.headline)
-                .foregroundStyle(AppTheme.textPrimary)
-            Spacer()
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 24)
-        .padding(.bottom, 8)
-    }
-
-    private func groupedCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        VStack(spacing: 0) {
-            content()
-        }
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.secondarySystemGroupedBackground))
-        )
-        .padding(.horizontal, 16)
-    }
-
-    private var rowDivider: some View {
-        Divider()
-            .padding(.leading, 52)
-    }
-
-    private func profileRow(icon: String, label: String, value: String) -> some View {
-        HStack(spacing: 14) {
-            Image(systemName: icon)
-                .font(.body)
-                .foregroundStyle(AppTheme.orange)
-                .frame(width: 24)
-            Text(label)
-                .font(.body)
-                .foregroundStyle(AppTheme.textPrimary)
-            Spacer()
-            Text(value)
-                .font(.body)
-                .foregroundStyle(AppTheme.textSecondary)
-                .lineLimit(1)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 13)
-    }
-
-    private func profileRow(icon: String, label: String, action: @escaping () -> Void) -> some View {
+    private func settingsRow(icon: String, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack(spacing: 14) {
+            HStack {
                 Image(systemName: icon)
-                    .font(.body)
                     .foregroundStyle(AppTheme.orange)
-                    .frame(width: 24)
-                Text(label)
-                    .font(.body)
-                    .foregroundStyle(AppTheme.textPrimary)
+                    .frame(width: 28, height: 28)
+                Text(label).font(.subheadline).foregroundStyle(AppTheme.textPrimary)
                 Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(Color(.tertiaryLabel))
+                
+                if label == "Email 2FA" {
+                    Text(userStore.hasMfaEnabled ? "Enabled" : "Disabled")
+                        .font(.caption)
+                        .foregroundStyle(userStore.hasMfaEnabled ? AppTheme.orange : AppTheme.textSecondary)
+                }
+                
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(AppTheme.textSecondary)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 13)
         }
         .buttonStyle(.plain)
-    }
-
-    private func navigationRow(icon: String, label: String, detail: String? = nil, action: (() -> Void)? = nil) -> some View {
-        Button {
-            action?()
-        } label: {
-            navigationRowContent(icon: icon, label: label, detail: detail)
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func navigationRowContent(icon: String, label: String, detail: String? = nil) -> some View {
-        HStack(spacing: 14) {
-            Image(systemName: icon)
-                .font(.body)
-                .foregroundStyle(AppTheme.orange)
-                .frame(width: 24)
-            Text(label)
-                .font(.body)
-                .foregroundStyle(AppTheme.textPrimary)
-            Spacer()
-            if let detail {
-                Text(detail)
-                    .font(.body)
-                    .foregroundStyle(AppTheme.textSecondary)
-            }
-            Image(systemName: "chevron.right")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(Color(.tertiaryLabel))
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 13)
-        .contentShape(Rectangle())
-    }
-
-    // MARK: - Helpers
-
-    private func openAppSettings() {
-        if let url = URL(string: UIApplication.openSettingsURLString) {
-            UIApplication.shared.open(url)
-        }
     }
 }
 
-// MARK: - Edit Profile Sheet
-
-struct EditProfileSheet: View {
+struct EditProfileView: View {
     @Environment(UserStore.self) private var userStore
     @Environment(\.dismiss) private var dismiss
-
     @State private var fullName = ""
     @State private var email = ""
-    @State private var selectedPhoto: PhotosPickerItem?
-    @State private var profileImage: Image?
-    @State private var pickedUIImage: UIImage?
-    @State private var isSaving = false
-    @FocusState private var focusedField: EditField?
-
-    enum EditField: Hashable {
-        case name, email
-    }
-
-    // MARK: - Validation
-
-    private var isNameValid: Bool {
-        !fullName.trimmingCharacters(in: .whitespaces).isEmpty
-    }
-
-    private var isEmailValid: Bool {
-        email.trimmingCharacters(in: .whitespaces).isValidEmail
-    }
-
-    private var canSave: Bool {
-        isNameValid && isEmailValid && !isSaving
-    }
-
-    private var emailValidationMessage: String? {
-        let trimmed = email.trimmingCharacters(in: .whitespaces)
-        if trimmed.isEmpty { return "Email is required" }
-        if !trimmed.isValidEmail { return "Enter a valid email address" }
-        return nil
-    }
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 24) {
-                    // ── Photo Picker ─────────────────────────────────
-                    PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                        ZStack(alignment: .bottomTrailing) {
-                            if let profileImage {
-                                profileImage
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 100, height: 100)
-                                    .clipShape(Circle())
-                            } else {
-                                Circle()
-                                    .fill(
-                                        LinearGradient(
-                                            colors: [AppTheme.orange.opacity(0.3), AppTheme.orange.opacity(0.15)],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                    )
-                                    .frame(width: 100, height: 100)
-                                    .overlay(
-                                        Image(systemName: "person.fill")
-                                            .font(.system(size: 40))
-                                            .foregroundStyle(AppTheme.orange)
-                                    )
-                            }
-
-                            ZStack {
-                                Circle().fill(Color(.systemBackground)).frame(width: 32, height: 32)
-                                Circle().fill(AppTheme.orange).frame(width: 28, height: 28)
-                                Image(systemName: "camera.fill")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundStyle(.white)
-                            }
-                            .offset(x: 2, y: 2)
-                        }
+            List {
+                Section {
+                    HStack(spacing: 12) {
+                        Image(systemName: "person").foregroundStyle(AppTheme.orange).frame(width: 20)
+                        TextField("Full Name", text: $fullName).font(.subheadline)
                     }
-                    .padding(.top, 16)
-
-                    Text("Tap to change photo")
-                        .font(.caption)
-                        .foregroundStyle(AppTheme.textSecondary)
-                        .padding(.top, -16)
-
-                    // ── Fields ────────────────────────────────────────
-                    VStack(spacing: 0) {
-                        // Name field
-                        editField(
-                            icon: "person.fill",
-                            placeholder: "Full Name",
-                            text: $fullName,
-                            field: .name
-                        )
-
-                        Divider().padding(.leading, 52)
-
-                        // Email field
-                        editField(
-                            icon: "envelope.fill",
-                            placeholder: "Email",
-                            text: $email,
-                            field: .email,
-                            keyboard: .emailAddress,
-                            autocapitalize: false
-                        )
+                    HStack(spacing: 12) {
+                        Image(systemName: "envelope").foregroundStyle(AppTheme.orange).frame(width: 20)
+                        TextField("Email", text: $email).font(.subheadline)
+                            .keyboardType(.emailAddress).textInputAutocapitalization(.never)
                     }
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color(.secondarySystemGroupedBackground))
-                    )
-                    .padding(.horizontal, 16)
-
-                    // ── Email Validation Feedback ─────────────────────
-                    if let message = emailValidationMessage, !email.isEmpty {
-                        HStack(spacing: 6) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .font(.caption)
-                                .foregroundStyle(.red)
-                            Text(message)
-                                .font(.caption)
-                                .foregroundStyle(.red)
-                            Spacer()
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.top, -16)
-                    }
-
-                    // ── Note ──────────────────────────────────────────
-                    HStack(spacing: 8) {
-                        Image(systemName: "info.circle")
-                            .font(.caption)
-                            .foregroundStyle(AppTheme.textSecondary)
-                        Text("Email changes will take effect on next sign-in.")
-                            .font(.caption)
-                            .foregroundStyle(AppTheme.textSecondary)
-                    }
-                    .padding(.horizontal, 20)
-                }
+                } header: { Text("Personal Info").textCase(nil) }
             }
-            .background(Color(.systemGroupedBackground))
+            .listStyle(.insetGrouped)
             .navigationTitle("Edit Profile")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                    .foregroundStyle(AppTheme.textSecondary)
+                    Button("Cancel") { dismiss() }.foregroundStyle(AppTheme.textSecondary)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        saveProfile()
-                    } label: {
-                        if isSaving {
-                            ProgressView()
-                                .tint(AppTheme.orange)
-                        } else {
-                            Text("Save")
-                                .font(.headline)
-                                .foregroundStyle(canSave ? AppTheme.orange : AppTheme.orange.opacity(0.4))
+                    Button("Save") {
+                        Task {
+                            await userStore.updateProfile(fullName: fullName, profileImageUrl: nil)
                         }
+                        dismiss()
                     }
-                    .disabled(!canSave)
+                    .font(.headline).foregroundStyle(AppTheme.orange)
                 }
             }
             .onAppear {
                 fullName = userStore.currentUser?.fullName ?? ""
                 email = userStore.currentUser?.email ?? ""
-                // Load existing saved photo
-                if let savedImage = ProfileImageStore.load() {
-                    profileImage = Image(uiImage: savedImage)
-                }
             }
-            .onChange(of: selectedPhoto) { _, newValue in
-                Task {
-                    if let data = try? await newValue?.loadTransferable(type: Data.self),
-                       let uiImage = UIImage(data: data) {
-                        pickedUIImage = uiImage
-                        profileImage = Image(uiImage: uiImage)
-                    }
-                }
-            }
-        }
-    }
-
-    private func editField(
-        icon: String,
-        placeholder: String,
-        text: Binding<String>,
-        field: EditField,
-        keyboard: UIKeyboardType = .default,
-        autocapitalize: Bool = true
-    ) -> some View {
-        HStack(spacing: 14) {
-            Image(systemName: icon)
-                .font(.body)
-                .foregroundStyle(AppTheme.orange)
-                .frame(width: 24)
-            TextField(placeholder, text: text)
-                .font(.body)
-                .keyboardType(keyboard)
-                .textInputAutocapitalization(autocapitalize ? .words : .never)
-                .autocorrectionDisabled(!autocapitalize)
-                .focused($focusedField, equals: field)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-    }
-
-    private func saveProfile() {
-        isSaving = true
-        let trimmedName = fullName.trimmingCharacters(in: .whitespaces)
-        let trimmedEmail = email.trimmingCharacters(in: .whitespaces)
-
-        // Save photo locally if a new one was picked
-        if let pickedUIImage {
-            ProfileImageStore.save(pickedUIImage)
-        }
-
-        Task {
-            await userStore.updateProfile(
-                fullName: trimmedName,
-                email: trimmedEmail,
-                profileImageUrl: userStore.currentUser?.profileImageUrl
-            )
-            isSaving = false
-            dismiss()
         }
     }
 }

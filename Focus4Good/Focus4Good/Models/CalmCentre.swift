@@ -19,6 +19,18 @@ struct JpmrSession: Codable {
     var completedAt: Date
 }
 
+//JpmrVideo
+struct JpmrVideo: Codable, Identifiable {
+    var id: UUID = UUID()
+    var title: String
+    var videoUrl: String
+
+    enum CodingKeys: String, CodingKey {
+        case id, title
+        case videoUrl = "video_url"
+    }
+}
+
 //GuidedMeditationSession
 struct GuidedMeditationSession: Codable {
     var id: UUID = UUID()

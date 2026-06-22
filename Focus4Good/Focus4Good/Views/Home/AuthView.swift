@@ -14,6 +14,7 @@ struct AuthView: View {
     @State private var password = ""
     @State private var confirmPassword = ""
     @State private var showPassword = false
+    @State private var showForgotPassword = false
 
     private var isFormValid: Bool {
         if isSignUp {
@@ -27,8 +28,11 @@ struct AuthView: View {
         ZStack {
             Color(.systemBackground).ignoresSafeArea()
 
-            ScrollView {
-                VStack(spacing: 32) {
+            if userStore.isMfaRequired {
+                TwoFactorVerifyView(email: email)
+            } else {
+                ScrollView {
+                    VStack(spacing: 32) {
                     Spacer().frame(height: 40)
 
                     // ── Logo / Header ─────────────────────────────
@@ -82,6 +86,19 @@ struct AuthView: View {
                         }
                     }
                     .padding(.horizontal, 24)
+
+                    // ── Forgot Password Button ─────────────────────────────
+                    if !isSignUp {
+                        HStack {
+                            Spacer()
+                            Button("Forgot Password?") {
+                                showForgotPassword = true
+                            }
+                            .font(.subheadline)
+                            .foregroundStyle(AppTheme.orange)
+                        }
+                        .padding(.horizontal, 24)
+                    }
 
                     // ── Error Message ─────────────────────────────
                     if let error = userStore.errorMessage {
@@ -146,6 +163,10 @@ struct AuthView: View {
                     Spacer()
                 }
             }
+            }
+        }
+        .sheet(isPresented: $showForgotPassword) {
+            ForgotPasswordView()
         }
         // Watch for successful authentication → notify parent
         .onChange(of: userStore.isAuthenticated) { _, isAuth in

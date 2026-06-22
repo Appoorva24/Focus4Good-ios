@@ -1,5 +1,6 @@
 import Foundation
 import Supabase
+import Auth
 
 @MainActor
 @Observable
@@ -11,12 +12,11 @@ class UserStore {
     var isAuthenticated = false
     var isLoading = false
     var errorMessage: String?
-    /// True once restoreSession() has finished (success or failure).
-    /// The splash screen waits for this before deciding where to navigate.
     var isSessionReady = false
-    /// Set to true when 100 bonus points are awarded on first classroom visit.
-    /// VirtualClassroomView triggers this; MainTabView shows the popup.
-    var showNewUserBonusPopup = false
+    var hasMfaEnabled = false
+    var isMfaRequired = false
+    var currentMfaFactorId: String?
+
     
     static let shared = UserStore()
     
@@ -75,6 +75,21 @@ class UserStore {
                 email: email,
                 password: password
             )
+            
+            // Check Custom Email 2FA Level
+            let isEmail2FAEnabled = session.user.userMetadata["email_2fa_enabled"]?.boolValue ?? false
+            if isEmail2FAEnabled {
+                self.isMfaRequired = true
+                self.isLoading = false
+                
+                // Call Edge Function to send OTP
+                _ = try await client.functions.invoke(
+                    "send-otp",
+                    options: .init(body: ["email": email])
+                )
+                return
+            }
+            
             let userId = session.user.id
             await fetchCurrentUser(userId: userId)
             isAuthenticated = true
@@ -96,40 +111,76 @@ class UserStore {
         // Clear ALL cached store data
         TaskStore.shared.tasks = []
         TaskStore.shared.categories = []
+        TaskStore.shared.taskCompletions = [:]
         ProgressStore.shared.clearData()
         CommunityStore.shared.clearData()
         CalmCentreStore.shared.clearData()
         VolunteerStore.shared.clearData()
-        ClassroomStore.shared.clearData()
         // Cancel pending notifications
         NotificationManager.shared.cancelAllNotifications()
     }
-
-    // MARK: - Grant Focus Points (called from VirtualClassroomView on first visit)
-    /// Adds `amount` focus points to the current user in Supabase and returns true on success.
-    @discardableResult
-    func grantBonusPoints(_ amount: Int) async -> Bool {
-        guard var user = currentUser else { return false }
-        let newPoints = user.focusPoints + amount
+    
+    // MARK: - Password Reset
+    func sendPasswordResetEmail(email: String) async throws {
+        try await client.auth.resetPasswordForEmail(email)
+    }
+    
+    func verifyPasswordResetOTP(email: String, code: String) async throws {
+        _ = try await client.auth.verifyOTP(email: email, token: code, type: .recovery)
+    }
+    
+    func updateUserPassword(newPassword: String) async throws {
+        _ = try await client.auth.update(user: UserAttributes(password: newPassword))
+    }
+    // MARK: - Email 2FA Methods
+    func checkMFAStatus() async {
         do {
-            try await client
-                .from("profiles")
-                .update(["focus_points": newPoints])
-                .eq("id", value: user.id.uuidString)
-                .execute()
-            user.focusPoints = newPoints
-            currentUser = user
-            print("🎁 Granted \(amount) bonus focus points")
-            return true
+            let session = try await client.auth.session
+            hasMfaEnabled = session.user.userMetadata["email_2fa_enabled"]?.boolValue ?? false
         } catch {
-            print("❌ Failed to grant bonus points: \(error)")
-            return false
+            hasMfaEnabled = false
         }
+    }
+    
+    func enrollEmailMFA() async throws {
+        _ = try await client.auth.update(user: UserAttributes(data: ["email_2fa_enabled": .bool(true)]))
+        await checkMFAStatus()
+    }
+    
+    func unenrollEmailMFA() async throws {
+        _ = try await client.auth.update(user: UserAttributes(data: ["email_2fa_enabled": .bool(false)]))
+        await checkMFAStatus()
+    }
+    
+    func verifyLoginMFA(email: String, code: String) async {
+        isLoading = true
+        errorMessage = nil
+        do {
+            // Call Edge Function to verify OTP
+            _ = try await client.functions.invoke(
+                "verify-otp",
+                options: .init(body: ["email": email, "otp": code])
+            )
+            
+            let session = try await client.auth.session
+            let userId = session.user.id
+            await fetchCurrentUser(userId: userId)
+            
+            isAuthenticated = true
+            isMfaRequired = false
+            await loadUserData(userId: userId)
+        } catch {
+            errorMessage = "Invalid or expired OTP."
+        }
+        isLoading = false
     }
 
     // MARK: - Bulk data load (called after every auth)
     private func loadUserData(userId: UUID) async {
-        async let tasks: ()       = TaskStore.shared.fetchTasks(userId: userId)
+        // Fetch tasks first since completions depend on task IDs
+        await TaskStore.shared.fetchTasks(userId: userId)
+        await TaskStore.shared.fetchTaskCompletions(userId: userId)
+        
         async let progress: ()    = ProgressStore.shared.fetchProgress(userId: userId)
         async let communities: () = CommunityStore.shared.fetchCommunities()
         async let categories: ()  = CommunityStore.shared.fetchCommunityCategories()
@@ -142,9 +193,7 @@ class UserStore {
         async let asmr: ()        = CalmCentreStore.shared.fetchAsmrSounds()
         async let folders: ()     = CalmCentreStore.shared.fetchBrainDumpFolders(userId: userId)
         async let entries: ()     = CalmCentreStore.shared.fetchBrainDumpEntries(userId: userId)
-        async let members: ()     = CommunityStore.shared.fetchAllMembers()
-        async let saved: ()       = CommunityStore.shared.fetchSavedPosts(userId: userId)
-        _ = await (tasks, progress, communities, categories, ngos, events, regs, breathing, jpmr, meditation, asmr, folders, entries, members, saved)
+        _ = await (progress, communities, categories, ngos, events, regs, breathing, jpmr, meditation, asmr, folders, entries)
     }
     
     // MARK: - Profile CRUD
@@ -159,35 +208,28 @@ class UserStore {
                 .execute()
                 .value
             currentUser = user
+            await checkMFAStatus()
         } catch {
             errorMessage = "Failed to load profile: \(error.localizedDescription)"
         }
         isLoading = false
     }
     
-    func updateProfile(fullName: String, email: String? = nil, profileImageUrl: String?) async {
+    func updateProfile(fullName: String, profileImageUrl: String?) async {
         guard let userId = currentUser?.id else { return }
         do {
-            var updates: [String: String] = [
-                "full_name": fullName,
-                "profile_image_url": profileImageUrl ?? ""
-            ]
-            if let email {
-                updates["email"] = email
-            }
-            
             try await client
                 .from("profiles")
-                .update(updates)
+                .update([
+                    "full_name": fullName,
+                    "profile_image_url": profileImageUrl ?? ""
+                ])
                 .eq("id", value: userId.uuidString)
                 .execute()
             
             // Update local state
             currentUser?.fullName = fullName
             currentUser?.profileImageUrl = profileImageUrl
-            if let email {
-                currentUser?.email = email
-            }
         } catch {
             errorMessage = error.localizedDescription
         }
