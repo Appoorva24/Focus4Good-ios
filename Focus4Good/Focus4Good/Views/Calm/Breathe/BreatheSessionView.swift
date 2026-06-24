@@ -30,7 +30,8 @@ private enum BreathingPhase: String {
     var circleScale: CGFloat {
         switch self {
         case .breatheIn, .hold: 1.0
-        case .breatheOut, .idle: 0.5
+        case .idle: 0.75
+        case .breatheOut: 0.5
         }
     }
 }
@@ -90,28 +91,19 @@ struct BreatheSessionView: View {
 
     private var breathingCircle: some View {
         ZStack {
-            Circle()
-                .stroke(Color.accentColor.opacity(0.15), lineWidth: 8)
-                .frame(width: 220, height: 220)
-
-            Circle()
-                .fill(Color.accentColor.opacity(0.2))
-                .frame(width: 180, height: 180)
-                .scaleEffect(phase.circleScale)
-                .animation(.easeInOut(duration: Double(phase.duration)), value: phase)
-
-            VStack(spacing: 8) {
-                Text(phase.rawValue)
-                    .font(.title3)
-                    .fontWeight(.semibold)
-
-                if isRunning {
-                    Text("\(countdown)")
-                        .font(.system(size: 44, weight: .bold, design: .rounded))
-                        .foregroundStyle(Color.accentColor)
-                        .contentTransition(.numericText())
+            // Flower Petals Animation
+            ZStack {
+                ForEach(0..<6, id: \.self) { i in
+                    Circle()
+                        .fill(Color.accentColor.opacity(0.4))
+                        .frame(width: 160, height: 160)
+                        .offset(y: -120 * (phase.circleScale - 0.5))
+                        .rotationEffect(.degrees(Double(i) * 60))
                 }
             }
+            .rotationEffect(.degrees(Double(phase.circleScale) * 180))
+            .scaleEffect(0.6 + phase.circleScale * 0.4)
+            .animation(.easeInOut(duration: Double(phase.duration)), value: phase)
         }
     }
 
@@ -134,14 +126,14 @@ struct BreatheSessionView: View {
 
     private var actionButton: some View {
         Button {
-            isRunning ? stopSession() : startSession()
+            isRunning ? pauseSession() : resumeSession()
         } label: {
-            Text(isRunning ? "Stop" : "Start")
+            Text(isRunning ? "Pause" : "Start")
                 .font(.headline)
                 .foregroundStyle(.white)
                 .frame(width: 160, height: 52)
-                .background(Capsule().fill(isRunning ? Color(.systemGray3) : Color.accentColor))
-                .shadow(color: (isRunning ? Color.clear : Color.accentColor.opacity(0.3)), radius: 8, x: 0, y: 4)
+                .background(Capsule().fill(Color.accentColor))
+                .shadow(color: Color.accentColor.opacity(0.3), radius: 8, x: 0, y: 4)
         }
     }
 
@@ -224,22 +216,28 @@ struct BreatheSessionView: View {
 
     // MARK: - Session Logic
 
-    private func startSession() {
-        currentCycle = 1
-        BreatheAudioService.shared.speakIntro(cycles: selectedCycles)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [self] in
-            startPhase(.breatheIn)
+    private func resumeSession() {
+        if phase == .idle {
             isRunning = true
+            currentCycle = 1
+            BreatheAudioService.shared.speakIntro(cycles: selectedCycles)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [self] in
+                guard isRunning else { return }
+                startPhase(.breatheIn)
+            }
+        } else {
+            isRunning = true
+            BreatheAudioService.shared.speakPhase(
+                phase.rawValue, cycle: currentCycle, totalCycles: selectedCycles
+            )
+            startTimer()
         }
     }
 
-    private func stopSession() {
+    private func pauseSession() {
         stopTimer()
         BreatheAudioService.shared.stopAll()
-        phase = .idle
-        countdown = 0
         isRunning = false
-        currentCycle = 1
     }
 
     private func startPhase(_ newPhase: BreathingPhase) {
