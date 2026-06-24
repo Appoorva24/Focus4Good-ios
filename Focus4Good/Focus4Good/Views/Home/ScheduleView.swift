@@ -72,9 +72,18 @@ struct ScheduleView: View {
     private var emptyDayState: some View {
         VStack(spacing: 16) {
             Spacer()
-            Image(systemName: "cup.and.saucer")
-                .font(.system(size: 60))
-                .foregroundStyle(AppTheme.orange.opacity(0.5))
+            ZStack {
+                Circle()
+                    .fill(AppTheme.orange.opacity(0.08))
+                    .frame(width: 120, height: 120)
+                Image(systemName: "text.badge.checkmark")
+                    .font(.system(size: 48, weight: .light))
+                    .foregroundStyle(AppTheme.orange.opacity(0.6))
+                Image(systemName: "sparkles")
+                    .font(.system(size: 18))
+                    .foregroundStyle(AppTheme.orange.opacity(0.4))
+                    .offset(x: 38, y: -38)
+            }
             Text("No tasks for this day")
                 .font(.headline)
                 .foregroundStyle(AppTheme.textSecondary)
