@@ -91,19 +91,12 @@ struct BreatheSessionView: View {
 
     private var breathingCircle: some View {
         ZStack {
-            // Flower Petals Animation
-            ZStack {
-                ForEach(0..<6, id: \.self) { i in
-                    Circle()
-                        .fill(Color.accentColor.opacity(0.4))
-                        .frame(width: 160, height: 160)
-                        .offset(y: -120 * (phase.circleScale - 0.5))
-                        .rotationEffect(.degrees(Double(i) * 60))
-                }
-            }
-            .rotationEffect(.degrees(Double(phase.circleScale) * 180))
-            .scaleEffect(0.6 + phase.circleScale * 0.4)
-            .animation(.easeInOut(duration: Double(phase.duration)), value: phase)
+            // Normal Breathing Circle
+            Circle()
+                .fill(Color.accentColor.opacity(0.4))
+                .frame(width: 240, height: 240)
+                .scaleEffect(0.6 + phase.circleScale * 0.4)
+                .animation(.easeInOut(duration: Double(phase.duration)), value: phase)
         }
     }
 
