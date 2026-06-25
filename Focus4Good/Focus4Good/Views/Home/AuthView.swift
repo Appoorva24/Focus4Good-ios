@@ -1,4 +1,5 @@
 import SwiftUI
+import AuthenticationServices
 
 // MARK: - AuthView
 
@@ -137,6 +138,80 @@ struct AuthView: View {
                         )
                     }
                     .disabled(!isFormValid || userStore.isLoading)
+                    .padding(.horizontal, 24)
+
+                    // ── Or Divider ───────────────────────────────
+                    HStack(spacing: 12) {
+                        Rectangle()
+                            .fill(Color(.systemGray4))
+                            .frame(height: 0.5)
+                        Text("or continue with")
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.textSecondary)
+                            .fixedSize()
+                        Rectangle()
+                            .fill(Color(.systemGray4))
+                            .frame(height: 0.5)
+                    }
+                    .padding(.horizontal, 24)
+
+                    // ── Social Sign-In ────────────────────────────
+                    VStack(spacing: 12) {
+                        // Sign in with Apple
+                        SignInWithAppleButton(.signIn) { request in
+                            let hashedNonce = userStore.prepareAppleSignIn()
+                            request.requestedScopes = [.fullName, .email]
+                            request.nonce = hashedNonce
+                        } onCompletion: { result in
+                            switch result {
+                            case .success(let authorization):
+                                if let credential = authorization.credential as? ASAuthorizationAppleIDCredential {
+                                    Task {
+                                        await userStore.handleAppleSignIn(credential: credential)
+                                    }
+                                }
+                            case .failure(let error):
+                                if (error as NSError).code != 1001 {
+                                    userStore.errorMessage = error.localizedDescription
+                                }
+                            }
+                        }
+                        .signInWithAppleButtonStyle(.black)
+                        .frame(height: 56)
+                        .clipShape(Capsule())
+
+                        // Sign in with Google
+                        Button {
+                            Task {
+                                await userStore.signInWithGoogle()
+                            }
+                        } label: {
+                            HStack(spacing: 10) {
+                                ZStack {
+                                    Circle()
+                                        .fill(Color(hex: "4285F4"))
+                                        .frame(width: 24, height: 24)
+                                    Text("G")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundStyle(.white)
+                                }
+                                Text("Sign in with Google")
+                                    .font(.headline)
+                            }
+                            .foregroundStyle(AppTheme.textPrimary)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 56)
+                            .background(
+                                Capsule()
+                                    .fill(Color(.secondarySystemBackground))
+                            )
+                            .overlay(
+                                Capsule()
+                                    .stroke(Color(.systemGray4), lineWidth: 0.5)
+                            )
+                        }
+                        .disabled(userStore.isLoading)
+                    }
                     .padding(.horizontal, 24)
 
                     // ── Toggle Sign In / Sign Up ──────────────────
