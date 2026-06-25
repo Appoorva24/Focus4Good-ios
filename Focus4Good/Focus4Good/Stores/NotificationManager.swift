@@ -1,31 +1,21 @@
-import Foundation
 import UserNotifications
+import Foundation
 
 /// Notification Manager - Handles all task notifications
-@MainActor
-final class NotificationManager {
+class NotificationManager {
     
     static let shared = NotificationManager()
-    private init() {}
+    init() {}
     
     // MARK: - Permission Handling
     
     /// Request notification permissions from user
     func requestPermission() async -> Bool {
         do {
-            let granted = try await UNUserNotificationCenter.current().requestAuthorization(
+            return try await UNUserNotificationCenter.current().requestAuthorization(
                 options: [.alert, .sound, .badge]
             )
-            
-            if granted {
-                print("✅ Notification permission granted")
-            } else {
-                print("❌ Notification permission denied")
-            }
-            
-            return granted
         } catch {
-            print("❌ Error requesting notification permission: \(error)")
             return false
         }
     }
@@ -44,17 +34,11 @@ final class NotificationManager {
         await cancelNotification(for: task.id)
         
         // Only schedule if task has time set
-        guard let scheduledTime = task.scheduledTime else {
-            print("⚠️ No time set for task, skipping notification")
-            return
-        }
+        guard let scheduledTime = task.scheduledTime else { return }
         
         // Check permission first
         let status = await checkPermissionStatus()
-        guard status == .authorized else {
-            print("⚠️ Notifications not authorized")
-            return
-        }
+        guard status == .authorized else { return }
         
         // Create notification content
         let content = UNMutableNotificationContent()
@@ -75,9 +59,11 @@ final class NotificationManager {
             from: taskDate
         )
         
+        // Subtract 5 mins from scheduledTime
+        let notificationTime = Calendar.current.date(byAdding: .minute, value: -5, to: scheduledTime) ?? scheduledTime
         let timeComponents = Calendar.current.dateComponents(
             [.hour, .minute],
-            from: scheduledTime
+            from: notificationTime
         )
         
         dateComponents.hour = timeComponents.hour
@@ -99,12 +85,7 @@ final class NotificationManager {
                 trigger: trigger
             )
             
-            do {
-                try await UNUserNotificationCenter.current().add(request)
-                print("✅ Notification scheduled for: \(dateComponents.hour ?? 0):\(dateComponents.minute ?? 0)")
-            } catch {
-                print("❌ Error scheduling notification: \(error)")
-            }
+            try? await UNUserNotificationCenter.current().add(request)
         }
     }
     
@@ -119,22 +100,19 @@ final class NotificationManager {
         // Configure repeat based on task repeat type
         switch task.repeatType {
         case .daily:
-            // Repeat daily at same time
             triggerComponents.year = nil
             triggerComponents.month = nil
             triggerComponents.day = nil
             
         case .weekly:
-            // Repeat weekly on same day
             triggerComponents.year = nil
             triggerComponents.month = nil
             let weekday = Calendar.current.component(.weekday, from: task.scheduledDate ?? Date())
             triggerComponents.weekday = weekday
             
         case .weekdays:
-            // Monday to Friday only
-            // We need to schedule 5 separate notifications
-            for weekday in 2...6 { // Monday=2 to Friday=6
+            // Monday to Friday — schedule 5 separate notifications
+            for weekday in 2...6 {
                 var weekdayComponents = triggerComponents
                 weekdayComponents.year = nil
                 weekdayComponents.month = nil
@@ -153,12 +131,11 @@ final class NotificationManager {
                 
                 try? await UNUserNotificationCenter.current().add(request)
             }
-            print("✅ Weekday notifications scheduled")
             return
             
         case .weekends:
-            // Saturday and Sunday only
-            for weekday in [1, 7] { // Sunday=1, Saturday=7
+            // Saturday and Sunday
+            for weekday in [1, 7] {
                 var weekendComponents = triggerComponents
                 weekendComponents.year = nil
                 weekendComponents.month = nil
@@ -177,20 +154,16 @@ final class NotificationManager {
                 
                 try? await UNUserNotificationCenter.current().add(request)
             }
-            print("✅ Weekend notifications scheduled")
             return
             
         case .monthly:
-            // Repeat on same day of month
             triggerComponents.year = nil
             triggerComponents.month = nil
             
         case .yearly:
-            // Repeat yearly on same date
             triggerComponents.year = nil
             
         default:
-            // For other repeat types, use one-time notification
             triggerComponents.year = nil
             triggerComponents.month = nil
             triggerComponents.day = nil
@@ -207,12 +180,7 @@ final class NotificationManager {
             trigger: trigger
         )
         
-        do {
-            try await UNUserNotificationCenter.current().add(request)
-            print("✅ Repeating notification scheduled for \(task.repeatType)")
-        } catch {
-            print("❌ Error scheduling repeating notification: \(error)")
-        }
+        try? await UNUserNotificationCenter.current().add(request)
     }
     
     // MARK: - Cancel Notifications
@@ -221,13 +189,11 @@ final class NotificationManager {
     func cancelNotification(for taskId: UUID) async {
         let identifiers = [
             taskId.uuidString,
-            // Also cancel weekday variations if any
             "\(taskId.uuidString)-weekday-2",
             "\(taskId.uuidString)-weekday-3",
             "\(taskId.uuidString)-weekday-4",
             "\(taskId.uuidString)-weekday-5",
             "\(taskId.uuidString)-weekday-6",
-            // Also cancel weekend variations
             "\(taskId.uuidString)-weekend-1",
             "\(taskId.uuidString)-weekend-7"
         ]
@@ -235,37 +201,193 @@ final class NotificationManager {
         UNUserNotificationCenter.current().removePendingNotificationRequests(
             withIdentifiers: identifiers
         )
-        
-        print("✅ Cancelled notification for task: \(taskId)")
     }
     
     /// Cancel all pending notifications
     func cancelAllNotifications() {
         UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
-        print("✅ All notifications cancelled")
     }
     
-    // MARK: - Debug Helpers
-    
-    /// Get count of pending notifications (for debugging)
+    /// Get count of pending notifications
     func getPendingNotificationsCount() async -> Int {
         let requests = await UNUserNotificationCenter.current().pendingNotificationRequests()
-        print("📊 Pending notifications: \(requests.count)")
         return requests.count
     }
     
-    /// Print all pending notifications (for debugging)
-    func printPendingNotifications() async {
-        let requests = await UNUserNotificationCenter.current().pendingNotificationRequests()
-        print("\n📋 Pending Notifications (\(requests.count)):")
-        for request in requests {
-            print("  - ID: \(request.identifier)")
-            print("    Title: \(request.content.title)")
-            print("    Body: \(request.content.body)")
-            if let trigger = request.trigger as? UNCalendarNotificationTrigger {
-                print("    Next trigger: \(trigger.nextTriggerDate() ?? Date())")
+    // MARK: - Re-engagement Notifications (Zepto / Zomato Style)
+    
+    /// Notification tiers with escalating delays
+    private enum ReengagementTier: CaseIterable {
+        case twoHours, oneDay, threeDays, sevenDays
+        
+        var identifier: String {
+            switch self {
+            case .twoHours:  return "reengagement-2h"
+            case .oneDay:    return "reengagement-1d"
+            case .threeDays: return "reengagement-3d"
+            case .sevenDays: return "reengagement-7d"
             }
-            print("")
         }
+        
+        var delaySeconds: TimeInterval {
+            switch self {
+            case .twoHours:  return 2 * 60 * 60       // 2 hours
+            case .oneDay:    return 24 * 60 * 60       // 1 day
+            case .threeDays: return 3 * 24 * 60 * 60   // 3 days
+            case .sevenDays: return 7 * 24 * 60 * 60   // 7 days
+            }
+        }
+        
+        /// Pool of catchy messages — a random one is picked each time
+        var messages: [(title: String, body: String)] {
+            switch self {
+            case .twoHours:
+                return [
+                    ("🎯 Your tasks are waiting!",
+                     "A quick focus session can make all the difference. Let's crush it!"),
+                    ("⏰ Time to lock in!",
+                     "Your Pomodoro timer is ready. Just 25 minutes can change your whole day."),
+                    ("📝 Got a minute?",
+                     "Check off one small task — momentum is everything!"),
+                    ("💪 You were on a roll!",
+                     "Don't stop now. Open the app and keep that energy going."),
+                    ("🚀 Ready for a focus sprint?",
+                     "Your productivity streak is calling. Let's go!")
+                ]
+                
+            case .oneDay:
+                return [
+                    ("🔥 Don't break your streak!",
+                     "You've been crushing it lately — keep the momentum going!"),
+                    ("🌟 Your Focus Points miss you!",
+                     "Come back and earn more points to level up your classroom."),
+                    ("📋 Tomorrow's tasks won't plan themselves!",
+                     "Take 2 minutes to plan ahead. Future you will be grateful."),
+                    ("🧘 Need a mental reset?",
+                     "A quick breathing session in Calm Centre works wonders."),
+                    ("🏆 You're so close to leveling up!",
+                     "Just a few more focus sessions and you'll reach the next level.")
+                ]
+                
+            case .threeDays:
+                return [
+                    ("🧘 Feeling overwhelmed?",
+                     "Take 2 minutes in Calm Centre. You deserve a breather."),
+                    ("💭 Your Brain Dump journal misses you!",
+                     "Clear your mind — write down what's bothering you. It really helps."),
+                    ("🎵 Unwind with some ASMR sounds",
+                     "Tap in for a calming sensory session. Your brain will thank you."),
+                    ("👥 Your community posted new updates!",
+                     "See what others are achieving and get inspired."),
+                    ("📊 Check your weekly progress!",
+                     "See how far you've come. You might surprise yourself.")
+                ]
+                
+            case .sevenDays:
+                return [
+                    ("🎁 We miss you!",
+                     "Your Focus Points are gathering dust. Come back and level up!"),
+                    ("💫 It's never too late to restart!",
+                     "Even 5 minutes of focus today beats zero. We believe in you!"),
+                    ("🌱 Small steps, big changes",
+                     "Open the app, set one goal, and watch the magic happen."),
+                    ("🤝 Your volunteer community needs you!",
+                     "Check out new NGO events and make a real difference."),
+                    ("🏠 Your virtual classroom is lonely!",
+                     "Come back, earn points, and decorate your space. It's fun!"),
+                    ("✨ Fresh start? We've got you!",
+                     "No judgment, just good vibes. Let's pick up where you left off.")
+                ]
+            }
+        }
+    }
+    
+    /// Schedule the full re-engagement notification cascade.
+    /// Call this when the app moves to the **background**.
+    func scheduleReengagementNotifications(
+        streak: Int = 0,
+        points: Int = 0,
+        level: Int = 1
+    ) async {
+        // Check permission first
+        let status = await checkPermissionStatus()
+        guard status == .authorized else { return }
+        
+        // Cancel any existing re-engagement notifications first
+        cancelReengagementNotifications()
+        
+        for tier in ReengagementTier.allCases {
+            guard var message = tier.messages.randomElement() else { continue }
+            
+            // Personalize messages with user data when relevant
+            message = personalizeMessage(message, streak: streak, points: points, level: level)
+            
+            let content = UNMutableNotificationContent()
+            content.title = message.title
+            content.body = message.body
+            content.sound = .default
+            content.categoryIdentifier = "reengagement"
+            
+            let trigger = UNTimeIntervalNotificationTrigger(
+                timeInterval: tier.delaySeconds,
+                repeats: false
+            )
+            
+            let request = UNNotificationRequest(
+                identifier: tier.identifier,
+                content: content,
+                trigger: trigger
+            )
+            
+            try? await UNUserNotificationCenter.current().add(request)
+        }
+        
+        print("📲 Scheduled 4 re-engagement notifications")
+    }
+    
+    /// Cancel all pending re-engagement notifications.
+    /// Call this when the app becomes **active** again.
+    func cancelReengagementNotifications() {
+        let identifiers = ReengagementTier.allCases.map { $0.identifier }
+        UNUserNotificationCenter.current().removePendingNotificationRequests(
+            withIdentifiers: identifiers
+        )
+        print("🔕 Cancelled re-engagement notifications")
+    }
+    
+    // MARK: - Personalization
+    
+    /// Dynamically inject user stats into notification copy for a personal touch
+    private func personalizeMessage(
+        _ message: (title: String, body: String),
+        streak: Int,
+        points: Int,
+        level: Int
+    ) -> (title: String, body: String) {
+        var title = message.title
+        var body = message.body
+        
+        // Add streak urgency if user has an active streak
+        if streak > 0 && title.contains("streak") {
+            body = "Your \(streak)-day streak is about to reset! \(body)"
+        }
+        
+        // Add points info if relevant
+        if points > 0 && body.contains("Focus Points") {
+            body = body.replacingOccurrences(
+                of: "Focus Points",
+                with: "\(points) Focus Points"
+            )
+        }
+        
+        // Add level info
+        if level > 1 && body.contains("level up") {
+            body = body.replacingOccurrences(
+                of: "level up",
+                with: "reach Level \(level + 1)"
+            )
+        }
+        
+        return (title, body)
     }
 }

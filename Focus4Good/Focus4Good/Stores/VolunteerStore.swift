@@ -1,53 +1,202 @@
 import Foundation
+import Supabase
 
-@Observable
 @MainActor
-final class VolunteerStore {
+@Observable
+class VolunteerStore {
 
     // MARK: - State
     var ngos: [NGO] = []
     var volunteerEvents: [VolunteerEvent] = []
     var volunteerRegistrations: [VolunteerRegistration] = []
-    var eventItineraries: [EventItinerary] = []
-    var eventAttendances: [EventAttendance] = []
     var isLoading = false
     var errorMessage: String?
 
     // MARK: - Computed
-    func events(for ngo: NGO) -> [VolunteerEvent] { volunteerEvents.filter { $0.ngoId == ngo.id }.sorted { $0.eventDate < $1.eventDate } }
-    func itinerary(for event: VolunteerEvent) -> [EventItinerary] { eventItineraries.filter { $0.eventId == event.id }.sorted { $0.sortOrder < $1.sortOrder } }
-    func upcomingEvents() -> [VolunteerEvent] { volunteerEvents.filter { $0.eventDate >= Date() }.sorted { $0.eventDate < $1.eventDate } }
-    func isRegistered(ngoId: UUID, userId: UUID) -> Bool { volunteerRegistrations.contains { $0.ngoId == ngoId && $0.userId == userId } }
-    func isAttending(eventId: UUID, userId: UUID) -> Bool { eventAttendances.contains { $0.eventId == eventId && $0.userId == userId } }
-    func userRegistrations(userId: UUID) -> [VolunteerRegistration] { volunteerRegistrations.filter { $0.userId == userId } }
-    func userAttendances(userId: UUID) -> [EventAttendance] { eventAttendances.filter { $0.userId == userId } }
+    func events(for ngo: NGO) -> [VolunteerEvent] {
+        volunteerEvents
+            .filter { $0.ngoId == ngo.id }
+            .sorted { $0.eventDate < $1.eventDate }
+    }
 
+    func isRegistered(ngoId: UUID, userId: UUID) -> Bool {
+        volunteerRegistrations.contains { $0.ngoId == ngoId && $0.userId == userId }
+    }
+
+    // MARK: - Init
     static let shared = VolunteerStore()
-    private init() {}
+    private var client: SupabaseClient { SupabaseManager.shared.client }
+    init() {}
 
-    // MARK: - Fetch
-    func fetchNGOs() async { isLoading = true; isLoading = false }
-    func fetchEvents() async { isLoading = true; isLoading = false }
-    func fetchEvents(for ngoId: UUID) async { isLoading = true; isLoading = false }
-    func fetchItinerary(for eventId: UUID) async { isLoading = true; isLoading = false }
-    func fetchRegistrations(userId: UUID) async { isLoading = true; isLoading = false }
-    func fetchAttendances(userId: UUID) async { isLoading = true; isLoading = false }
+    // MARK: - Clear (called on sign-out)
+    func clearData() {
+        ngos = []
+        volunteerEvents = []
+        volunteerRegistrations = []
+    }
 
-    // MARK: - Registrations
-    func registerForNGO(userId: UUID, ngoId: UUID, fullName: String, email: String, phone: String, emergencyContact: String, availableDays: String, pastExperience: String) async {
+    // MARK: - Fetch from Supabase (with dummy fallback)
+    func fetchNGOs() async {
+        isLoading = true
+        do {
+            let fetched: [NGO] = try await client
+                .from("ngos")
+                .select()
+                .execute()
+                .value
+            ngos = fetched.isEmpty ? Self.dummyNGOs : fetched
+        } catch {
+            // Fallback to dummy data when Supabase unreachable or table empty
+            ngos = Self.dummyNGOs
+        }
+        isLoading = false
+    }
+
+    func fetchVolunteerEvents() async {
+        isLoading = true
+        do {
+            let fetched: [VolunteerEvent] = try await client
+                .from("volunteer_events")
+                .select()
+                .order("event_date", ascending: true)
+                .execute()
+                .value
+            // If DB has no events, seed from dummy events keyed to current NGO IDs
+            if fetched.isEmpty {
+                volunteerEvents = ngos.flatMap { Self.dummyEvents(for: $0.id) }
+            } else {
+                volunteerEvents = fetched
+            }
+        } catch {
+            volunteerEvents = ngos.flatMap { Self.dummyEvents(for: $0.id) }
+        }
+        isLoading = false
+    }
+
+    func fetchRegistrations(userId: UUID) async {
+        do {
+            let fetched: [VolunteerRegistration] = try await client
+                .from("volunteer_registrations")
+                .select()
+                .eq("user_id", value: userId.uuidString)
+                .execute()
+                .value
+            volunteerRegistrations = fetched
+        } catch {
+            errorMessage = "Failed to load registrations: \(error.localizedDescription)"
+        }
+    }
+
+    // MARK: - Register
+    func registerForNGO(
+        userId: UUID,
+        ngoId: UUID,
+        fullName: String,
+        email: String,
+        phone: String,
+        pastExperience: String
+    ) async {
         guard !isRegistered(ngoId: ngoId, userId: userId) else { return }
-        volunteerRegistrations.append(VolunteerRegistration(userId: userId, ngoId: ngoId, fullName: fullName, email: email, phone: phone, emergencyContact: emergencyContact, availableDays: availableDays, pastExperience: pastExperience, registeredAt: Date()))
+        let reg = VolunteerRegistration(
+            userId: userId,
+            ngoId: ngoId,
+            fullName: fullName,
+            email: email,
+            phone: phone,
+            pastExperience: pastExperience,
+            registeredAt: Date()
+        )
+        do {
+            let inserted: VolunteerRegistration = try await client
+                .from("volunteer_registrations")
+                .insert(reg)
+                .select()
+                .single()
+                .execute()
+                .value
+            volunteerRegistrations.append(inserted)
+        } catch {
+            // Still store locally so UI reflects registration even if DB fails
+            volunteerRegistrations.append(reg)
+            errorMessage = "Registration saved locally. Sync may retry later."
+        }
     }
 
-    // MARK: - Attendance
-    func confirmAttendance(userId: UUID, eventId: UUID, focusPointsCommitted: Int) async {
-        guard !isAttending(eventId: eventId, userId: userId) else { return }
-        eventAttendances.append(EventAttendance(userId: userId, eventId: eventId, focusPointsCommitted: focusPointsCommitted, confirmedAt: Date()))
-        if let index = volunteerEvents.firstIndex(where: { $0.id == eventId }) { volunteerEvents[index].participantCount += 1 }
-    }
+    // MARK: - Static Dummy Data (2 NGOs, fully featured)
 
-    func cancelAttendance(userId: UUID, eventId: UUID) async {
-        eventAttendances.removeAll { $0.eventId == eventId && $0.userId == userId }
-        if let index = volunteerEvents.firstIndex(where: { $0.id == eventId }) { volunteerEvents[index].participantCount = max(0, volunteerEvents[index].participantCount - 1) }
+    /// Fixed IDs so events can reference them deterministically
+    static let ngo1ID = UUID(uuidString: "a1000000-0000-0000-0000-000000000001")!
+    static let ngo2ID = UUID(uuidString: "a2000000-0000-0000-0000-000000000002")!
+
+    static let dummyNGOs: [NGO] = [
+        NGO(
+            id: ngo1ID,
+            name: "Teach For India",
+            location: "Mumbai, Maharashtra",
+            mission: "Eliminating educational inequity by placing passionate graduates as full-time teachers in low-income schools across India — building a movement of leaders committed to a day when all children attain an excellent education.",
+            founderName: "Shaheen Mistri",
+            founderPhone: "+91-22-6656-0200",
+            imageName: "ngo",
+            studentCount: 38000,
+            yearsActive: 15,
+            projectCount: 12,
+            isVerified: true
+        ),
+        NGO(
+            id: ngo2ID,
+            name: "Pratham Education Foundation",
+            location: "New Delhi, Delhi",
+            mission: "Improving quality of education for underprivileged children across India through innovative, scalable teaching methods that reach millions of children directly in their villages and schools.",
+            founderName: "Madhav Chavan",
+            founderPhone: "+91-11-4141-0000",
+            imageName: "ngo",
+            studentCount: 75000,
+            yearsActive: 28,
+            projectCount: 20,
+            isVerified: true
+        )
+    ]
+
+    static func dummyEvents(for ngoId: UUID) -> [VolunteerEvent] {
+        if ngoId == ngo1ID {
+            return [
+                VolunteerEvent(
+                    id: UUID(),
+                    ngoId: ngoId,
+                    title: "Teaching Drive — South Delhi",
+                    location: "South Delhi Community Centre",
+                    eventDate: Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date(),
+                    participantCount: 24
+                ),
+                VolunteerEvent(
+                    id: UUID(),
+                    ngoId: ngoId,
+                    title: "Literacy Camp — Dharavi",
+                    location: "Dharavi, Mumbai",
+                    eventDate: Calendar.current.date(byAdding: .day, value: 21, to: Date()) ?? Date(),
+                    participantCount: 50
+                )
+            ]
+        } else {
+            return [
+                VolunteerEvent(
+                    id: UUID(),
+                    ngoId: ngoId,
+                    title: "Community Awareness Walk",
+                    location: "Connaught Place, Delhi",
+                    eventDate: Calendar.current.date(byAdding: .day, value: 14, to: Date()) ?? Date(),
+                    participantCount: 38
+                ),
+                VolunteerEvent(
+                    id: UUID(),
+                    ngoId: ngoId,
+                    title: "Rural Education Outreach",
+                    location: "Meerut, Uttar Pradesh",
+                    eventDate: Calendar.current.date(byAdding: .day, value: 30, to: Date()) ?? Date(),
+                    participantCount: 60
+                )
+            ]
+        }
     }
 }
+

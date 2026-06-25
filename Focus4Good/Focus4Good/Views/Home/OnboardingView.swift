@@ -1,6 +1,9 @@
 import SwiftUI
 
 struct OnboardingView: View {
+    // Called by Focus4GoodApp when the user finishes/skips onboarding
+    let onComplete: () -> Void
+
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
     @State private var currentPage = 0
 
@@ -8,41 +11,42 @@ struct OnboardingView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            Color.white.ignoresSafeArea()
+            Color(.systemBackground).ignoresSafeArea()
 
             VStack(spacing: 0) {
                 // ── Navigation bar ───────────────────────────────
                 HStack {
-                    // Back button (hidden on first page)
+                    // Back button
                     Button {
-                        withAnimation { currentPage -= 1 }
+                        if currentPage > 0 {
+                            withAnimation { currentPage -= 1 }
+                        }
                     } label: {
                         Image(systemName: "chevron.left")
-                            .font(.title3.weight(.semibold))
+                            .font(.title3.weight(.medium))
                             .foregroundStyle(AppTheme.textPrimary)
-                            .frame(width: 40, height: 40)
+                            .frame(width: 44, height: 44)
                             .background(
                                 Circle()
                                     .fill(Color(.systemGray6))
+                                    .opacity(currentPage > 0 ? 1 : 0)
                             )
                     }
-                    .opacity(currentPage > 0 ? 1 : 0)
                     .disabled(currentPage == 0)
+                    .opacity(currentPage > 0 ? 1 : 0)
 
                     Spacer()
 
-                    // Skip button
                     Button("Skip") {
-                        hasSeenOnboarding = true
+                        markSeenAndComplete()
                     }
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 9)
-                    .background(Capsule().fill(AppTheme.orange))
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(AppTheme.textPrimary)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 12)
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
 
                 // ── Page content ─────────────────────────────────
                 TabView(selection: $currentPage) {
@@ -52,7 +56,7 @@ struct OnboardingView: View {
                             pageIndex: index,
                             totalPages: pages.count,
                             currentPage: $currentPage,
-                            hasSeenOnboarding: $hasSeenOnboarding
+                            onFinish: markSeenAndComplete
                         )
                         .tag(index)
                     }
@@ -60,6 +64,11 @@ struct OnboardingView: View {
                 .tabViewStyle(.page(indexDisplayMode: .never))
             }
         }
+    }
+
+    private func markSeenAndComplete() {
+        hasSeenOnboarding = true
+        onComplete()
     }
 }
 
@@ -70,76 +79,72 @@ private struct OnboardingPageContent: View {
     let pageIndex: Int
     let totalPages: Int
     @Binding var currentPage: Int
-    @Binding var hasSeenOnboarding: Bool
+    let onFinish: () -> Void
 
     var body: some View {
-        VStack(spacing: 0) {
-            Spacer().frame(height: 20)
+        GeometryReader { _ in
+            VStack(spacing: 0) {
+                Spacer(minLength: 16)
 
-            // ── Image area ───────────────────────────────────
-            ZStack {
-                RoundedRectangle(cornerRadius: 24)
-                    .fill(Color(hex: "FFF3E8"))
-
+                // ── Image area ───────────────────────────────────
                 Image(page.imageName)
                     .resizable()
-                    .scaledToFill()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .scaledToFit()
+                    .frame(width: 280, height: 280)
                     .clipped()
-                    .padding(12)
-            }
-            .frame(width: UIScreen.main.bounds.width - 120)
-            .aspectRatio(1.05, contentMode: .fit)
-            .clipShape(RoundedRectangle(cornerRadius: 24))
 
-            Spacer().frame(height: 32)
+                Spacer(minLength: 32)
 
-            // ── Text area ────────────────────────────────────
-            VStack(spacing: 12) {
-                Text(page.title)
-                    .font(.title2.bold())
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(AppTheme.textPrimary)
+                // ── Text area ────────────────────────────────────
+                VStack(spacing: 14) {
+                    Text(page.title)
+                        .font(.system(size: 26, weight: .bold))
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(AppTheme.textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 24)
 
-                Text(page.subtitle)
-                    .font(.subheadline)
-                    .foregroundStyle(AppTheme.textSecondary)
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(4)
-                    .padding(.horizontal, 40)
-            }
-
-            Spacer()
-
-            // ── Dots ─────────────────────────────────────────
-            HStack(spacing: 8) {
-                ForEach(0..<totalPages, id: \.self) { index in
-                    Circle()
-                        .fill(index == pageIndex
-                              ? AppTheme.textPrimary
-                              : Color(.systemGray4))
-                        .frame(width: 8, height: 8)
+                    Text(page.subtitle)
+                        .font(.system(size: 15))
+                        .foregroundStyle(AppTheme.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(6)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 36)
                 }
-            }
-            .padding(.bottom, 28)
 
-            // ── Next / Get Started button ────────────────────
-            Button(action: handleNext) {
-                Text(pageIndex == totalPages - 1 ? "Get Started" : "Next")
-                    .font(.headline)
-                    .foregroundStyle(AppTheme.textPrimary)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 56)
-                    .background(Capsule().fill(AppTheme.orange.opacity(0.45)))
+                Spacer(minLength: 28)
+
+                // ── Dots ─────────────────────────────────────────
+                HStack(spacing: 8) {
+                    ForEach(0..<totalPages, id: \.self) { index in
+                        Circle()
+                            .fill(index == pageIndex
+                                  ? AppTheme.textPrimary
+                                  : Color(.systemGray3))
+                            .frame(width: 8, height: 8)
+                    }
+                }
+                .padding(.bottom, 32)
+
+                // ── Next / Get Started button ────────────────────
+                Button(action: handleNext) {
+                    Text(pageIndex == totalPages - 1 ? "Get Started" : "Next")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(AppTheme.textPrimary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 56)
+                        .background(Capsule().fill(AppTheme.orange))
+                }
+                .padding(.horizontal, 32)
+                .padding(.bottom, 36)
             }
-            .padding(.horizontal, 28)
-            .padding(.bottom, 40)
         }
     }
 
     private func handleNext() {
         if pageIndex == totalPages - 1 {
-            hasSeenOnboarding = true
+            onFinish()
         } else {
             withAnimation { currentPage += 1 }
         }

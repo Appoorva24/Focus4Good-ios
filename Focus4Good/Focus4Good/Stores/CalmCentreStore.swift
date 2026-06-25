@@ -1,8 +1,8 @@
 import Foundation
+import Supabase
 
 @Observable
-@MainActor
-final class CalmCentreStore {
+class CalmCentreStore {
 
     // MARK: - State
     var breathingSessions: [BreathingSession] = []
@@ -13,6 +13,9 @@ final class CalmCentreStore {
     var brainDumpFolders: [BrainDumpFolder] = []
     var brainDumpEntries: [BrainDumpEntry] = []
     var activeAsmrSound: AsmrSound?
+    var jpmrVideoUrl: String?
+    var isLoadingVideo = false
+    var videoErrorMessage: String?
     var isLoading = false
     var errorMessage: String?
 
@@ -37,6 +40,25 @@ final class CalmCentreStore {
     private init() {}
 
     // MARK: - Fetch
+
+    func fetchJpmrVideoUrl() async {
+        isLoadingVideo = true
+        defer { isLoadingVideo = false }
+        do {
+            let videos: [JpmrVideo] = try await SupabaseManager.shared.client
+                .from("jpmr_videos")
+                .select()
+                .limit(1)
+                .execute()
+                .value
+            jpmrVideoUrl = videos.first?.videoUrl
+            videoErrorMessage = nil
+        } catch {
+            print("Failed to fetch JPMR video URL: \(error)")
+            videoErrorMessage = error.localizedDescription
+        }
+    }
+
     func fetchBreathingSessions(userId: UUID) async { isLoading = true; isLoading = false }
     func fetchJpmrSessions(userId: UUID) async { isLoading = true; isLoading = false }
     func fetchGuidedMeditationSessions(userId: UUID) async { isLoading = true; isLoading = false }
@@ -46,9 +68,9 @@ final class CalmCentreStore {
     func fetchBrainDumpEntries(userId: UUID) async { isLoading = true; isLoading = false }
 
     // MARK: - Log Sessions
-    func logBreathingSession(userId: UUID, techniqueName: String, cyclesCompleted: Int, durationSeconds: Int) async {
+    func logBreathingSession(userId: UUID, cyclesCompleted: Int, durationSeconds: Int) async {
         let points = cyclesCompleted * 10
-        breathingSessions.append(BreathingSession(userId: userId, techniqueName: techniqueName, cyclesCompleted: cyclesCompleted, durationSeconds: durationSeconds, pointsEarned: points, completedAt: Date()))
+        breathingSessions.append(BreathingSession(userId: userId, cyclesCompleted: cyclesCompleted, durationSeconds: durationSeconds, pointsEarned: points, completedAt: Date()))
         await UserStore.shared.updateFocusPoints(by: points)
         await ProgressStore.shared.addCalmCentreTime(minutes: durationSeconds / 60, userId: userId)
         await ProgressStore.shared.addPointsEarned(points: points, userId: userId)
@@ -94,9 +116,9 @@ final class CalmCentreStore {
     }
 
     // MARK: - Brain Dump Entries
-    func addBrainDumpEntry(content: String, userId: UUID, folderId: UUID? = nil) async {
+    func addBrainDumpEntry(content: String, drawingData: Data? = nil, title: String? = nil, userId: UUID, folderId: UUID? = nil) async {
         let points = 10
-        brainDumpEntries.append(BrainDumpEntry(userId: userId, folderId: folderId, content: content, pointsEarned: points, createdAt: Date()))
+        brainDumpEntries.append(BrainDumpEntry(userId: userId, folderId: folderId, title: title, content: content, drawingData: drawingData, pointsEarned: points, createdAt: Date()))
         if let folderId, let index = brainDumpFolders.firstIndex(where: { $0.id == folderId }) { brainDumpFolders[index].entryCount += 1 }
         await UserStore.shared.updateFocusPoints(by: points)
         await ProgressStore.shared.addPointsEarned(points: points, userId: userId)
@@ -111,5 +133,17 @@ final class CalmCentreStore {
         if let folderId = entry.folderId, let index = brainDumpFolders.firstIndex(where: { $0.id == folderId }) {
             brainDumpFolders[index].entryCount = max(0, brainDumpFolders[index].entryCount - 1)
         }
+    }
+
+    func clearData() {
+        breathingSessions.removeAll()
+        jpmrSessions.removeAll()
+        guidedMeditationSessions.removeAll()
+        asmrSounds.removeAll()
+        favouriteAsmrSoundIds.removeAll()
+        brainDumpFolders.removeAll()
+        brainDumpEntries.removeAll()
+        activeAsmrSound = nil
+        errorMessage = nil
     }
 }

@@ -2,9 +2,10 @@ import SwiftUI
 
 struct PomodoroView: View {
     let task: UserTask
-    @Environment(TaskStore.self) private var taskStore
-    @Environment(UserStore.self) private var userStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(TaskStore.self)     private var taskStore
+    @Environment(UserStore.self)     private var userStore
+    @Environment(ProgressStore.self) private var progressStore
+    @Environment(\.dismiss)          private var dismiss
 
     @State private var timeRemaining: Int
     @State private var isBreak = false
@@ -14,6 +15,7 @@ struct PomodoroView: View {
     @State private var showOverwhelmedSheet = false
     @State private var showBreakScreen = false
     @State private var sessionComplete = false
+    @State private var showPomodoroCompletePopup = false
     @State private var timer: Timer?
     @State private var totalFocusMinutes = 0
     @State private var breathePhase = false
@@ -21,6 +23,8 @@ struct PomodoroView: View {
     private let totalSessions: Int
     private let sessionDuration = 25 * 60
     private let breakDuration = 5 * 60
+    private let pointsPerSession = 20
+    private let pointsOnCompletion = 50
 
     init(task: UserTask) {
         self.task = task
@@ -39,20 +43,38 @@ struct PomodoroView: View {
     }
 
     var body: some View {
-        Group {
-            if sessionComplete {
-                SessionCompleteView(
+        ZStack {
+            Group {
+                if sessionComplete {
+                    SessionCompleteView(
+                        totalSessions: totalSessions,
+                        totalFocusMinutes: totalFocusMinutes,
+                        distractedCount: distractedCount,
+                        pointsEarned: pointsOnCompletion,
+                        onDismiss: { dismiss() }
+                    )
+                } else if showBreakScreen {
+                    breakView
+                } else {
+                    timerView
+                }
+            }
+
+            // Pomodoro session complete popup overlay
+            if showPomodoroCompletePopup {
+                PomodoroSessionPopup(
+                    sessionNumber: currentSession,
                     totalSessions: totalSessions,
-                    totalFocusMinutes: totalFocusMinutes,
-                    distractedCount: distractedCount,
-                    onDismiss: { dismiss() }
+                    pointsEarned: pointsPerSession,
+                    onContinue: {
+                        showPomodoroCompletePopup = false
+                        showBreakScreen = true
+                    }
                 )
-            } else if showBreakScreen {
-                breakView
-            } else {
-                timerView
+                .transition(.opacity.combined(with: .scale(scale: 0.9)))
             }
         }
+        .animation(.easeInOut(duration: 0.3), value: showPomodoroCompletePopup)
         .onDisappear { timer?.invalidate() }
         .sheet(isPresented: $showOverwhelmedSheet) {
             OverwhelmedSheet()
@@ -63,7 +85,7 @@ struct PomodoroView: View {
             Button("Keep Going", role: .cancel) {}
             Button("End Anyway", role: .destructive) { dismiss() }
         } message: {
-            Text("If you stop now, you won't earn focus points and your classroom won't grow today. Stay a little longer and help the student move forward.")
+            Text("If you stop now, you won't earn focus points. Stay a little longer and stay focused.")
         }
     }
 
@@ -247,16 +269,30 @@ struct PomodoroView: View {
         totalFocusMinutes += 25
 
         if currentSession >= totalSessions {
-            // All sessions done — award points
-            let points = max(0, (totalSessions * 25 * 2) - (distractedCount * 5))
+            // All sessions done — award task completion bonus (+50)
+            guard let userId = userStore.currentUser?.id else {
+                sessionComplete = true
+                return
+            }
             Task {
+                // Mark task complete
                 await taskStore.toggleCompletion(for: task)
-                await userStore.updateFocusPoints(by: points)
+                // Award completion bonus points
+                await userStore.updateFocusPoints(by: pointsOnCompletion)
+                // Record focus time and points in ProgressStore
+                await progressStore.addFocusTime(minutes: totalFocusMinutes, userId: userId)
+                await progressStore.addPointsEarned(points: pointsOnCompletion, userId: userId)
             }
             sessionComplete = true
         } else {
-            // Show break screen before next session
-            showBreakScreen = true
+            // Session complete but more to go — award per-session points (+20) and show popup
+            if let userId = userStore.currentUser?.id {
+                Task {
+                    await userStore.updateFocusPoints(by: pointsPerSession)
+                    await progressStore.addPointsEarned(points: pointsPerSession, userId: userId)
+                }
+            }
+            showPomodoroCompletePopup = true
         }
     }
 
@@ -275,6 +311,75 @@ struct PomodoroView: View {
         showBreakScreen = false
         breathePhase = false
         startTimer()
+    }
+}
+
+// MARK: - Pomodoro Session Complete Popup
+
+struct PomodoroSessionPopup: View {
+    let sessionNumber: Int
+    let totalSessions: Int
+    let pointsEarned: Int
+    let onContinue: () -> Void
+
+    var body: some View {
+        ZStack {
+            // Dimmed background
+            Color.black.opacity(0.45)
+                .ignoresSafeArea()
+                .onTapGesture {} // block taps
+
+            VStack(spacing: 24) {
+                Spacer()
+
+                // Badge icon
+                ZStack {
+                    Circle()
+                        .fill(Color(hex: "FFF3E8"))
+                        .frame(width: 100, height: 100)
+
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 48))
+                        .foregroundStyle(AppTheme.orange)
+                }
+
+                VStack(spacing: 8) {
+                    Text("Well done!")
+                        .font(.title2.bold())
+                        .foregroundStyle(AppTheme.textPrimary)
+
+                    Text("Session \(sessionNumber) of \(totalSessions) complete.\nTake a moment to notice how\nyour body feels")
+                        .font(.subheadline)
+                        .foregroundStyle(AppTheme.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(4)
+                }
+
+                Text("+ \(pointsEarned) Focus Points")
+                    .font(.title.bold())
+                    .foregroundStyle(AppTheme.orange)
+                    .padding(.top, 8)
+
+                Spacer()
+
+                Button(action: onContinue) {
+                    Text("Start Break")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 56)
+                        .background(Capsule().fill(AppTheme.orange))
+                }
+                .padding(.horizontal, 32)
+                .padding(.bottom, 48)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color(.systemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 32))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 40)
+            .shadow(color: Color.black.opacity(0.2), radius: 20, y: 10)
+        }
     }
 }
 
@@ -315,11 +420,8 @@ struct SessionCompleteView: View {
     let totalSessions: Int
     let totalFocusMinutes: Int
     let distractedCount: Int
+    let pointsEarned: Int
     let onDismiss: () -> Void
-
-    private var pointsEarned: Int {
-        max(0, (totalSessions * 25 * 2) - (distractedCount * 5))
-    }
 
     var body: some View {
         ZStack {
