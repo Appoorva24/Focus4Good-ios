@@ -1,27 +1,5 @@
 import SwiftUI
 
-// MARK: - Sound Card Data
-
-private struct ASMRSoundEntry: Identifiable {
-    let id = UUID()
-    let name: String
-    let subtitle: String
-    let imageName: String
-    let category: String
-    let durationSeconds: Int
-}
-
-private let soundEntries: [ASMRSoundEntry] = [
-    .init(name: "Soft Rain",   subtitle: "Light Drizzle",         imageName: "asmr_softrain",   category: "Rain",        durationSeconds: 600),
-    .init(name: "Typing",      subtitle: "Mechanical clicks",     imageName: "asmr_typing",     category: "Ambient",     durationSeconds: 600),
-    .init(name: "Crinkling",   subtitle: "Crisp and dry sounds",  imageName: "asmr_crinkling",  category: "Nature",      durationSeconds: 600),
-    .init(name: "Tapping",     subtitle: "Gentle surface touch",  imageName: "asmr_tapping",    category: "Ambient",     durationSeconds: 600),
-    .init(name: "White Noise", subtitle: "Background hum",        imageName: "asmr_whitenoise", category: "White Noise", durationSeconds: 600),
-    .init(name: "Forest",      subtitle: "Rustling leaves",       imageName: "asmr_forest",     category: "Nature",      durationSeconds: 600),
-]
-
-// MARK: - SensorySootheView
-
 struct SensorySootheView: View {
 
     @Environment(CalmCentreStore.self) private var store
@@ -29,23 +7,42 @@ struct SensorySootheView: View {
     @State private var showPlayer = false
     @State private var selectedSound: AsmrSound?
     @State private var favouriteNames: Set<String> = []
+    
+    // New State for Recents
+    @State private var recentPlaylist: ASMRPlaylist?
+    @State private var recentSounds: [AsmrSound] = []
 
     private static let favouritesKey = "asmr_favourite_names"
+    private static let recentPlaylistKey = "recent_asmr_playlist_id"
+    private static let recentSoundsKey = "recent_asmr_sounds"
 
     var body: some View {
         ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 16) {
-                heroBanner
-                soundList
+            VStack(alignment: .leading, spacing: 32) {
+                
+                // 1. Top Section: 5 Playlists (Horizontally Scrollable)
+                playlistsSection
+                
+                // 2. Middle Section: Recent Playlist
+                if recentPlaylist != nil {
+                    recentPlaylistSection
+                }
+                
+                // 3. Bottom Section: Recently Played ASMR Sounds
+                if !recentSounds.isEmpty {
+                    recentlyPlayedSoundsSection
+                }
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
+            .padding(.top, 16)
             .padding(.bottom, 40)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color(.systemGroupedBackground).ignoresSafeArea())
         .navigationTitle("ASMR Sounds")
         .navigationBarTitleDisplayMode(.large)
-        .onAppear { loadFavourites() }
+        .onAppear { 
+            loadFavourites()
+            loadRecents()
+        }
         .navigationDestination(isPresented: $showPlayer) {
             if let sound = selectedSound {
                 ASMRPlayerView(
@@ -57,9 +54,25 @@ struct SensorySootheView: View {
         }
     }
 
+    // MARK: - Data Loading
+    
     private func loadFavourites() {
         if let saved = UserDefaults.standard.stringArray(forKey: Self.favouritesKey) {
             favouriteNames = Set(saved)
+        }
+    }
+    
+    private func loadRecents() {
+        // Load recent playlist
+        if let savedIdString = UserDefaults.standard.string(forKey: Self.recentPlaylistKey),
+           let savedId = UUID(uuidString: savedIdString) {
+            recentPlaylist = ASMRData.playlists.first(where: { $0.id == savedId })
+        }
+        
+        // Load recent sounds
+        if let data = UserDefaults.standard.data(forKey: Self.recentSoundsKey),
+           let saved = try? JSONDecoder().decode([AsmrSound].self, from: data) {
+            recentSounds = saved
         }
     }
 
@@ -74,83 +87,143 @@ struct SensorySootheView: View {
 
     // MARK: - Subviews
 
-    private var heroBanner: some View {
-        Button {
-            selectedSound = AsmrSound(
-                name: "Nature & Calm",
-                description: "Recommended for Focus",
-                category: "Nature",
-                audioUrl: "",
-                imageUrl: "asmr_hero",
-                durationSeconds: 900
-            )
-            showPlayer = true
-        } label: {
-            ZStack(alignment: .bottomLeading) {
-                Image("asmr_hero")
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(height: 180)
-                    .clipped()
-
-                LinearGradient(
-                    colors: [.clear, .black.opacity(0.5)],
-                    startPoint: .center,
-                    endPoint: .bottom
-                )
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Nature & Calm")
-                        .font(.title3)
-                        .fontWeight(.bold)
-                        .foregroundStyle(.white)
-
-                    Text("Recommended for Focus")
-                        .font(.caption)
-                        .foregroundStyle(.white.opacity(0.85))
+    private var playlistsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Featured Playlists")
+                .font(.title2)
+                .fontWeight(.bold)
+                .padding(.horizontal)
+            
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 16) {
+                    ForEach(ASMRData.playlists) { playlist in
+                        NavigationLink(destination: ASMRPlaylistDetailView(playlist: playlist)) {
+                            playlistCard(playlist: playlist)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
-                .padding(16)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 16) // Added vertical padding so shadows aren't clipped during scroll
             }
-            .frame(height: 180)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        }
-        .buttonStyle(.plain)
-    }
 
-    private var soundList: some View {
-        VStack(spacing: 12) {
-            ForEach(soundEntries) { entry in
-                soundRow(entry)
-            }
         }
     }
-
-    private func soundRow(_ entry: ASMRSoundEntry) -> some View {
-        Button {
-            selectedSound = AsmrSound(
-                name: entry.name,
-                description: entry.subtitle,
-                category: entry.category,
-                audioUrl: "",
-                imageUrl: entry.imageName,
-                durationSeconds: entry.durationSeconds
+    
+    private func playlistCard(playlist: ASMRPlaylist) -> some View {
+        ZStack(alignment: .bottomLeading) {
+            // Placeholder background (Color) since images are not added yet
+            Rectangle()
+                .fill(Color(hex: playlist.placeholderColorHex).gradient)
+            
+            // Gradient Overlay for text readability
+            LinearGradient(
+                colors: [.clear, .black.opacity(0.6)],
+                startPoint: .center,
+                endPoint: .bottom
             )
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(playlist.title)
+                    .font(.title3)
+                    .fontWeight(.bold)
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(2)
+                
+                Text(playlist.subtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.85))
+                    .lineLimit(1)
+            }
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(width: 280, height: 280)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .shadow(color: Color(hex: playlist.placeholderColorHex).opacity(0.3), radius: 8, x: 0, y: 4)
+    }
+
+    private var recentPlaylistSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Jump Back In")
+                .font(.title2)
+                .fontWeight(.bold)
+                .padding(.horizontal)
+            
+            if let playlist = recentPlaylist {
+                NavigationLink(destination: ASMRPlaylistDetailView(playlist: playlist)) {
+                    HStack(spacing: 16) {
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color(hex: playlist.placeholderColorHex).gradient)
+                            .frame(width: 80, height: 80)
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(playlist.title)
+                                .font(.headline)
+                                .foregroundStyle(.primary)
+                            
+                            Text("Recent Playlist")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        Image(systemName: "play.circle.fill")
+                            .font(.title)
+                            .foregroundStyle(Color.accentColor)
+                    }
+                    .padding(12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(Color(.secondarySystemGroupedBackground))
+                    )
+                    .padding(.horizontal)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private var recentlyPlayedSoundsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Recently Played Sounds")
+                .font(.title2)
+                .fontWeight(.bold)
+                .padding(.horizontal)
+            
+            VStack(spacing: 12) {
+                ForEach(recentSounds, id: \.name) { sound in
+                    soundRow(sound)
+                }
+            }
+            .padding(.horizontal)
+        }
+    }
+
+    private func soundRow(_ sound: AsmrSound) -> some View {
+        Button {
+            selectedSound = sound
             showPlayer = true
         } label: {
             HStack(spacing: 14) {
-                Image(entry.imageName)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color(.systemGray5))
                     .frame(width: 60, height: 60)
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .overlay(
+                        Image(systemName: "waveform")
+                            .foregroundStyle(.secondary)
+                    )
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(entry.name)
+                    Text(sound.name)
                         .font(.body)
                         .fontWeight(.semibold)
                         .foregroundStyle(.primary)
 
-                    Text(entry.subtitle)
+                    Text(sound.description)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -164,9 +237,8 @@ struct SensorySootheView: View {
             .padding(12)
             .background(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color(.systemBackground))
+                    .fill(Color(.secondarySystemGroupedBackground))
             )
-            .shadow(color: .black.opacity(0.04), radius: 3, x: 0, y: 1)
         }
         .buttonStyle(.plain)
     }

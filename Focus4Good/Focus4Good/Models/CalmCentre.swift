@@ -79,3 +79,14 @@ struct BrainDumpEntry: Identifiable, Codable, Hashable {
     var pointsEarned: Int
     var createdAt: Date
 }
+
+//ASMRPlaylist
+struct ASMRPlaylist: Identifiable, Codable, Hashable {
+    var id: UUID = UUID()
+    var title: String
+    var subtitle: String
+    var purpose: String
+    var coverImageName: String
+    var placeholderColorHex: String
+    var sounds: [AsmrSound]
+}

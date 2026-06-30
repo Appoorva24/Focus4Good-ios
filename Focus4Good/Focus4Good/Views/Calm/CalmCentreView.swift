@@ -49,7 +49,7 @@ struct CalmCentreView: View {
                 Image("braindump_illustration")
                     .resizable()
                     .scaledToFit()
-                    .frame(height: 155)
+                    .frame(height: 160)
                     .offset(x: 20, y: 5)
                 
                 HStack {
@@ -69,7 +69,7 @@ struct CalmCentreView: View {
                     
                     Spacer()
                 }
-                .padding(.vertical, 28)
+                .padding(.vertical, 32)
                 .padding(.horizontal, 20)
             }
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
