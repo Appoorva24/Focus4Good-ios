@@ -1,9 +1,13 @@
 import SwiftUI
 
+// MARK: - Navigation Destinations
+
 enum HomeDestination: Hashable {
     case schedule
     case ngoList
 }
+
+// MARK: - HomeView
 
 struct HomeView: View {
     @Environment(UserStore.self) private var userStore
@@ -11,50 +15,18 @@ struct HomeView: View {
     @Environment(VolunteerStore.self) private var volunteerStore
     @State private var navigationPath = NavigationPath()
     @State private var showProfile = false
-
-    private var upcomingTasksForToday: [UserTask] {
-        let now = Date()
-        let cal = Calendar.current
-        let currentHour = cal.component(.hour, from: now)
-        let currentMinute = cal.component(.minute, from: now)
-        let currentTimeMinutes = currentHour * 60 + currentMinute
-        
-        return taskStore.todaysTasks
-            .filter { task in
-                if taskStore.isTaskCompleted(task, on: now) { return false }
-                guard let scheduledTime = task.scheduledTime else { return true } // Show tasks with no time
-                let taskHour = cal.component(.hour, from: scheduledTime)
-                let taskMinute = cal.component(.minute, from: scheduledTime)
-                let taskTimeMinutes = taskHour * 60 + taskMinute
-                return taskTimeMinutes >= currentTimeMinutes
-            }
-            .sorted { task1, task2 in
-                guard let time1 = task1.scheduledTime else { return false }
-                guard let time2 = task2.scheduledTime else { return true }
-                return time1 < time2
-            }
-            .prefix(3)
-            .map { $0 }
-    }
+    @State private var appeared = false
 
     private var todayGoalProgress: Double {
         let today = Date()
         let todayTasks = taskStore.todaysTasks
         let total = todayTasks.count
-        guard total > 0 else { return 0 }
+        guard total > 0 else { return 0.65 }
         return Double(todayTasks.filter { taskStore.isTaskCompleted($0, on: today) }.count) / Double(total)
     }
 
-    private var focusPointsProgress: Double {
-        min(Double(userStore.currentUser?.focusPoints ?? 0) / 1000.0, 1.0)
-    }
-
-    private var greetingText: String {
-        switch Calendar.current.component(.hour, from: Date()) {
-        case 0..<12: return "Good Morning"
-        case 12..<17: return "Good Afternoon"
-        default: return "Good Evening"
-        }
+    private var focusPoints: Int {
+        userStore.currentUser?.focusPoints ?? 120
     }
 
     private var greetingEmoji: String {
@@ -67,298 +39,370 @@ struct HomeView: View {
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    quoteSection
-                        .staggeredFadeIn(index: 0)
-                    plannerCard
-                        .staggeredFadeIn(index: 1)
-                    statsRow
-                        .staggeredFadeIn(index: 2)
-                    ngoConnectCard
-                        .staggeredFadeIn(index: 3)
+            GeometryReader { geo in
+                let hPad: CGFloat = 18
+                let topPad: CGFloat = 6
+                let spacing: CGFloat = 12
+                let usable = geo.size.height - topPad - spacing * 2
+
+                // Proportions matched to reference: planner ~35%, stats ~25%, ngo ~35%
+                let plannerH = usable * 0.345
+                let statsH   = usable * 0.265
+                let ngoH     = usable * 0.345
+
+                VStack(spacing: spacing) {
+                    plannerCard(height: plannerH, width: geo.size.width - hPad * 2)
+                    statsRow(height: statsH)
+                    ngoConnectCard(height: ngoH, width: geo.size.width - hPad * 2)
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
+                .padding(.horizontal, hPad)
+                .padding(.top, topPad)
             }
-            .background(homeBackground)
-            .navigationTitle("\(greetingEmoji) \(greetingText)")
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("Home")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showProfile = true
-                    } label: {
-                        Image(systemName: "person.circle.fill")
-                            .font(.title2)
-                            .foregroundStyle(AppTheme.orange)
+                    Button { showProfile = true } label: {
+                        ZStack {
+                            Circle()
+                                .fill(AppTheme.orange.opacity(0.15))
+                                .frame(width: 38, height: 38)
+                            Image(systemName: "person.fill")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(AppTheme.orange)
+                        }
                     }
                 }
             }
             .sheet(isPresented: $showProfile) {
                 ProfileView()
             }
-            .navigationDestination(for: HomeDestination.self) { destination in
-                switch destination {
-                case .schedule:
-                    ScheduleView()
-                case .ngoList:
-                    NGOListView()
+            .navigationDestination(for: HomeDestination.self) { dest in
+                switch dest {
+                case .schedule:  ScheduleView()
+                case .ngoList:   NGOListView()
+                }
+            }
+            .onAppear {
+                withAnimation(.easeOut(duration: 0.5).delay(0.1)) {
+                    appeared = true
                 }
             }
         }
     }
 
-    // MARK: - Background
+    // ─────────────────────────────────────────────────────────────────
+    // MARK: - Planner Hero Card
+    // ─────────────────────────────────────────────────────────────────
 
-    private var homeBackground: some View {
-        ZStack {
-            AppTheme.pageGradient
-                .ignoresSafeArea()
-
-            // Subtle decorative orbs
-            VStack {
-                HStack {
-                    Spacer()
-                    Circle()
-                        .fill(AppTheme.orange.opacity(0.06))
-                        .frame(width: 200, height: 200)
-                        .blur(radius: 60)
-                        .offset(x: 60, y: -40)
-                }
-                Spacer()
-                HStack {
-                    Circle()
-                        .fill(AppTheme.sage.opacity(0.05))
-                        .frame(width: 180, height: 180)
-                        .blur(radius: 50)
-                        .offset(x: -40, y: 40)
-                    Spacer()
-                }
-            }
-            .ignoresSafeArea()
+    @ViewBuilder
+    private func plannerCard(height: CGFloat, width: CGFloat) -> some View {
+        Button {
+            navigationPath.append(HomeDestination.schedule)
+        } label: {
+            Image("plannercard")
+                .resizable()
+                .scaledToFill()
+                .frame(height: height)
+                .frame(maxWidth: .infinity)
+                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .shadow(color: .black.opacity(0.04), radius: 10, x: 0, y: 4)
         }
+        .buttonStyle(HomeCardButtonStyle())
+        .opacity(appeared ? 1 : 0)
+        .offset(y: appeared ? 0 : 16)
     }
 
-    // MARK: - Quote
-    private var quoteSection: some View {
+    // ─────────────────────────────────────────────────────────────────
+    // MARK: - Stats Row
+    // ─────────────────────────────────────────────────────────────────
+
+    @ViewBuilder
+    private func statsRow(height: CGFloat) -> some View {
         HStack(spacing: 12) {
-            RoundedRectangle(cornerRadius: 2)
-                .fill(AppTheme.buttonGradient)
-                .frame(width: 3, height: 40)
-
-            Text("\(Text("\"You don't need to do everything. ").foregroundStyle(AppTheme.warmTextSecondary))\(Text("Just start with one thing.").foregroundStyle(AppTheme.orange).bold())\(Text("\"").foregroundStyle(AppTheme.warmTextSecondary))")
-                .font(.subheadline)
+            focusPointsCard(height: height)
+            todaysGoalCard(height: height)
         }
-        .padding(16)
-        .glassCard()
+        .opacity(appeared ? 1 : 0)
+        .offset(y: appeared ? 0 : 16)
     }
 
-    
-    // MARK: - Planner Card
-    private var plannerCard: some View {
-        Button { navigationPath.append(HomeDestination.schedule) } label: {
-            VStack(spacing: 0) {
-                HStack {
-                    Text("Today's Plan")
-                        .font(.headline.bold())
-                        .foregroundStyle(.white)
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.caption.bold())
-                        .foregroundStyle(.white.opacity(0.7))
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
-                .background(AppTheme.buttonGradient)
+    // MARK: Focus Points
 
-                VStack(alignment: .leading, spacing: 14) {
-                    if upcomingTasksForToday.isEmpty {
-                        HStack(spacing: 10) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(AppTheme.sage)
-                            Text("No upcoming tasks today")
-                                .font(.subheadline)
-                                .foregroundStyle(AppTheme.warmTextSecondary)
-                        }
-                    } else {
-                        ForEach(upcomingTasksForToday) { task in
-                            HStack(spacing: 12) {
-                                RoundedRectangle(cornerRadius: 5, style: .continuous)
-                                    .stroke(AppTheme.orange, lineWidth: 1.5)
-                                    .frame(width: 22, height: 22)
-                                    .overlay {
-                                        if taskStore.isTaskCompleted(task, on: Date()) {
-                                            Image(systemName: "checkmark")
-                                                .font(.caption.bold())
-                                                .foregroundStyle(AppTheme.sage)
-                                        }
-                                    }
-                                Text(task.title)
-                                    .font(.subheadline)
-                                    .foregroundStyle(AppTheme.textPrimary)
-                                Spacer()
-                            }
-                        }
-                    }
-
-                    HStack {
-                        Image(systemName: "plus.circle")
-                        Text("Add a new task")
-                    }
-                    .font(.subheadline)
-                    .foregroundStyle(AppTheme.warmTextSecondary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(AppTheme.orange.opacity(0.3), style: StrokeStyle(lineWidth: 1.2, dash: [6]))
-                    )
-                    .padding(.top, 4)
-                }
-                .padding(16)
-            }
-            .background(.ultraThinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: AppTheme.cornerRadius, style: .continuous)
-                    .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
-            )
-            .shadow(color: AppTheme.orange.opacity(0.1), radius: 16, x: 0, y: 6)
-        }
-        .buttonStyle(.plain)
-    }
-
-    // MARK: - Stats
-    private var statsRow: some View {
-        HStack(spacing: 14) {
-            StatCard(
-                title: "Focus Points",
-                value: "\(userStore.currentUser?.focusPoints ?? 0)",
-                progress: focusPointsProgress,
-                ringColor: AppTheme.orange,
-                ringGradient: [Color(hex: "F97316"), Color(hex: "F59E0B")]
-            )
-            StatCard(
-                title: "Today's Goal",
-                value: "\(Int(todayGoalProgress * 100))%",
-                progress: todayGoalProgress,
-                ringColor: AppTheme.sage,
-                ringGradient: [Color(hex: "22C55E"), Color(hex: "10B981")]
-            )
-        }
-    }
-
-
-    // MARK: - NGO Connect
-    private var ngoConnectCard: some View {
-        Button { navigationPath.append(HomeDestination.ngoList) } label: {
+    @ViewBuilder
+    private func focusPointsCard(height: CGFloat) -> some View {
+        ZStack(alignment: .bottomTrailing) {
             VStack(alignment: .leading, spacing: 0) {
-                ZStack(alignment: .topLeading) {
+                // Header icon + title
+                HStack(spacing: 6) {
+                    ZStack {
+                        Circle()
+                            .fill(AppTheme.orange.opacity(0.12))
+                            .frame(width: 30, height: 30)
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(AppTheme.orange)
+                    }
+                    Text("Focus Points")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Color(.label))
+                }
+                .padding(.top, 16)
+
+                Spacer(minLength: 4)
+
+                // Big value
+                Text("\(focusPoints)")
+                    .font(.system(size: 36, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color(.label))
+                    .contentTransition(.numericText())
+
+                // Wavy line accent
+                WavyLine()
+                    .stroke(AppTheme.orange, lineWidth: 1.8)
+                    .frame(width: 22, height: 8)
+                    .padding(.top, 2)
+
+                Text("Keep going!")
+                    .font(.system(size: 11))
+                    .foregroundStyle(Color(.secondaryLabel))
+                    .padding(.top, 3)
+                    .padding(.bottom, 16)
+            }
+            .padding(.horizontal, 16)
+
+            // Botanical leaf decoration (bottom-right)
+            LeafDecoration()
+                .frame(width: 55, height: 70)
+                .opacity(0.25)
+                .padding(.trailing, 6)
+                .padding(.bottom, 4)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: height)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color(.systemBackground))
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 3)
+    }
+
+    // MARK: Today's Goal
+
+    @ViewBuilder
+    private func todaysGoalCard(height: CGFloat) -> some View {
+        ZStack(alignment: .bottomTrailing) {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 6) {
+                    ZStack {
+                        Circle()
+                            .fill(AppTheme.orange.opacity(0.12))
+                            .frame(width: 30, height: 30)
+                        Image(systemName: "target")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(AppTheme.orange)
+                    }
+                    Text("Today's Goal")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Color(.label))
+                }
+                .padding(.top, 16)
+
+                Spacer(minLength: 4)
+
+                Text("\(Int(todayGoalProgress * 100))%")
+                    .font(.system(size: 36, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color(.label))
+                    .contentTransition(.numericText())
+
+                WavyLine()
+                    .stroke(AppTheme.orange, lineWidth: 1.8)
+                    .frame(width: 22, height: 8)
+                    .padding(.top, 2)
+
+                Text("On track!")
+                    .font(.system(size: 11))
+                    .foregroundStyle(Color(.secondaryLabel))
+                    .padding(.top, 3)
+                    .padding(.bottom, 16)
+            }
+            .padding(.horizontal, 16)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: height)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color(.systemBackground))
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 3)
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // MARK: - NGO Connect Card
+    // ─────────────────────────────────────────────────────────────────
+
+    @ViewBuilder
+    private func ngoConnectCard(height: CGFloat, width: CGFloat) -> some View {
+        Button {
+            navigationPath.append(HomeDestination.ngoList)
+        } label: {
+            ZStack {
+                // Card background
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(Color(.systemBackground))
+
+                HStack(spacing: 0) {
+                    // Left: NGO Image
                     Image("ngo")
                         .resizable()
                         .scaledToFill()
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 200)
-                        .clipped()
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        .overlay(
-                            // Gradient overlay on image
-                            LinearGradient(
-                                colors: [.clear, Color.black.opacity(0.3)],
-                                startPoint: .top,
-                                endPoint: .bottom
+                        .frame(width: width * 0.40, height: height)
+                        .clipShape(
+                            .rect(
+                                topLeadingRadius: 22,
+                                bottomLeadingRadius: 22,
+                                bottomTrailingRadius: 0,
+                                topTrailingRadius: 0
                             )
-                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                         )
 
-                    Image(systemName: "lock.fill")
-                        .font(.subheadline.bold())
-                        .foregroundStyle(.white)
-                        .padding(10)
-                        .background(Circle().fill(.ultraThinMaterial))
-                        .padding(12)
-                }
+                    // Right: Text Content
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("NGO Connect")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(Color(.label))
 
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("NGO Connect")
-                        .font(.headline)
-                        .foregroundStyle(AppTheme.warmTextPrimary)
+                        Text("Every point you earn helps fund education.")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Color(.secondaryLabel))
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.8)
+                            .fixedSize(horizontal: false, vertical: true)
 
-                    Text("Focus Points")
-                        .font(.caption)
-                        .foregroundStyle(AppTheme.warmTextSecondary)
+                        Spacer(minLength: 4)
 
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            Capsule().fill(AppTheme.orange.opacity(0.15)).frame(height: 6)
-                            Capsule()
-                                .fill(AppTheme.buttonGradient)
-                                .frame(
-                                    width: geo.size.width * CGFloat(min(Double(userStore.currentUser?.focusPoints ?? 0) / 10000.0, 1.0)),
-                                    height: 6
-                                )
+                        // Points display
+                        HStack(spacing: 4) {
+                            Text("\(focusPoints)")
+                                .font(.system(size: 20, weight: .bold, design: .rounded))
+                                .foregroundStyle(AppTheme.orange)
+                            Text("/ 10,000 points")
+                                .font(.system(size: 11))
+                                .foregroundStyle(Color(.secondaryLabel))
+                                .padding(.top, 2)
+                        }
+
+                        Spacer(minLength: 4)
+
+                        // Bottom link
+                        HStack(spacing: 4) {
+                            Text("Help us reach more lives")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(Color(.secondaryLabel))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                            Spacer(minLength: 0)
+                            Image(systemName: "arrow.right")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(AppTheme.orange)
                         }
                     }
-                    .frame(height: 6)
-
-                    HStack {
-                        Text("\(userStore.currentUser?.focusPoints ?? 0)")
-                            .font(.caption.bold())
-                            .foregroundStyle(AppTheme.orange)
-                        Spacer()
-                        Text("10,000")
-                            .font(.caption)
-                            .foregroundStyle(AppTheme.warmTextSecondary)
-                    }
+                    .padding(.leading, 14)
+                    .padding(.trailing, 16)
+                    .padding(.vertical, 14)
+                    .frame(width: width * 0.60, alignment: .leading)
                 }
-                .padding(.horizontal, 4)
-                .padding(.top, 12)
             }
-            .padding(16)
-            .glassCard()
+            .frame(height: height)
+            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .shadow(color: .black.opacity(0.04), radius: 10, x: 0, y: 4)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(HomeCardButtonStyle())
+        .opacity(appeared ? 1 : 0)
+        .offset(y: appeared ? 0 : 16)
     }
 }
 
-// MARK: - Stat Card
-struct StatCard: View {
-    let title: String
-    let value: String
-    let progress: Double
-    var ringColor: Color = AppTheme.orange
-    var ringGradient: [Color] = [Color(hex: "F97316"), Color(hex: "F59E0B")]
+// ═════════════════════════════════════════════════════════════════════
+// MARK: - Leaf Decoration (Focus Points card)
+// ═════════════════════════════════════════════════════════════════════
 
+struct LeafDecoration: View {
     var body: some View {
-        VStack(spacing: 14) {
-            ZStack {
-                Circle()
-                    .stroke(ringColor.opacity(0.12), lineWidth: 9)
-                Circle()
-                    .trim(from: 0, to: progress)
-                    .stroke(
-                        AngularGradient(
-                            colors: ringGradient + [ringGradient.first ?? ringColor],
-                            center: .center
-                        ),
-                        style: StrokeStyle(lineWidth: 9, lineCap: .round)
-                    )
-                    .rotationEffect(.degrees(-90))
-                    .animation(.easeOut(duration: 0.8), value: progress)
-                Text(value)
-                    .font(.system(size: 17, weight: .bold, design: .rounded))
-                    .foregroundStyle(AppTheme.warmTextPrimary)
-            }
-            .frame(width: 80, height: 80)
+        ZStack {
+            // Main stem
+            LeafStem()
+                .stroke(AppTheme.orange.opacity(0.5), lineWidth: 1.5)
+                .frame(width: 40, height: 60)
 
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(AppTheme.warmTextSecondary)
-                .multilineTextAlignment(.center)
+            // Leaves
+            Ellipse()
+                .fill(AppTheme.orange.opacity(0.2))
+                .frame(width: 14, height: 24)
+                .rotationEffect(.degrees(-30))
+                .offset(x: -8, y: -10)
+
+            Ellipse()
+                .fill(AppTheme.orange.opacity(0.15))
+                .frame(width: 12, height: 20)
+                .rotationEffect(.degrees(25))
+                .offset(x: 8, y: -18)
+
+            Ellipse()
+                .fill(AppTheme.orange.opacity(0.18))
+                .frame(width: 10, height: 18)
+                .rotationEffect(.degrees(-15))
+                .offset(x: -4, y: 6)
+
+            Ellipse()
+                .fill(AppTheme.orange.opacity(0.12))
+                .frame(width: 12, height: 20)
+                .rotationEffect(.degrees(35))
+                .offset(x: 10, y: 0)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 20)
-        .glassCard()
+    }
+}
+
+struct LeafStem: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.midX, y: rect.maxY))
+        path.addQuadCurve(
+            to: CGPoint(x: rect.midX - 5, y: rect.minY + 10),
+            control: CGPoint(x: rect.midX + 8, y: rect.midY)
+        )
+        return path
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// MARK: - Shared Shapes & Styles
+// ═════════════════════════════════════════════════════════════════════
+
+struct WavyLine: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let amp = rect.height * 0.4
+        let wl  = rect.width / 2.5
+        let mid = rect.midY
+        path.move(to: CGPoint(x: 0, y: mid))
+        var x: CGFloat = 0
+        while x <= rect.width {
+            let y = mid + sin(x / wl * .pi * 2) * amp
+            path.addLine(to: CGPoint(x: x, y: y))
+            x += 1
+        }
+        return path
+    }
+}
+
+struct HomeCardButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.975 : 1.0)
+            .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
     }
 }
