@@ -280,60 +280,18 @@ struct CommunityHome: View {
         }
     }
 
-    // MARK: - Background with wave decorations
+    // MARK: - Background
     private var progressBackground: some View {
-        ZStack {
-            LinearGradient(
-                colors: [
-                    AppTheme.pageBgTop,
-                    AppTheme.pageBgMid,
-                    AppTheme.pageBgBot
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
-
-            VStack {
-                Spacer()
-                WaveShape()
-                    .fill(
-                        LinearGradient(
-                            colors: [AppTheme.orange.opacity(0.10), AppTheme.orange.opacity(0.18)],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .frame(height: 140)
-                    .ignoresSafeArea(edges: .bottom)
-
-                WaveShape()
-                    .fill(AppTheme.orange.opacity(0.06))
-                    .frame(height: 80)
-                    .offset(y: -40)
-                    .ignoresSafeArea(edges: .bottom)
-            }
-        }
-    }
-}
-
-// MARK: - Wave Shape (Background decoration)
-private struct WaveShape: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let w = rect.width
-        let h = rect.height
-
-        path.move(to: CGPoint(x: 0, y: h * 0.4))
-        path.addCurve(
-            to: CGPoint(x: w, y: h * 0.3),
-            control1: CGPoint(x: w * 0.3, y: 0),
-            control2: CGPoint(x: w * 0.7, y: h * 0.8)
+        LinearGradient(
+            colors: [
+                AppTheme.pageBgTop,
+                AppTheme.pageBgMid,
+                AppTheme.pageBgBot
+            ],
+            startPoint: .top,
+            endPoint: .bottom
         )
-        path.addLine(to: CGPoint(x: w, y: h))
-        path.addLine(to: CGPoint(x: 0, y: h))
-        path.closeSubpath()
-        return path
+        .ignoresSafeArea()
     }
 }
 

@@ -75,11 +75,10 @@ struct ProgressTrackerView: View {
         .background(progressBackground)
     }
 
-    // MARK: - Background with wave decorations
+    // MARK: - Background
 
     private var progressBackground: some View {
         ZStack {
-            // Warm gradient background — adapts to dark mode
             LinearGradient(
                 colors: [
                     AppTheme.pageBgTop,
@@ -90,28 +89,6 @@ struct ProgressTrackerView: View {
                 endPoint: .bottom
             )
             .ignoresSafeArea()
-
-            VStack {
-                Spacer()
-                // Stronger wave decoration at the bottom
-                WaveShape()
-                    .fill(
-                        LinearGradient(
-                            colors: [AppTheme.orange.opacity(0.10), AppTheme.orange.opacity(0.18)],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .frame(height: 140)
-                    .ignoresSafeArea(edges: .bottom)
-
-                // Second wave layer for depth
-                WaveShape()
-                    .fill(AppTheme.orange.opacity(0.06))
-                    .frame(height: 80)
-                    .offset(y: -40)
-                    .ignoresSafeArea(edges: .bottom)
-            }
         }
     }
 
@@ -386,47 +363,7 @@ private struct MetricCard: View {
     }
 }
 
-// MARK: - Wave Shape (Background decoration)
 
-private struct WaveShape: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let w = rect.width
-        let h = rect.height
-
-        path.move(to: CGPoint(x: 0, y: h * 0.4))
-        path.addCurve(
-            to: CGPoint(x: w, y: h * 0.3),
-            control1: CGPoint(x: w * 0.3, y: 0),
-            control2: CGPoint(x: w * 0.7, y: h * 0.8)
-        )
-        path.addLine(to: CGPoint(x: w, y: h))
-        path.addLine(to: CGPoint(x: 0, y: h))
-        path.closeSubpath()
-        return path
-    }
-}
-
-// MARK: - Card Wave Shape (Thought card interior wave)
-
-private struct CardWaveShape: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let w = rect.width
-        let h = rect.height
-
-        path.move(to: CGPoint(x: 0, y: h * 0.5))
-        path.addCurve(
-            to: CGPoint(x: w, y: h * 0.3),
-            control1: CGPoint(x: w * 0.25, y: 0),
-            control2: CGPoint(x: w * 0.75, y: h)
-        )
-        path.addLine(to: CGPoint(x: w, y: h))
-        path.addLine(to: CGPoint(x: 0, y: h))
-        path.closeSubpath()
-        return path
-    }
-}
 
 // MARK: - Preview
 

@@ -58,7 +58,7 @@ struct HomeView: View {
                 .padding(.horizontal, hPad)
                 .padding(.top, topPad)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(homeBackground)
             .navigationTitle("Home")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
@@ -92,6 +92,36 @@ struct HomeView: View {
         }
     }
 
+    // MARK: - Background
+
+    private var homeBackground: some View {
+        ZStack {
+            AppTheme.pageGradient
+                .ignoresSafeArea()
+
+            VStack {
+                HStack {
+                    Spacer()
+                    Circle()
+                        .fill(AppTheme.orange.opacity(0.06))
+                        .frame(width: 200, height: 200)
+                        .blur(radius: 60)
+                        .offset(x: 60, y: -40)
+                }
+                Spacer()
+                HStack {
+                    Circle()
+                        .fill(AppTheme.sage.opacity(0.05))
+                        .frame(width: 180, height: 180)
+                        .blur(radius: 50)
+                        .offset(x: -40, y: 40)
+                    Spacer()
+                }
+            }
+            .ignoresSafeArea()
+        }
+    }
+
     // ─────────────────────────────────────────────────────────────────
     // MARK: - Planner Hero Card
     // ─────────────────────────────────────────────────────────────────
@@ -101,13 +131,75 @@ struct HomeView: View {
         Button {
             navigationPath.append(HomeDestination.schedule)
         } label: {
-            Image("plannercard")
-                .resizable()
-                .scaledToFill()
-                .frame(height: height)
-                .frame(maxWidth: .infinity)
-                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                .shadow(color: .black.opacity(0.04), radius: 10, x: 0, y: 4)
+            ZStack {
+                // Warm gradient background
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(hex: "FFF7ED"),
+                                Color(hex: "FFEDD5"),
+                                Color(hex: "FED7AA")
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+
+                // Decorative blob
+                Circle()
+                    .fill(AppTheme.orange.opacity(0.08))
+                    .frame(width: height * 0.7, height: height * 0.7)
+                    .blur(radius: 20)
+                    .offset(x: width * 0.15, y: -height * 0.1)
+
+                HStack(spacing: 0) {
+                    // Left: Text content
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Let's plan\nyour day")
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundStyle(AppTheme.warmTextPrimary)
+                            .lineSpacing(2)
+
+                        Text("Create a plan, stay focused\nand get things done.")
+                            .font(.system(size: 12))
+                            .foregroundStyle(AppTheme.warmTextSecondary)
+                            .lineSpacing(2)
+
+                        Spacer(minLength: 8)
+
+                        // CTA Button
+                        HStack(spacing: 6) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 12, weight: .bold))
+                            Text("Let's plan")
+                                .font(.system(size: 14, weight: .bold))
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 10)
+                        .background(
+                            Capsule()
+                                .fill(AppTheme.buttonGradient)
+                                .shadow(color: AppTheme.orange.opacity(0.3), radius: 8, y: 4)
+                        )
+                    }
+                    .padding(.leading, 20)
+                    .padding(.vertical, 18)
+                    .frame(width: width * 0.52, alignment: .leading)
+
+                    // Right: Notebook illustration
+                    Image("plannercard")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: width * 0.42)
+                        .padding(.trailing, 8)
+                        .padding(.vertical, 8)
+                }
+            }
+            .frame(height: height)
+            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .shadow(color: AppTheme.orange.opacity(0.12), radius: 12, x: 0, y: 6)
         }
         .buttonStyle(HomeCardButtonStyle())
         .opacity(appeared ? 1 : 0)
@@ -132,112 +224,143 @@ struct HomeView: View {
 
     @ViewBuilder
     private func focusPointsCard(height: CGFloat) -> some View {
-        ZStack(alignment: .bottomTrailing) {
-            VStack(alignment: .leading, spacing: 0) {
-                // Header icon + title
-                HStack(spacing: 6) {
-                    ZStack {
-                        Circle()
-                            .fill(AppTheme.orange.opacity(0.12))
-                            .frame(width: 30, height: 30)
-                        Image(systemName: "star.fill")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(AppTheme.orange)
-                    }
-                    Text("Focus Points")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Color(.label))
-                }
-                .padding(.top, 16)
+        let pointsGoal = 500
+        let progress = min(Double(focusPoints) / Double(pointsGoal), 1.0)
 
-                Spacer(minLength: 4)
-
-                // Big value
-                Text("\(focusPoints)")
-                    .font(.system(size: 36, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color(.label))
-                    .contentTransition(.numericText())
-
-                // Wavy line accent
-                WavyLine()
-                    .stroke(AppTheme.orange, lineWidth: 1.8)
-                    .frame(width: 22, height: 8)
-                    .padding(.top, 2)
-
-                Text("Keep going!")
-                    .font(.system(size: 11))
-                    .foregroundStyle(Color(.secondaryLabel))
-                    .padding(.top, 3)
-                    .padding(.bottom, 16)
+        VStack(spacing: 10) {
+            // Header
+            HStack(spacing: 6) {
+                Image(systemName: "star.fill")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(AppTheme.orange)
+                Text("Focus Points")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(AppTheme.warmTextPrimary)
             }
-            .padding(.horizontal, 16)
+            .padding(.top, 14)
 
-            // Botanical leaf decoration (bottom-right)
-            LeafDecoration()
-                .frame(width: 55, height: 70)
-                .opacity(0.25)
-                .padding(.trailing, 6)
-                .padding(.bottom, 4)
+            Spacer(minLength: 0)
+
+            // Circular gauge
+            ZStack {
+                // Track
+                Circle()
+                    .stroke(AppTheme.orange.opacity(0.12), style: StrokeStyle(lineWidth: 8, lineCap: .round))
+
+                // Progress arc
+                Circle()
+                    .trim(from: 0, to: progress)
+                    .stroke(
+                        AngularGradient(
+                            colors: [AppTheme.orange, AppTheme.amber, AppTheme.orange],
+                            center: .center,
+                            startAngle: .degrees(0),
+                            endAngle: .degrees(360)
+                        ),
+                        style: StrokeStyle(lineWidth: 8, lineCap: .round)
+                    )
+                    .rotationEffect(.degrees(-90))
+
+                // Value
+                VStack(spacing: 1) {
+                    Text("\(focusPoints)")
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundStyle(AppTheme.warmTextPrimary)
+                        .contentTransition(.numericText())
+                    Text("pts")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(AppTheme.warmTextSecondary)
+                }
+            }
+            .frame(width: height * 0.42, height: height * 0.42)
+
+            Spacer(minLength: 0)
+
+            Text("Keep going!")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(AppTheme.warmTextSecondary)
+                .padding(.bottom, 14)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity)
         .frame(height: height)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(Color(.systemBackground))
+                .shadow(color: Color.black.opacity(0.06), radius: 12, x: 0, y: 4)
+                .shadow(color: AppTheme.orange.opacity(0.08), radius: 2, x: 0, y: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 3)
     }
 
     // MARK: Today's Goal
 
     @ViewBuilder
     private func todaysGoalCard(height: CGFloat) -> some View {
-        ZStack(alignment: .bottomTrailing) {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 6) {
-                    ZStack {
-                        Circle()
-                            .fill(AppTheme.orange.opacity(0.12))
-                            .frame(width: 30, height: 30)
-                        Image(systemName: "target")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(AppTheme.orange)
-                    }
-                    Text("Today's Goal")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Color(.label))
-                }
-                .padding(.top, 16)
+        let progress = todayGoalProgress
 
-                Spacer(minLength: 4)
-
-                Text("\(Int(todayGoalProgress * 100))%")
-                    .font(.system(size: 36, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color(.label))
-                    .contentTransition(.numericText())
-
-                WavyLine()
-                    .stroke(AppTheme.orange, lineWidth: 1.8)
-                    .frame(width: 22, height: 8)
-                    .padding(.top, 2)
-
-                Text("On track!")
-                    .font(.system(size: 11))
-                    .foregroundStyle(Color(.secondaryLabel))
-                    .padding(.top, 3)
-                    .padding(.bottom, 16)
+        VStack(spacing: 10) {
+            // Header
+            HStack(spacing: 6) {
+                Image(systemName: "target")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(AppTheme.sage)
+                Text("Today's Goal")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(AppTheme.warmTextPrimary)
             }
-            .padding(.horizontal, 16)
+            .padding(.top, 14)
+
+            Spacer(minLength: 0)
+
+            // Circular gauge
+            ZStack {
+                // Track
+                Circle()
+                    .stroke(AppTheme.sage.opacity(0.12), style: StrokeStyle(lineWidth: 8, lineCap: .round))
+
+                // Progress arc
+                Circle()
+                    .trim(from: 0, to: progress)
+                    .stroke(
+                        AngularGradient(
+                            colors: [AppTheme.sage, Color(hex: "6EE7B7"), AppTheme.sage],
+                            center: .center,
+                            startAngle: .degrees(0),
+                            endAngle: .degrees(360)
+                        ),
+                        style: StrokeStyle(lineWidth: 8, lineCap: .round)
+                    )
+                    .rotationEffect(.degrees(-90))
+
+                // Value
+                VStack(spacing: 1) {
+                    Text("\(Int(progress * 100))")
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundStyle(AppTheme.warmTextPrimary)
+                        .contentTransition(.numericText())
+                    Text("%")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(AppTheme.warmTextSecondary)
+                }
+            }
+            .frame(width: height * 0.42, height: height * 0.42)
+
+            Spacer(minLength: 0)
+
+            Text(progress >= 1.0 ? "Completed!" : "On track!")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(progress >= 1.0 ? AppTheme.sage : AppTheme.warmTextSecondary)
+                .padding(.bottom, 14)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity)
         .frame(height: height)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(Color(.systemBackground))
+                .shadow(color: Color.black.opacity(0.06), radius: 12, x: 0, y: 4)
+                .shadow(color: AppTheme.sage.opacity(0.08), radius: 2, x: 0, y: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 3)
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -249,76 +372,102 @@ struct HomeView: View {
         Button {
             navigationPath.append(HomeDestination.ngoList)
         } label: {
-            ZStack {
-                // Card background
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(Color(.systemBackground))
+            ZStack(alignment: .bottom) {
+                // Full-bleed hero image
+                Image("ngo")
+                    .resizable()
+                    .scaledToFill()
+                    .frame(height: height)
+                    .frame(maxWidth: .infinity)
+                    .clipped()
 
-                HStack(spacing: 0) {
-                    // Left: NGO Image
-                    Image("ngo")
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: width * 0.40, height: height)
-                        .clipShape(
-                            .rect(
-                                topLeadingRadius: 22,
-                                bottomLeadingRadius: 22,
-                                bottomTrailingRadius: 0,
-                                topTrailingRadius: 0
-                            )
-                        )
+                // Dark gradient overlay for text readability
+                LinearGradient(
+                    colors: [
+                        .clear,
+                        Color.black.opacity(0.15),
+                        Color.black.opacity(0.65),
+                        Color.black.opacity(0.82)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
 
-                    // Right: Text Content
+                // Content overlay
+                VStack(alignment: .leading, spacing: 10) {
+                    Spacer()
+
+                    // Top-left pill badge
+                    HStack {
+                        Spacer()
+                        HStack(spacing: 5) {
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 10, weight: .bold))
+                            Text("\(focusPoints) pts")
+                                .font(.system(size: 11, weight: .bold))
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Capsule().fill(.ultraThinMaterial).environment(\.colorScheme, .dark))
+                    }
+
+                    Spacer()
+
+                    // Title & subtitle
                     VStack(alignment: .leading, spacing: 4) {
                         Text("NGO Connect")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(Color(.label))
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundStyle(.white)
 
-                        Text("Every point you earn helps fund education.")
-                            .font(.system(size: 12))
-                            .foregroundStyle(Color(.secondaryLabel))
+                        Text("Every focus point you earn helps fund a child's education")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(.white.opacity(0.8))
                             .lineLimit(2)
-                            .minimumScaleFactor(0.8)
-                            .fixedSize(horizontal: false, vertical: true)
+                    }
 
-                        Spacer(minLength: 4)
-
-                        // Points display
-                        HStack(spacing: 4) {
-                            Text("\(focusPoints)")
-                                .font(.system(size: 20, weight: .bold, design: .rounded))
-                                .foregroundStyle(AppTheme.orange)
-                            Text("/ 10,000 points")
-                                .font(.system(size: 11))
-                                .foregroundStyle(Color(.secondaryLabel))
-                                .padding(.top, 2)
+                    // Progress bar
+                    VStack(spacing: 6) {
+                        GeometryReader { geo in
+                            let progressWidth = geo.size.width * CGFloat(min(Double(focusPoints) / 10000.0, 1.0))
+                            ZStack(alignment: .leading) {
+                                Capsule()
+                                    .fill(.white.opacity(0.2))
+                                    .frame(height: 5)
+                                Capsule()
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [AppTheme.orange, AppTheme.amber],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .frame(width: max(5, progressWidth), height: 5)
+                                    .shadow(color: AppTheme.orange.opacity(0.5), radius: 4, y: 0)
+                            }
                         }
+                        .frame(height: 5)
 
-                        Spacer(minLength: 4)
-
-                        // Bottom link
-                        HStack(spacing: 4) {
-                            Text("Help us reach more lives")
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundStyle(Color(.secondaryLabel))
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.8)
-                            Spacer(minLength: 0)
-                            Image(systemName: "arrow.right")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundStyle(AppTheme.orange)
+                        HStack {
+                            Text("\(focusPoints) / 10,000 points")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundStyle(.white.opacity(0.6))
+                            Spacer()
+                            HStack(spacing: 4) {
+                                Text("Learn More")
+                                    .font(.system(size: 11, weight: .semibold))
+                                Image(systemName: "arrow.right")
+                                    .font(.system(size: 10, weight: .bold))
+                            }
+                            .foregroundStyle(AppTheme.orange)
                         }
                     }
-                    .padding(.leading, 14)
-                    .padding(.trailing, 16)
-                    .padding(.vertical, 14)
-                    .frame(width: width * 0.60, alignment: .leading)
                 }
+                .padding(16)
             }
             .frame(height: height)
             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-            .shadow(color: .black.opacity(0.04), radius: 10, x: 0, y: 4)
+            .shadow(color: .black.opacity(0.15), radius: 12, x: 0, y: 6)
         }
         .buttonStyle(HomeCardButtonStyle())
         .opacity(appeared ? 1 : 0)
@@ -378,26 +527,6 @@ struct LeafStem: Shape {
     }
 }
 
-// ═════════════════════════════════════════════════════════════════════
-// MARK: - Shared Shapes & Styles
-// ═════════════════════════════════════════════════════════════════════
-
-struct WavyLine: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let amp = rect.height * 0.4
-        let wl  = rect.width / 2.5
-        let mid = rect.midY
-        path.move(to: CGPoint(x: 0, y: mid))
-        var x: CGFloat = 0
-        while x <= rect.width {
-            let y = mid + sin(x / wl * .pi * 2) * amp
-            path.addLine(to: CGPoint(x: x, y: y))
-            x += 1
-        }
-        return path
-    }
-}
 
 struct HomeCardButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
