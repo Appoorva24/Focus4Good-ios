@@ -85,32 +85,43 @@ struct CommunityPostRowView: View {
                 .padding(.vertical, 2)
 
             // ── Post Image ──
-            if let imageUrl = post.imageUrl, let url = URL(string: imageUrl) {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFill()
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 220)
-                            .clipped()
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                    case .failure:
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color(.systemGray5))
-                            .frame(height: 220)
-                            .overlay {
-                                Image(systemName: "photo")
-                                    .foregroundStyle(.secondary)
-                            }
-                    default:
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color(.systemGray5))
-                            .frame(height: 220)
-                            .overlay {
-                                ProgressView()
-                            }
+            if let imageUrl = post.imageUrl {
+                if imageUrl.hasPrefix("asset://") {
+                    let assetName = imageUrl.replacingOccurrences(of: "asset://", with: "")
+                    Image(assetName)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 220)
+                        .clipped()
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                } else if let url = URL(string: imageUrl) {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .scaledToFill()
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 220)
+                                .clipped()
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                        case .failure:
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color(.systemGray5))
+                                .frame(height: 220)
+                                .overlay {
+                                    Image(systemName: "photo")
+                                        .foregroundStyle(.secondary)
+                                }
+                        default:
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color(.systemGray5))
+                                .frame(height: 220)
+                                .overlay {
+                                    ProgressView()
+                                }
+                        }
                     }
                 }
             }
@@ -165,9 +176,18 @@ struct CommunityPostRowView: View {
             Divider()
                 .padding(.top, 8)
         }
-        .padding(.top, 12)
+        .padding(.vertical, 12)
         .padding(.horizontal, 16)
-        .background(Color(.systemBackground))
+        .background(
+            LinearGradient(
+                colors: [Color(.systemBackground), AppTheme.cardGradientEnd],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
+        .shadow(color: AppTheme.orange.opacity(0.10), radius: 10, y: 3)
+        .padding(.horizontal, 10)
         .fullScreenCover(isPresented: $showComments) {
             CommentsSheetView(post: post)
         }

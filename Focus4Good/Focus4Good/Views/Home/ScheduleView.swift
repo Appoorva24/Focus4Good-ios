@@ -45,6 +45,7 @@ struct ScheduleView: View {
                     }
                 }
             }
+            .background(AppTheme.pageGradient.ignoresSafeArea())
 
             floatingAddButton
         }
@@ -72,15 +73,20 @@ struct ScheduleView: View {
     private var emptyDayState: some View {
         VStack(spacing: 16) {
             Spacer()
-            Image(systemName: "cup.and.saucer")
-                .font(.system(size: 60))
-                .foregroundStyle(AppTheme.orange.opacity(0.5))
+            ZStack {
+                Circle()
+                    .fill(AppTheme.orange.opacity(0.08))
+                    .frame(width: 120, height: 120)
+                Image(systemName: "cup.and.saucer")
+                    .font(.system(size: 48))
+                    .foregroundStyle(AppTheme.orange.opacity(0.6))
+            }
             Text("No tasks for this day")
                 .font(.headline)
-                .foregroundStyle(AppTheme.textSecondary)
+                .foregroundStyle(AppTheme.warmTextPrimary)
             Text("Tap + to add one")
                 .font(.subheadline)
-                .foregroundStyle(AppTheme.textSecondary.opacity(0.7))
+                .foregroundStyle(AppTheme.warmTextSecondary)
             Spacer()
         }
     }
@@ -104,7 +110,7 @@ struct ScheduleView: View {
             // Month & Year header
             Text(selectedDate.formatted(.dateTime.month(.wide).year()))
                 .font(.title3.bold())
-                .foregroundStyle(AppTheme.textPrimary)
+                .foregroundStyle(AppTheme.warmTextPrimary)
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
 
@@ -116,21 +122,22 @@ struct ScheduleView: View {
                             let isToday = Calendar.current.isDate(date, inSameDayAs: Date())
 
                             Button {
-                                withAnimation(.easeInOut(duration: 0.2)) { selectedDate = date }
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { selectedDate = date }
                             } label: {
                                 VStack(spacing: 6) {
                                     Text(date.formatted(.dateTime.weekday(.short)).uppercased())
                                         .font(.system(size: 11, weight: .semibold))
-                                        .foregroundStyle(isSelected ? .white.opacity(0.85) : AppTheme.textSecondary)
+                                        .foregroundStyle(isSelected ? .white.opacity(0.85) : AppTheme.warmTextSecondary)
 
                                     Text(date.formatted(.dateTime.day()))
                                         .font(.system(size: 18, weight: .bold, design: .rounded))
-                                        .foregroundStyle(isSelected ? .white : (isToday ? AppTheme.orange : AppTheme.textPrimary))
+                                        .foregroundStyle(isSelected ? .white : (isToday ? AppTheme.orange : AppTheme.warmTextPrimary))
                                 }
                                 .frame(width: 44, height: 60)
                                 .background(
                                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                        .fill(isSelected ? AppTheme.orange : .clear)
+                                        .fill(isSelected ? AnyShapeStyle(AppTheme.buttonGradient) : AnyShapeStyle(.clear))
+                                        .shadow(color: isSelected ? AppTheme.orange.opacity(0.3) : .clear, radius: 8, y: 4)
                                 )
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -164,27 +171,36 @@ struct ScheduleView: View {
             } header: {
                 HStack {
                     Text(selectedDate.formatted(date: .abbreviated, time: .omitted))
-                        .font(.headline).foregroundStyle(AppTheme.textPrimary).textCase(nil)
+                        .font(.headline).foregroundStyle(AppTheme.warmTextPrimary).textCase(nil)
                     Spacer()
                     let remaining = tasksForSelectedDate.filter { !taskStore.isTaskCompleted($0, on: selectedDate) }.count
                     if remaining > 0 {
-                        Text("\(remaining) Remaining").font(.caption.bold()).foregroundStyle(AppTheme.orange)
+                        Text("\(remaining) Remaining")
+                            .font(.caption.bold())
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(Capsule().fill(AppTheme.buttonGradient))
                     }
                 }
             }
         }
         .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
     }
 
-    // MARK: - Floating Add Button (only shown when tasks exist)
+    // MARK: - Floating Add Button
 
     private var floatingAddButton: some View {
         Button { showAddTask = true } label: {
             Image(systemName: "plus")
                 .font(.title2.bold()).foregroundStyle(.white)
                 .frame(width: 56, height: 56)
-                .background(Circle().fill(AppTheme.orange))
-                .shadow(color: AppTheme.orange.opacity(0.4), radius: 8, x: 0, y: 4)
+                .background(
+                    Circle()
+                        .fill(AppTheme.buttonGradient)
+                        .shadow(color: AppTheme.orange.opacity(0.4), radius: 12, x: 0, y: 6)
+                )
         }
         .padding(.trailing, 24).padding(.bottom, 32)
     }
@@ -206,40 +222,49 @@ struct TaskRowView: View {
                 Task { await taskStore.toggleCompletion(for: task, on: date) }
             } label: {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(isCompleted ? AppTheme.orange : Color(.systemGray3), lineWidth: 1.5)
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .stroke(isCompleted ? AppTheme.sage : Color(.systemGray3), lineWidth: 1.5)
                         .frame(width: 22, height: 22)
                     if isCompleted {
-                        Image(systemName: "checkmark").font(.caption.bold()).foregroundStyle(AppTheme.orange)
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .fill(AppTheme.sage.opacity(0.15))
+                            .frame(width: 22, height: 22)
+                        Image(systemName: "checkmark").font(.caption.bold()).foregroundStyle(AppTheme.sage)
                     }
                 }
             }
             .buttonStyle(.plain)
 
+            // Colored left accent bar
+            RoundedRectangle(cornerRadius: 2)
+                .fill(isCompleted ? AppTheme.sage : AppTheme.orange)
+                .frame(width: 3, height: 32)
+                .opacity(0.6)
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(task.title)
                     .font(.subheadline.weight(.medium))
-                    .foregroundStyle(isCompleted ? AppTheme.textSecondary : AppTheme.textPrimary)
+                    .foregroundStyle(isCompleted ? AppTheme.warmTextSecondary : AppTheme.warmTextPrimary)
                     .strikethrough(isCompleted)
                     .lineLimit(1)
 
                 HStack(spacing: 8) {
                     if task.repeatType != .never {
-                        tagView(task.repeatType.displayName, color: .purple)
+                        tagView(task.repeatType.displayName, color: AppTheme.rose)
                     }
                     if let time = task.scheduledTime {
                         HStack(spacing: 3) {
                             Image(systemName: "clock").font(.caption2)
                             Text(time.formatted(.dateTime.hour().minute())).font(.caption)
                         }
-                        .foregroundStyle(AppTheme.textSecondary)
+                        .foregroundStyle(AppTheme.warmTextSecondary)
                     }
                     if let duration = task.estimatedDuration {
                         HStack(spacing: 3) {
                             Image(systemName: "timer").font(.caption2)
                             Text("\(duration)m").font(.caption)
                         }
-                        .foregroundStyle(AppTheme.textSecondary)
+                        .foregroundStyle(AppTheme.warmTextSecondary)
                     }
                 }
             }
@@ -248,7 +273,12 @@ struct TaskRowView: View {
 
             if !isCompleted {
                 Button { selectedTask = task } label: {
-                    Image(systemName: "timer").font(.title3).foregroundStyle(AppTheme.orange)
+                    Image(systemName: "timer")
+                        .font(.title3)
+                        .foregroundStyle(AppTheme.orange)
+                        .frame(width: 36, height: 36)
+                        .background(AppTheme.accentLight)
+                        .clipShape(Circle())
                 }
                 .buttonStyle(.plain)
             }
@@ -259,6 +289,6 @@ struct TaskRowView: View {
     private func tagView(_ text: String, color: Color) -> some View {
         Text(text).font(.caption2.bold()).foregroundStyle(color)
             .padding(.horizontal, 8).padding(.vertical, 3)
-            .background(Capsule().fill(color.opacity(0.15)))
+            .background(Capsule().fill(color.opacity(0.12)))
     }
 }

@@ -73,10 +73,17 @@ struct CommunityRowView: View {
     private var communityInfo: some View {
         HStack {
             Group {
-                if let urlStr = community.coverImageUrl, let url = URL(string: urlStr) {
-                    AsyncImage(url: url) { phase in
-                        if let img = phase.image { img.resizable().scaledToFill() }
-                        else { Image(systemName: "person.3.fill").font(.callout).foregroundStyle(.secondary) }
+                if let urlStr = community.coverImageUrl {
+                    if urlStr.hasPrefix("asset://") {
+                        Image(urlStr.replacingOccurrences(of: "asset://", with: ""))
+                            .resizable().scaledToFill()
+                    } else if let url = URL(string: urlStr) {
+                        AsyncImage(url: url) { phase in
+                            if let img = phase.image { img.resizable().scaledToFill() }
+                            else { Image(systemName: "person.3.fill").font(.callout).foregroundStyle(.secondary) }
+                        }
+                    } else {
+                        Image(systemName: "person.3.fill").font(.callout).foregroundStyle(.secondary)
                     }
                 } else {
                     Image(systemName: "person.3.fill").font(.callout).foregroundStyle(.secondary)
@@ -102,12 +109,15 @@ struct CommunityRowView: View {
     var body: some View {
         cardContent
             .padding()
-            .background(Color(.systemBackground))
-            .overlay(
-                RoundedRectangle(cornerRadius: 20)
-                    .stroke(Color.black.opacity(0.12), lineWidth: 1)
+            .background(
+                LinearGradient(
+                    colors: [Color(.systemBackground), AppTheme.cardGradientEnd],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
             )
-            .clipShape(RoundedRectangle(cornerRadius: 20))
+            .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
+            .shadow(color: AppTheme.orange.opacity(0.10), radius: 10, y: 3)
             .padding(.horizontal, 10)
             .navigationDestination(isPresented: $showPosts) {
                 CommunityDetailView(community: community, selectedTab: $selectedTab)
@@ -166,10 +176,17 @@ struct CommunityDetailView: View {
                 VStack(spacing: 12) {
                     // Avatar
                     Group {
-                        if let urlStr = community.coverImageUrl, let url = URL(string: urlStr) {
-                            AsyncImage(url: url) { phase in
-                                if let img = phase.image { img.resizable().scaledToFill() }
-                                else { Image(systemName: "person.3.fill").font(.largeTitle).foregroundStyle(.secondary) }
+                        if let urlStr = community.coverImageUrl {
+                            if urlStr.hasPrefix("asset://") {
+                                Image(urlStr.replacingOccurrences(of: "asset://", with: ""))
+                                    .resizable().scaledToFill()
+                            } else if let url = URL(string: urlStr) {
+                                AsyncImage(url: url) { phase in
+                                    if let img = phase.image { img.resizable().scaledToFill() }
+                                    else { Image(systemName: "person.3.fill").font(.largeTitle).foregroundStyle(.secondary) }
+                                }
+                            } else {
+                                Image(systemName: "person.3.fill").font(.largeTitle).foregroundStyle(.secondary)
                             }
                         } else {
                             Image(systemName: "person.3.fill").font(.largeTitle).foregroundStyle(.secondary)

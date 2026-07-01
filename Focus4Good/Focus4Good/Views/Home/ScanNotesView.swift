@@ -22,7 +22,7 @@ struct ScanNotesView: View {
                 // Icon
                 ZStack {
                     Circle()
-                        .fill(Color(hex: "FFF3E8"))
+                        .fill(AppTheme.accentLight)
                         .frame(width: 120, height: 120)
                     Image(systemName: "doc.text.viewfinder")
                         .font(.system(size: 52))

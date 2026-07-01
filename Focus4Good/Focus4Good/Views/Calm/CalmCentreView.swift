@@ -13,20 +13,39 @@ struct CalmCentreView: View {
         GridItem(.flexible(), spacing: 16)
     ]
 
+    // Each tool gets a unique accent color
+    private struct ToolInfo {
+        let icon: String
+        let title: String
+        let subtitle: String
+        let color: Color
+    }
+
+    private let tools: [ToolInfo] = [
+        ToolInfo(icon: "wind", title: "Breathe", subtitle: "4-7-8 Technique", color: Color(hex: "0EA5E9")),
+        ToolInfo(icon: "figure.walk", title: "Unwind Body", subtitle: "JPMR Muscle Relax", color: Color(hex: "8B5CF6")),
+        ToolInfo(icon: "speaker.wave.3", title: "Sensory Soothe", subtitle: "ASMR Sounds", color: Color(hex: "EC4899")),
+        ToolInfo(icon: "leaf", title: "Deep Focus", subtitle: "Guided Meditation", color: Color(hex: "22C55E")),
+    ]
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     Button { showBraindump = true } label: { braindumpCard }
                         .buttonStyle(.plain)
+                        .staggeredFadeIn(index: 0)
 
                     relaxationToolsSection
+                        .staggeredFadeIn(index: 1)
+
                     dailyTipRow
+                        .staggeredFadeIn(index: 2)
                 }
                 .padding(.horizontal)
                 .padding(.bottom, 24)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(calmBackground)
             .navigationTitle("Calm Centre")
             .navigationDestination(isPresented: $showBraindump) { BraindumpPasswordView() }
             .navigationDestination(isPresented: $showBreathe) { BreatheSessionView() }
@@ -36,32 +55,59 @@ struct CalmCentreView: View {
         }
     }
 
+    // MARK: - Background
+
+    private var calmBackground: some View {
+        ZStack {
+            AppTheme.pageGradient
+                .ignoresSafeArea()
+
+            // Subtle sage orb
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    Circle()
+                        .fill(AppTheme.sage.opacity(0.05))
+                        .frame(width: 200, height: 200)
+                        .blur(radius: 60)
+                        .offset(x: 50, y: 50)
+                }
+            }
+            .ignoresSafeArea()
+        }
+    }
+
     // MARK: - Subviews
 
     private var braindumpCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Image(systemName: "pencil.and.list.clipboard")
-                    .font(.title2)
-                    .foregroundStyle(Color.accentColor)
-
+                ZStack {
+                    Circle()
+                        .fill(AppTheme.amberLight)
+                        .frame(width: 44, height: 44)
+                    Image(systemName: "pencil.and.list.clipboard")
+                        .font(.title3)
+                        .foregroundStyle(AppTheme.amber)
+                }
                 Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.warmTextSecondary)
             }
 
             Text("Braindump")
                 .font(.title3)
                 .fontWeight(.bold)
+                .foregroundStyle(AppTheme.warmTextPrimary)
 
             Text("Get the noise out of your head. Write it down here to clear your mind instantly")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(AppTheme.warmTextSecondary)
         }
         .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
-        )
+        .glassCard()
     }
 
     private var relaxationToolsSection: some View {
@@ -69,82 +115,85 @@ struct CalmCentreView: View {
             Text("Relaxation Tools")
                 .font(.title3)
                 .fontWeight(.bold)
+                .foregroundStyle(AppTheme.warmTextPrimary)
 
             LazyVGrid(columns: columns, spacing: 16) {
                 Button { showBreathe = true } label: {
-                    toolCard(icon: "wind", title: "Breathe", subtitle: "4-7-8 Technique")
+                    toolCard(tool: tools[0])
                 }
                 .buttonStyle(.plain)
 
                 Button { showJPMR = true } label: {
-                    toolCard(icon: "figure.walk", title: "Unwind Body", subtitle: "JPMR Muscle Relax")
+                    toolCard(tool: tools[1])
                 }
                 .buttonStyle(.plain)
 
                 Button { showASMR = true } label: {
-                    toolCard(icon: "speaker.wave.3", title: "Sensory Soothe", subtitle: "ASMR Sounds")
+                    toolCard(tool: tools[2])
                 }
                 .buttonStyle(.plain)
 
                 Button { showDeepFocus = true } label: {
-                    toolCard(icon: "leaf", title: "Deep Focus", subtitle: "Guided Meditation")
+                    toolCard(tool: tools[3])
                 }
                 .buttonStyle(.plain)
             }
         }
     }
 
-    private func toolCard(icon: String, title: String, subtitle: String) -> some View {
+    private func toolCard(tool: ToolInfo) -> some View {
         VStack(spacing: 10) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundStyle(Color.accentColor)
-                .frame(width: 44, height: 44)
-                .background(Circle().fill(Color.accentColor.opacity(0.12)))
+            ZStack {
+                Circle()
+                    .fill(tool.color.opacity(0.12))
+                    .frame(width: 48, height: 48)
+                Image(systemName: tool.icon)
+                    .font(.title2)
+                    .foregroundStyle(tool.color)
+            }
 
-            Text(title)
+            Text(tool.title)
                 .font(.subheadline)
                 .fontWeight(.bold)
+                .foregroundStyle(AppTheme.warmTextPrimary)
 
-            Text(subtitle)
+            Text(tool.subtitle)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(AppTheme.warmTextSecondary)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 18)
         .padding(.horizontal, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
-        )
+        .glassCard()
     }
 
     private var dailyTipRow: some View {
         HStack(spacing: 14) {
-            Image(systemName: "lightbulb.fill")
-                .font(.title2)
-                .foregroundStyle(Color.accentColor)
+            ZStack {
+                Circle()
+                    .fill(AppTheme.amberLight)
+                    .frame(width: 44, height: 44)
+                Image(systemName: "lightbulb.fill")
+                    .font(.title3)
+                    .foregroundStyle(AppTheme.amber)
+            }
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("Daily Tip")
                     .font(.subheadline)
                     .fontWeight(.bold)
+                    .foregroundStyle(AppTheme.warmTextPrimary)
 
                 Text("Focus on exhale helps maintain stress")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(AppTheme.warmTextSecondary)
             }
 
             Spacer()
         }
         .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
-        )
+        .glassCard()
     }
 }
 

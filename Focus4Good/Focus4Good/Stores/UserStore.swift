@@ -261,6 +261,9 @@ class UserStore {
         async let folders: ()     = CalmCentreStore.shared.fetchBrainDumpFolders(userId: userId)
         async let entries: ()     = CalmCentreStore.shared.fetchBrainDumpEntries(userId: userId)
         _ = await (progress, communities, categories, ngos, events, regs, breathing, jpmr, meditation, asmr, folders, entries)
+        
+        // Ensure default community and posts exist
+        await CommunityStore.shared.seedSondharaCommunityIfNeeded(userId: userId)
     }
     
     // MARK: - Profile CRUD

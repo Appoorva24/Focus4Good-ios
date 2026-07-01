@@ -1,33 +1,70 @@
 import SwiftUI
 
-// MARK: - App Theme
+// MARK: - App Theme — "Warm Earth"
+//
+// A rich, multi-color design system built around Deep Tangerine
+// with Forest Sage and Deep Rose accents. Every color adapts
+// gracefully between light and dark mode.
 
 enum AppTheme {
-    /// Brand accent — #FBB17C
-    static let orange      = Color(hex: "FBB17C")
-    /// 15 % tint of the accent, used for icon backgrounds and subtle fills
-    static let accentLight = Color(hex: "FBB17C").opacity(0.15)
-    /// Standard card background (adapts to light / dark mode)
-    static let cardBg      = Color(.systemBackground)
-    /// Subtle drop-shadow colour
-    static let shadow      = Color.black.opacity(0.05)
-    /// Default corner radius for cards
-    static let cornerRadius: CGFloat = 16
+
+    // ─── Primary Brand Colors ────────────────────────────────────
+
+    /// Deep Tangerine — vibrant, punchy primary accent
+    static let orange      = Color(hex: "F97316")
+    /// Richer gradient end for buttons / rings
+    static let orangeDeep  = Color(hex: "EA580C")
+    /// Soft tint for icon backgrounds and subtle fills
+    static let accentLight = Color(hex: "F97316").opacity(0.12)
+
+    // ─── Secondary & Tertiary Accents ────────────────────────────
+
+    /// Forest Sage — growth, calm, nature
+    static let sage        = Color(hex: "22C55E")
+    static let sageLight   = Color(hex: "22C55E").opacity(0.12)
+
+    /// Deep Rose — warmth, energy, community
+    static let rose        = Color(hex: "EC4899")
+    static let roseLight   = Color(hex: "EC4899").opacity(0.12)
+
+    /// Amber — warnings, streaks, rewards
+    static let amber       = Color(hex: "F59E0B")
+    static let amberLight  = Color(hex: "F59E0B").opacity(0.12)
+
+    /// Sky — info, links, secondary actions
+    static let sky         = Color(hex: "0EA5E9")
+    static let skyLight    = Color(hex: "0EA5E9").opacity(0.12)
+
+    // ─── Semantic Colors ─────────────────────────────────────────
+
+    static let success     = Color(hex: "10B981")
+    static let destructive = Color(hex: "EF4444")
+
+    // ─── Text ────────────────────────────────────────────────────
 
     static let textPrimary   = Color(.label)
     static let textSecondary = Color(.secondaryLabel)
 
-    // MARK: - Adaptive Progress Screen Colors
+    // ─── Layout ──────────────────────────────────────────────────
 
-    /// Page background gradient colors (top → middle → bottom)
+    static let cornerRadius: CGFloat = 20
+    static let shadow = Color.black.opacity(0.08)
+
+    // ─── Card Background (adapts to light / dark mode) ──────────
+
+    static let cardBg = Color(.systemBackground)
+
+    // ─── Gradient Backgrounds ────────────────────────────────────
+
+    /// Page background gradient (top → bottom)
     static let pageBgTop = Color(UIColor { tc in
-        tc.userInterfaceStyle == .dark ? UIColor(hex6: 0x1C1C1E) : UIColor(hex6: 0xFFF5EB)
+        tc.userInterfaceStyle == .dark ? UIColor(hex6: 0x1C1917) : UIColor(hex6: 0xFFFBEB)
     })
     static let pageBgMid = Color(UIColor { tc in
-        tc.userInterfaceStyle == .dark ? UIColor(hex6: 0x1A1A1C) : UIColor(hex6: 0xFFF0E0)
+        tc.userInterfaceStyle == .dark ? UIColor(hex6: 0x211F1B) : UIColor(hex6: 0xFFF7E0)
     })
     static let pageBgBot = Color(UIColor { tc in
-        tc.userInterfaceStyle == .dark ? UIColor(hex6: 0x171719) : UIColor(hex6: 0xFFEBD4)
+        tc.userInterfaceStyle == .dark ? UIColor(hex6: 0x292524) : UIColor(hex6: 0xFEF3C7)
     })
 
     /// Card gradient end tint
@@ -37,17 +74,17 @@ enum AppTheme {
 
     /// Warm primary text (headings inside cards)
     static let warmTextPrimary = Color(UIColor { tc in
-        tc.userInterfaceStyle == .dark ? UIColor(hex6: 0xF5E6D3) : UIColor(hex6: 0x5C4A32)
+        tc.userInterfaceStyle == .dark ? UIColor(hex6: 0xF5E6D3) : UIColor(hex6: 0x44403C)
     })
 
     /// Warm secondary text (subtitles, captions)
     static let warmTextSecondary = Color(UIColor { tc in
-        tc.userInterfaceStyle == .dark ? UIColor(hex6: 0xC4A882) : UIColor(hex6: 0x9E8B73)
+        tc.userInterfaceStyle == .dark ? UIColor(hex6: 0xC4A882) : UIColor(hex6: 0x78716C)
     })
 
-    /// Card label text (e.g. "Tasks Completed", "Time Spent")
+    /// Card label text
     static let cardLabel = Color(UIColor { tc in
-        tc.userInterfaceStyle == .dark ? UIColor(hex6: 0xD4BC9A) : UIColor(hex6: 0x8B7355)
+        tc.userInterfaceStyle == .dark ? UIColor(hex6: 0xD4BC9A) : UIColor(hex6: 0x78716C)
     })
 
     /// Thought card gradient
@@ -57,6 +94,126 @@ enum AppTheme {
     static let thoughtCardEnd = Color(UIColor { tc in
         tc.userInterfaceStyle == .dark ? UIColor(hex6: 0x33291D) : UIColor(hex6: 0xFFEDD8)
     })
+
+    // ─── Gradient Presets ────────────────────────────────────────
+
+    /// Primary button gradient (tangerine)
+    static let buttonGradient = LinearGradient(
+        colors: [Color(hex: "F97316"), Color(hex: "EA580C")],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+
+    /// Warm page background gradient
+    static let pageGradient = LinearGradient(
+        colors: [pageBgTop, pageBgMid, pageBgBot],
+        startPoint: .top,
+        endPoint: .bottom
+    )
+
+    /// Timer ring gradient (multi-color arc)
+    static let timerRingGradient = AngularGradient(
+        colors: [Color(hex: "F97316"), Color(hex: "EC4899"), Color(hex: "F59E0B"), Color(hex: "F97316")],
+        center: .center
+    )
+
+    /// Success celebration gradient
+    static let celebrationGradient = LinearGradient(
+        colors: [Color(hex: "F59E0B"), Color(hex: "F97316"), Color(hex: "EC4899")],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+
+    /// Splash / onboarding gradient
+    static let splashGradient = LinearGradient(
+        colors: [
+            Color(hex: "FFFBEB"),
+            Color(hex: "FFF7E0"),
+            Color(hex: "FFEDD5")
+        ],
+        startPoint: .top,
+        endPoint: .bottom
+    )
+
+    static let splashGradientDark = LinearGradient(
+        colors: [
+            Color(hex: "1C1917"),
+            Color(hex: "211F1B"),
+            Color(hex: "292524")
+        ],
+        startPoint: .top,
+        endPoint: .bottom
+    )
+}
+
+// MARK: - Glass Card Modifier
+
+struct GlassCard: ViewModifier {
+    var cornerRadius: CGFloat = AppTheme.cornerRadius
+
+    func body(content: Content) -> some View {
+        content
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(Color.white.opacity(0.15), lineWidth: 0.5)
+            )
+            .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
+    }
+}
+
+extension View {
+    func glassCard(cornerRadius: CGFloat = AppTheme.cornerRadius) -> some View {
+        modifier(GlassCard(cornerRadius: cornerRadius))
+    }
+}
+
+// MARK: - Gradient Button Style
+
+struct GradientButtonStyle: ButtonStyle {
+    var gradient: LinearGradient = AppTheme.buttonGradient
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.headline)
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: 56)
+            .background(
+                Capsule()
+                    .fill(gradient)
+                    .shadow(color: AppTheme.orange.opacity(0.35), radius: configuration.isPressed ? 4 : 12, y: configuration.isPressed ? 2 : 6)
+            )
+            .clipShape(Capsule())
+            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
+            .animation(.spring(response: 0.25, dampingFraction: 0.7), value: configuration.isPressed)
+    }
+}
+
+// MARK: - Staggered Fade-In Modifier
+
+struct StaggeredFadeIn: ViewModifier {
+    let index: Int
+    @State private var appeared = false
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(appeared ? 1 : 0)
+            .offset(y: appeared ? 0 : 16)
+            .animation(
+                .spring(response: 0.5, dampingFraction: 0.8)
+                    .delay(Double(index) * 0.08),
+                value: appeared
+            )
+            .onAppear { appeared = true }
+    }
+}
+
+extension View {
+    func staggeredFadeIn(index: Int) -> some View {
+        modifier(StaggeredFadeIn(index: index))
+    }
 }
 
 // MARK: - UIColor Hex Helper

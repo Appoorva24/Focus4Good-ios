@@ -554,4 +554,122 @@ class CommunityStore {
             .getPublicURL(path: path)
         return publicURL.absoluteString
     }
+
+    // MARK: - Seed Sondhara Welfare Trust
+    func seedSondharaCommunityIfNeeded(userId: UUID) async {
+        let ngoName = "Sondhara Welfare Trust"
+        
+        // Check if community already exists
+        if var existingCommunity = communities.first(where: { $0.name == ngoName }) {
+            let systemCreatorId = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+            
+            // Ensure current user is a member
+            if !isMember(communityId: existingCommunity.id, userId: userId) {
+                await joinCommunity(existingCommunity, userId: userId)
+            }
+            
+            // Patch creator to system UUID if it's currently the user (fix "Created by You")
+            if existingCommunity.creatorId == userId {
+                do {
+                    try await client
+                        .from("communities")
+                        .update(["creator_id": systemCreatorId.uuidString])
+                        .eq("id", value: existingCommunity.id.uuidString)
+                        .execute()
+                    if let idx = communities.firstIndex(where: { $0.id == existingCommunity.id }) {
+                        communities[idx].creatorId = systemCreatorId
+                    }
+                } catch {
+                    errorMessage = "Failed to update creator: \(error.localizedDescription)"
+                }
+            }
+            
+            // Patch cover image if missing
+            if existingCommunity.coverImageUrl == nil || existingCommunity.coverImageUrl?.isEmpty == true {
+                let logoUrl = "asset://sondhara_logo"
+                do {
+                    try await client
+                        .from("communities")
+                        .update(["cover_image_url": logoUrl])
+                        .eq("id", value: existingCommunity.id.uuidString)
+                        .execute()
+                    if let idx = communities.firstIndex(where: { $0.id == existingCommunity.id }) {
+                        communities[idx].coverImageUrl = logoUrl
+                    }
+                } catch {
+                    errorMessage = "Failed to update cover image: \(error.localizedDescription)"
+                }
+            }
+            return
+        }
+        // Use a fixed system UUID so it never matches a real user's ID
+        // This ensures the community shows under "Joined" instead of "Created by You"
+        let systemCreatorId = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+        
+        // Create community
+        let community = Community(
+            categoryId: nil,
+            creatorId: systemCreatorId,
+            name: ngoName,
+            description: "A community for volunteers to share posts, events, and experiences after visiting the Sondhara Welfare Trust.",
+            coverImageUrl: "asset://sondhara_logo",
+            isPrivate: false,
+            memberCount: 1,
+            createdAt: Date()
+        )
+        
+        do {
+            let insertedCommunity: Community = try await client
+                .from("communities")
+                .insert(community)
+                .select().single().execute().value
+            
+            communities.insert(insertedCommunity, at: 0)
+            
+            // Join current user as a regular member (not admin/creator)
+            let member = CommunityMember(userId: userId, communityId: insertedCommunity.id, role: "member", joinedAt: Date())
+            let insertedMember: CommunityMember = try await client
+                .from("community_members")
+                .insert(member)
+                .select().single().execute().value
+            
+            communityMembers.append(insertedMember)
+            
+            // Seed posts with local assets (sondhara_1 to sondhara_4)
+            let postContents = [
+                ("Spent an amazing day with the kids at the trust! They were so eager to learn and play.", "asset://sondhara_1"),
+                ("Today's puzzle and game session was a hit. So rewarding to see them engage and solve problems together.", "asset://sondhara_2"),
+                ("We organized a small food drive and the community's response was overwhelming. Thank you to all the volunteers!", "asset://sondhara_3"),
+                ("Everyone came together for the community gathering today. The smiles on their faces made it all worth it.", "asset://sondhara_4")
+            ]
+            
+            for (index, postData) in postContents.enumerated() {
+                // Space out creation dates so they order properly
+                let createdAt = Calendar.current.date(byAdding: .minute, value: -index * 30, to: Date()) ?? Date()
+                let post = Post(
+                    authorId: userId,
+                    communityId: insertedCommunity.id,
+                    content: postData.0,
+                    imageUrl: postData.1,
+                    hashtag: "NGOConnect",
+                    likeCount: 0,
+                    createdAt: createdAt
+                )
+                
+                var insertedPost: Post = try await client
+                    .from("posts")
+                    .insert(post)
+                    .select().single().execute().value
+                
+                let populated = await populatePostAuthors([insertedPost])
+                if let first = populated.first {
+                    insertedPost = first
+                }
+                posts.insert(insertedPost, at: 0)
+            }
+            
+        } catch {
+            errorMessage = "Failed to seed Sondhara community: \(error.localizedDescription)"
+        }
+    }
 }

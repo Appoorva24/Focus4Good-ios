@@ -185,15 +185,7 @@ struct ProgressTrackerView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, minHeight: 200)
-        .background(
-            LinearGradient(
-                colors: [Color(.systemBackground), AppTheme.cardGradientEnd],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
-        .shadow(color: AppTheme.orange.opacity(0.10), radius: 10, y: 3)
+        .glassCard()
     }
 
     // MARK: - Time Spent Card
@@ -209,28 +201,22 @@ struct ProgressTrackerView: View {
             TimeRow(
                 systemImage: "person.fill",
                 label:       "Focus",
-                minutes:     progress?.focusTimeMinutes ?? 0
+                minutes:     progress?.focusTimeMinutes ?? 0,
+                color:       AppTheme.orange
             )
 
             TimeRow(
                 systemImage: "figure.mind.and.body",
                 label:       "Calm",
-                minutes:     progress?.calmCentreMinutes ?? 0
+                minutes:     progress?.calmCentreMinutes ?? 0,
+                color:       AppTheme.sage
             )
 
             Spacer()
         }
         .padding(16)
         .frame(maxWidth: .infinity, minHeight: 200, alignment: .topLeading)
-        .background(
-            LinearGradient(
-                colors: [Color(.systemBackground), AppTheme.cardGradientEnd],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
-        .shadow(color: AppTheme.orange.opacity(0.10), radius: 10, y: 3)
+        .glassCard()
     }
 
     // MARK: - Key Metrics
@@ -244,12 +230,14 @@ struct ProgressTrackerView: View {
                 MetricCard(
                     systemImage: "scope",
                     value:       "\(userStore.currentUser?.focusPoints ?? 0)",
-                    label:       "Focus Points"
+                    label:       "Focus Points",
+                    color:       AppTheme.orange
                 )
                 MetricCard(
                     systemImage: "flame.fill",
                     value:       "\(userStore.currentUser?.bestStreak ?? 0) Days",
-                    label:       "Best Streak"
+                    label:       "Best Streak",
+                    color:       AppTheme.amber
                 )
             }
         }
@@ -304,16 +292,16 @@ private struct CircularProgressRing: View {
 
     var body: some View {
         ZStack {
-            // Background track — warmer tint
+            // Background track
             Circle()
-                .stroke(AppTheme.orange.opacity(0.20), style: StrokeStyle(lineWidth: 10, lineCap: .round))
+                .stroke(AppTheme.orange.opacity(0.12), style: StrokeStyle(lineWidth: 10, lineCap: .round))
 
-            // Progress arc — gradient stroke for vibrancy
+            // Progress arc — multi-color gradient
             Circle()
                 .trim(from: 0, to: fraction)
                 .stroke(
                     AngularGradient(
-                        colors: [Color(hex: "F7A456"), AppTheme.orange, Color(hex: "FFCA8E")],
+                        colors: [AppTheme.orange, AppTheme.amber, AppTheme.sage, AppTheme.orange],
                         center: .center
                     ),
                     style: StrokeStyle(lineWidth: 10, lineCap: .round)
@@ -340,6 +328,7 @@ private struct TimeRow: View {
     let systemImage: String
     let label: String
     let minutes: Int
+    var color: Color = AppTheme.orange
 
     private var formatted: String {
         String(format: "%02d:%02d hrs", minutes / 60, minutes % 60)
@@ -349,17 +338,18 @@ private struct TimeRow: View {
         HStack(spacing: 10) {
             Image(systemName: systemImage)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(AppTheme.orange)
+                .foregroundStyle(color)
                 .frame(width: 30, height: 30)
-                .background(AppTheme.orange.opacity(0.20))
+                .background(color.opacity(0.12))
                 .clipShape(Circle())
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(label)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(AppTheme.warmTextSecondary)
                 Text(formatted)
                     .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.warmTextPrimary)
             }
         }
     }
@@ -371,14 +361,15 @@ private struct MetricCard: View {
     let systemImage: String
     let value: String
     let label: String
+    var color: Color = AppTheme.orange
 
     var body: some View {
         VStack(spacing: 8) {
             Image(systemName: systemImage)
                 .font(.system(size: 22, weight: .medium))
-                .foregroundStyle(AppTheme.orange)
+                .foregroundStyle(color)
                 .frame(width: 50, height: 50)
-                .background(AppTheme.orange.opacity(0.18))
+                .background(color.opacity(0.12))
                 .clipShape(Circle())
 
             Text(value)
@@ -391,15 +382,7 @@ private struct MetricCard: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 20)
-        .background(
-            LinearGradient(
-                colors: [Color(.systemBackground), AppTheme.cardGradientEnd],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
-        .shadow(color: AppTheme.orange.opacity(0.10), radius: 10, y: 3)
+        .glassCard()
     }
 }
 
