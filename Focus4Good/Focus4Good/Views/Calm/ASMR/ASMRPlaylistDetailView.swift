@@ -49,12 +49,22 @@ struct ASMRPlaylistDetailView: View {
     
     private var headerView: some View {
         VStack(spacing: 16) {
-            // Header Image Placeholder
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(playlistColor.gradient)
-                .frame(width: 240, height: 240)
-                .shadow(color: playlistColor.opacity(0.3), radius: 20, x: 0, y: 10)
-                .padding(.top, 20)
+            // Header Image or Placeholder
+            if !playlist.coverImageName.isEmpty {
+                Image(playlist.coverImageName)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 240, height: 240)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .shadow(color: Color.black.opacity(0.1), radius: 20, x: 0, y: 10)
+                    .padding(.top, 20)
+            } else {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(playlistColor.gradient)
+                    .frame(width: 240, height: 240)
+                    .shadow(color: playlistColor.opacity(0.3), radius: 20, x: 0, y: 10)
+                    .padding(.top, 20)
+            }
             
             VStack(spacing: 8) {
                 Text(playlist.title)
@@ -119,13 +129,21 @@ struct ASMRPlaylistDetailView: View {
             play(sound: sound)
         } label: {
             HStack(spacing: 14) {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color(.systemGray5))
-                    .frame(width: 48, height: 48)
-                    .overlay(
-                        Image(systemName: "waveform")
-                            .foregroundStyle(.secondary)
-                    )
+                if !sound.imageUrl.isEmpty {
+                    Image(sound.imageUrl)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 48, height: 48)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                } else {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color(.systemGray5))
+                        .frame(width: 48, height: 48)
+                        .overlay(
+                            Image(systemName: "waveform")
+                                .foregroundStyle(.secondary)
+                        )
+                }
                 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(sound.name)

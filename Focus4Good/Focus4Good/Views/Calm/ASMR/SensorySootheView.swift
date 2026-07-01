@@ -112,9 +112,17 @@ struct SensorySootheView: View {
     
     private func playlistCard(playlist: ASMRPlaylist) -> some View {
         ZStack(alignment: .bottomLeading) {
-            // Placeholder background (Color) since images are not added yet
-            Rectangle()
-                .fill(Color(hex: playlist.placeholderColorHex).gradient)
+            // Background (Image or Placeholder Color)
+            if !playlist.coverImageName.isEmpty {
+                Image(playlist.coverImageName)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 280, height: 280)
+                    .clipped()
+            } else {
+                Rectangle()
+                    .fill(Color(hex: playlist.placeholderColorHex).gradient)
+            }
             
             // Gradient Overlay for text readability
             LinearGradient(
@@ -155,9 +163,18 @@ struct SensorySootheView: View {
             if let playlist = recentPlaylist {
                 NavigationLink(destination: ASMRPlaylistDetailView(playlist: playlist)) {
                     HStack(spacing: 16) {
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color(hex: playlist.placeholderColorHex).gradient)
-                            .frame(width: 80, height: 80)
+                        if !playlist.coverImageName.isEmpty {
+                            Image(playlist.coverImageName)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 80, height: 80)
+                                .clipped()
+                                .cornerRadius(12)
+                        } else {
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color(hex: playlist.placeholderColorHex).gradient)
+                                .frame(width: 80, height: 80)
+                        }
                         
                         VStack(alignment: .leading, spacing: 4) {
                             Text(playlist.title)
@@ -209,13 +226,21 @@ struct SensorySootheView: View {
             showPlayer = true
         } label: {
             HStack(spacing: 14) {
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(Color(.systemGray5))
-                    .frame(width: 60, height: 60)
-                    .overlay(
-                        Image(systemName: "waveform")
-                            .foregroundStyle(.secondary)
-                    )
+                if !sound.imageUrl.isEmpty {
+                    Image(sound.imageUrl)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 60, height: 60)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                } else {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color(.systemGray5))
+                        .frame(width: 60, height: 60)
+                        .overlay(
+                            Image(systemName: "waveform")
+                                .foregroundStyle(.secondary)
+                        )
+                }
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(sound.name)

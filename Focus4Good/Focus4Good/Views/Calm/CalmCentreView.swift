@@ -40,40 +40,12 @@ struct CalmCentreView: View {
     // MARK: - Subviews
 
     private var braindumpCard: some View {
-        ZStack(alignment: .trailing) {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 4)
-            
-            ZStack(alignment: .trailing) {
-                Image("braindump_illustration")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(height: 160)
-                    .offset(x: 20, y: 5)
-                
-                HStack {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Braindump")
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .foregroundStyle(.primary)
-
-                        Text("Get the noise out of your head.\nWrite it down here to clear\nyour mind instantly.")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(3)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .padding(.trailing, 110)
-                    
-                    Spacer()
-                }
-                .padding(.vertical, 32)
-                .padding(.horizontal, 20)
-            }
+        Image("braindump card")
+            .resizable()
+            .scaledToFit()
+            .frame(maxWidth: .infinity)
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        }
+            .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 4)
     }
 
     private var relaxationToolsSection: some View {
@@ -85,64 +57,42 @@ struct CalmCentreView: View {
 
             LazyVGrid(columns: columns, spacing: 16) {
                 Button { showBreathe = true } label: {
-                    toolCard(icon: "wind", title: "Breathe", subtitle: "4-7-8 Technique", color: .orange)
+                    Image("breathe")
+                        .resizable()
+                        .scaledToFit()
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 4)
                 }
                 .buttonStyle(.plain)
 
                 Button { showJPMR = true } label: {
-                    toolCard(icon: "figure.walk", title: "Unwind Body", subtitle: "JPMR Muscle Relax", color: .green)
+                    Image("unwindbody")
+                        .resizable()
+                        .scaledToFit()
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 4)
                 }
                 .buttonStyle(.plain)
 
                 Button { showASMR = true } label: {
-                    toolCard(icon: "speaker.wave.3", title: "Sensory Soothe", subtitle: "ASMR Sounds", color: .purple)
+                    Image("asmr")
+                        .resizable()
+                        .scaledToFit()
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 4)
                 }
                 .buttonStyle(.plain)
 
                 Button { showDeepFocus = true } label: {
-                    toolCard(icon: "leaf", title: "Deep Focus", subtitle: "Guided Meditation", color: .blue)
+                    Image("deepfocus")
+                        .resizable()
+                        .scaledToFit()
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 4)
                 }
                 .buttonStyle(.plain)
             }
         }
-    }
-
-    private func toolCard(icon: String, title: String, subtitle: String, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Image(systemName: icon)
-                    .font(.title2)
-                    .foregroundStyle(color)
-                    .frame(width: 44, height: 44)
-                    .background(Circle().fill(color.opacity(0.12)))
-                
-                Spacer()
-                
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundStyle(Color(.tertiaryLabel))
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.subheadline)
-                    .fontWeight(.bold)
-                    .foregroundStyle(.primary)
-
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 4)
-        )
     }
 
     private var dailyTipRow: some View {
