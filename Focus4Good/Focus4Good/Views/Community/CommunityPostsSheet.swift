@@ -46,7 +46,7 @@ struct CommunityPostsSheet: View {
                     }
                 }
             }
-            .background(Color(.systemGroupedBackground))
+            .background(AppTheme.appGradient.ignoresSafeArea())
             .navigationTitle("Posts")
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $searchField, prompt: "Search posts")

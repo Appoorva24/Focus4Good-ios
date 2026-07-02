@@ -50,7 +50,7 @@ struct BraindumpHomeView: View {
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemGroupedBackground))
+        .background(AppTheme.appGradient.ignoresSafeArea())
     }
 
     // MARK: - Entries List

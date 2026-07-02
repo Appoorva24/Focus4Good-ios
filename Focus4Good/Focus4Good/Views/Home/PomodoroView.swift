@@ -608,7 +608,7 @@ struct PomodoroSessionPopup: View {
                 .padding(.bottom, 48)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color(.systemBackground))
+            .background(AppTheme.appGradient.ignoresSafeArea())
             .clipShape(RoundedRectangle(cornerRadius: 32))
             .padding(.horizontal, 16)
             .padding(.vertical, 40)

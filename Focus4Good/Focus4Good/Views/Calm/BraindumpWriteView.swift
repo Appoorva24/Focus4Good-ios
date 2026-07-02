@@ -82,7 +82,7 @@ struct BraindumpWriteView: View {
                 drawingCanvasArea
             }
         }
-        .background(Color(.systemGroupedBackground))
+        .background(AppTheme.appGradient.ignoresSafeArea())
     }
 
     private var modePicker: some View {

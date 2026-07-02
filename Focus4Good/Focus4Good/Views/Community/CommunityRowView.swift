@@ -318,7 +318,7 @@ struct CommunityDetailView: View {
                 .padding(.bottom, 24)
             }
         }
-        .background(Color(.systemGroupedBackground))
+        .background(AppTheme.appGradient.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {

@@ -282,16 +282,7 @@ struct CommunityHome: View {
 
     // MARK: - Background
     private var progressBackground: some View {
-        LinearGradient(
-            colors: [
-                AppTheme.pageBgTop,
-                AppTheme.pageBgMid,
-                AppTheme.pageBgBot
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-        .ignoresSafeArea()
+        AppTheme.appGradient.ignoresSafeArea()
     }
 }
 

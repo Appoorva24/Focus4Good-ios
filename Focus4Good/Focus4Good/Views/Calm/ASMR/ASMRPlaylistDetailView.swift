@@ -30,7 +30,7 @@ struct ASMRPlaylistDetailView: View {
                 .padding(.bottom, 40)
             }
         }
-        .background(Color(.systemGroupedBackground).ignoresSafeArea())
+        .background(AppTheme.appGradient.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             loadFavourites()

@@ -36,7 +36,7 @@ struct SensorySootheView: View {
             .padding(.top, 16)
             .padding(.bottom, 40)
         }
-        .background(Color(.systemGroupedBackground).ignoresSafeArea())
+        .background(AppTheme.appGradient.ignoresSafeArea())
         .navigationTitle("ASMR Sounds")
         .navigationBarTitleDisplayMode(.large)
         .onAppear { 
