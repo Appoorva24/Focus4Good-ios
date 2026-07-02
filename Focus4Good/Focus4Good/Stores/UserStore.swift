@@ -56,18 +56,27 @@ class UserStore {
                 data: ["full_name": .string(fullName)]  // passed to trigger
             )
             
-            self.isMfaRequired = true
-            self.isLoading = false
+            let session = try await client.auth.session
+            let userId = session.user.id
+            await fetchCurrentUser(userId: userId)
             
-            // Call Edge Function to send OTP
-            _ = try await client.functions.invoke(
-                "send-otp",
-                options: .init(body: ["email": email])
-            )
+            isAuthenticated = true
+            isMfaRequired = false
+            await loadUserData(userId: userId)
+            
+            // TEMPORARILY DISABLED 2FA
+            // self.isMfaRequired = true
+            // self.isLoading = false
+            // 
+            // // Call Edge Function to send OTP
+            // _ = try await client.functions.invoke(
+            //     "send-otp",
+            //     options: .init(body: ["email": email])
+            // )
         } catch {
             errorMessage = error.localizedDescription
-            isLoading = false
         }
+        isLoading = false
     }
     
     func signIn(email: String, password: String) async {
@@ -79,18 +88,27 @@ class UserStore {
                 password: password
             )
             
-            self.isMfaRequired = true
-            self.isLoading = false
+            let session = try await client.auth.session
+            let userId = session.user.id
+            await fetchCurrentUser(userId: userId)
             
-            // Call Edge Function to send OTP
-            _ = try await client.functions.invoke(
-                "send-otp",
-                options: .init(body: ["email": email])
-            )
+            isAuthenticated = true
+            isMfaRequired = false
+            await loadUserData(userId: userId)
+            
+            // TEMPORARILY DISABLED 2FA
+            // self.isMfaRequired = true
+            // self.isLoading = false
+            // 
+            // // Call Edge Function to send OTP
+            // _ = try await client.functions.invoke(
+            //     "send-otp",
+            //     options: .init(body: ["email": email])
+            // )
         } catch {
             errorMessage = "Invalid email or password"
-            isLoading = false
         }
+        isLoading = false
     }
     
     func signOut() {
