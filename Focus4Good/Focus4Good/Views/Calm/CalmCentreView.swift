@@ -84,30 +84,56 @@ struct CalmCentreView: View {
     // MARK: - Subviews
 
     private var braindumpCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 0) {
+            // Illustration in top-right
             HStack {
+                Spacer()
                 Image("calm_braindump")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 52, height: 52)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundStyle(AppTheme.warmTextSecondary)
+                    .frame(width: 64, height: 64)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
             }
+            .padding(.bottom, 8)
 
+            // Title
             Text("Braindump")
-                .font(.title3)
-                .fontWeight(.bold)
-                .foregroundStyle(AppTheme.warmTextPrimary)
+                .font(.system(size: 20, weight: .bold))
+                .foregroundStyle(.white)
 
+            // Description
             Text("Get the noise out of your head. Write it down here to clear your mind instantly")
-                .font(.subheadline)
-                .foregroundStyle(AppTheme.warmTextSecondary)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.white.opacity(0.8))
+                .lineLimit(2)
+                .padding(.top, 4)
+
+            // Arrow button
+            HStack {
+                Spacer()
+                ZStack {
+                    Circle()
+                        .fill(.white.opacity(0.25))
+                        .frame(width: 28, height: 28)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(.white)
+                }
+            }
+            .padding(.top, 8)
         }
-        .padding()
-        .glassCard()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(
+            LinearGradient(
+                colors: [AppTheme.amber, AppTheme.orange],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .shadow(color: AppTheme.amber.opacity(0.3), radius: 8, x: 0, y: 4)
     }
 
     private var relaxationToolsSection: some View {

@@ -24,8 +24,11 @@ struct AddCommunityView: View {
 
     var body: some View {
         NavigationStack {
-            VStack {
-                // MARK: Cover Photo Section
+            ZStack {
+                AppTheme.pageGradient.ignoresSafeArea()
+
+                VStack {
+                    // MARK: Cover Photo Section
                 VStack {
                     if let coverImage {
                         coverImage
@@ -66,19 +69,20 @@ struct AddCommunityView: View {
                     HStack {
                         Text("Name")
                             .font(.headline)
-                            .foregroundStyle(Color.primary)
+                            .foregroundStyle(AppTheme.warmTextPrimary)
 
                         Spacer()
 
                         TextField("Community Name", text: $nameOfCommunity)
                             .multilineTextAlignment(.trailing)
-                            .foregroundStyle(.gray)
+                            .foregroundStyle(AppTheme.warmTextPrimary)
                     }
                     .padding()
                     Divider()
 
                     HStack {
                         Text("Category").font(.headline)
+                            .foregroundStyle(AppTheme.warmTextPrimary)
                         Spacer()
                         Menu {
                             Button("Hyperactivity") { category = "Hyperactivity" }
@@ -91,10 +95,10 @@ struct AddCommunityView: View {
                         } label: {
                             HStack(spacing: 4) {
                                 Text(category.isEmpty ? "Select" : category)
-                                    .foregroundStyle(category.isEmpty ? .gray : .primary)
+                                    .foregroundStyle(category.isEmpty ? AppTheme.warmTextSecondary : AppTheme.warmTextPrimary)
                                 Image(systemName: "chevron.up.chevron.down")
                                     .font(.caption)
-                                    .foregroundStyle(.gray)
+                                    .foregroundStyle(AppTheme.warmTextSecondary)
                             }
                         }
                     }
@@ -108,11 +112,11 @@ struct AddCommunityView: View {
                     }
                     .padding()
                 }
-                .background(Color(.systemGray6))
+                .background(AppTheme.cardBg)
                 .clipShape(RoundedRectangle(cornerRadius: 14))
                 .overlay(
                     RoundedRectangle(cornerRadius: 14)
-                        .stroke(Color.white.opacity(1.0), lineWidth: 1)
+                        .stroke(AppTheme.orange.opacity(0.1), lineWidth: 1)
                 )
                 .padding(.horizontal)
 
@@ -121,17 +125,17 @@ struct AddCommunityView: View {
                         Toggle(isOn: $isPrivate) {
                             Text("Private Community")
                                 .font(.headline)
-                                .foregroundStyle(Color.primary)
+                                .foregroundStyle(AppTheme.warmTextPrimary)
                         }
                         Spacer()
                     }
                     .padding()
                 }
-                .background(Color(.systemGray6))
+                .background(AppTheme.cardBg)
                 .clipShape(RoundedRectangle(cornerRadius: 14))
                 .overlay(
                     RoundedRectangle(cornerRadius: 14)
-                        .stroke(Color.white.opacity(1.0), lineWidth: 1)
+                        .stroke(AppTheme.orange.opacity(0.1), lineWidth: 1)
                 )
                 .padding(.horizontal)
 
@@ -169,12 +173,12 @@ struct AddCommunityView: View {
                     HStack {
                         if isSubmitting {
                             ProgressView()
-                                .tint(.primary)
+                                .tint(.white)
                                 .padding(.trailing, 8)
                         }
                         Text(isSubmitting ? "Creating..." : "Create Community")
                             .font(.headline)
-                            .foregroundStyle(Color.primary)
+                            .foregroundStyle(.white)
                     }
                     .frame(maxWidth: .infinity)
                     .frame(height: 40)
@@ -195,6 +199,12 @@ struct AddCommunityView: View {
                         addCommunity = false
                     } label: {
                         Text("Cancel")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(AppTheme.orange)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Capsule().fill(.white))
+                            .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
                     }
                 }
             }
@@ -220,6 +230,7 @@ struct AddCommunityView: View {
                 Button("OK", role: .cancel) { }
             } message: {
                 Text(errorMessage ?? "An unknown error occurred.")
+            }
             }
         }
     }

@@ -20,29 +20,17 @@ struct DummyData {
     static let ngos: [NGO] = [
         NGO(
             id: UUID(),
-            name: "Teach For India",
-            location: "Mumbai, India",
-            mission: "Eliminating educational inequity by placing talented graduates in low-income schools.",
-            founderName: "Shaheen Mistri",
-            founderPhone: "+91-22-6656-0200",
-            imageName: "ngo",
+            name: "Sondhara Welfare Trust",
+            location: "Maharashtra, India",
+            mission: "Empowering communities through sustainable development, education, and welfare programs.",
+            founderName: "Sondhara Trust",
+            founderPhone: "+91-00000-00000",
+            imageName: "sondhara_logo",
             studentCount: 38000,
             yearsActive: 15,
             projectCount: 12,
-            isVerified: true
-        ),
-        NGO(
-            id: UUID(),
-            name: "Pratham",
-            location: "Delhi, India",
-            mission: "Improving quality of education for underprivileged children across India.",
-            founderName: "Madhav Chavan",
-            founderPhone: "+91-11-4141-0000",
-            imageName: "ngo",
-            studentCount: 75000,
-            yearsActive: 28,
-            projectCount: 20,
-            isVerified: true
+            isVerified: true,
+            galleryImages: ["ngo", "ngo", "ngo", "ngo"]
         )
     ]
 

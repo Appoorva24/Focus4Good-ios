@@ -111,9 +111,14 @@ struct AddPostView: View {
                                     self.coverImageData = nil
                                     self.selectedItem = nil
                                 } label: {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.title)
-                                        .foregroundStyle(.white, .black.opacity(0.6))
+                                    ZStack {
+                                        Circle().fill(.white)
+                                            .frame(width: 28, height: 28)
+                                            .shadow(color: .black.opacity(0.15), radius: 4)
+                                        Image(systemName: "xmark")
+                                            .font(.system(size: 12, weight: .bold))
+                                            .foregroundStyle(AppTheme.warmTextPrimary)
+                                    }
                                 }
                                 .padding(.trailing, 24)
                                 .padding(.top, 8)

@@ -13,8 +13,10 @@ enum ProgressPeriod: String, CaseIterable, Identifiable {
 struct ProgressTrackerView: View {
     @Environment(ProgressStore.self)      private var progressStore
     @Environment(UserStore.self)          private var userStore
+    @Environment(TaskStore.self)          private var taskStore
 
     @State private var selectedPeriod: ProgressPeriod = .weekly
+    @State private var activeSheet: ProgressSheetType?
 
     private var progress: UserProgress? {
         switch selectedPeriod {
@@ -52,27 +54,76 @@ struct ProgressTrackerView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                // Header
-                headerSection
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // Header (subtitle only)
+                    headerSection
 
-                // Segmented Picker
-                periodPicker
+                    // Segmented Picker
+                    periodPicker
 
-                // Overview Section
-                overviewSection
+                    // Overview Section
+                    overviewSection
 
-                // Key Metrics Section
-                keyMetricsSection
+                    // Key Metrics Section
+                    keyMetricsSection
 
-                // Thought Card
-                thoughtCard
+                    // Thought Card
+                    thoughtCard
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 32)
             }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 32)
+            .background(progressBackground)
+            .navigationTitle("Progress")
+            .navigationBarTitleDisplayMode(.large)
+            .sheet(item: $activeSheet) { sheet in
+                sheetContent(for: sheet)
+            }
         }
-        .background(progressBackground)
+    }
+
+    @ViewBuilder
+    private func sheetContent(for sheet: ProgressSheetType) -> some View {
+        switch sheet {
+        case .streak:
+            StreakDetailSheet(
+                currentStreak: userStore.currentUser?.currentStreak ?? 0,
+                bestStreak: userStore.currentUser?.bestStreak ?? 0
+            )
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+
+        case .tasksCompleted:
+            TasksCompletedDetailSheet(
+                tasksCompleted: progress?.tasksCompleted ?? 0,
+                taskGoal: progress?.taskGoal ?? 1,
+                period: selectedPeriod
+            )
+            .environment(taskStore)
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+
+        case .timeSpent:
+            TimeSpentDetailSheet(
+                focusMinutes: progress?.focusTimeMinutes ?? 0,
+                calmMinutes: progress?.calmCentreMinutes ?? 0,
+                period: selectedPeriod
+            )
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+
+        case .focusPoints:
+            FocusPointsDetailSheet(
+                totalPoints: userStore.currentUser?.focusPoints ?? 0,
+                currentLevel: userStore.currentUser?.currentLevel ?? 1,
+                periodPoints: progress?.focusPointsEarned ?? 0,
+                period: selectedPeriod
+            )
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+        }
     }
 
     // MARK: - Background
@@ -95,17 +146,11 @@ struct ProgressTrackerView: View {
     // MARK: - Header
 
     private var headerSection: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Progress")
-                .font(.system(size: 32, weight: .bold))
-                .foregroundStyle(Color(.label))
-
-            Text("Track your focus. Celebrate growth.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, 8)
+        Text("Track your focus. Celebrate growth.")
+            .font(.subheadline)
+            .foregroundStyle(AppTheme.warmTextSecondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 8)
     }
 
     // MARK: - Period Picker (Native glass segmented control)
@@ -128,10 +173,16 @@ struct ProgressTrackerView: View {
 
             HStack(alignment: .top, spacing: 12) {
                 // Tasks Completed Card
-                tasksCompletedCard
+                Button { activeSheet = .tasksCompleted } label: {
+                    tasksCompletedCard
+                }
+                .buttonStyle(.plain)
 
                 // Time Spent Card
-                timeSpentCard
+                Button { activeSheet = .timeSpent } label: {
+                    timeSpentCard
+                }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -204,18 +255,25 @@ struct ProgressTrackerView: View {
                 .font(.title3.bold())
 
             HStack(spacing: 12) {
-                MetricCard(
-                    systemImage: "scope",
-                    value:       "\(userStore.currentUser?.focusPoints ?? 0)",
-                    label:       "Focus Points",
-                    color:       AppTheme.orange
-                )
-                MetricCard(
-                    systemImage: "flame.fill",
-                    value:       "\(userStore.currentUser?.bestStreak ?? 0) Days",
-                    label:       "Best Streak",
-                    color:       AppTheme.amber
-                )
+                Button { activeSheet = .focusPoints } label: {
+                    MetricCard(
+                        systemImage: "scope",
+                        value:       "\(userStore.currentUser?.focusPoints ?? 0)",
+                        label:       "Focus Points",
+                        color:       AppTheme.orange
+                    )
+                }
+                .buttonStyle(.plain)
+
+                Button { activeSheet = .streak } label: {
+                    MetricCard(
+                        systemImage: "flame.fill",
+                        value:       "\(userStore.currentUser?.bestStreak ?? 0) Days",
+                        label:       "Best Streak",
+                        color:       AppTheme.amber
+                    )
+                }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -400,4 +458,5 @@ private struct MetricCard: View {
     return ProgressTrackerView()
         .environment(progressStore)
         .environment(userStore)
+        .environment(TaskStore.shared)
 }

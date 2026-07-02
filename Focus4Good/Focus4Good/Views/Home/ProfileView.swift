@@ -15,7 +15,10 @@ struct ProfileView: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            ZStack {
+                AppTheme.pageGradient.ignoresSafeArea()
+                
+                List {
                 // User Card
                 Section {
                     HStack(spacing: 14) {
@@ -32,19 +35,21 @@ struct ProfileView: View {
                                 .foregroundStyle(AppTheme.orange)
                         }
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(userName).font(.headline)
+                            Text(userName).font(.headline).foregroundStyle(AppTheme.warmTextPrimary)
                             Text(userEmail).font(.caption).foregroundStyle(AppTheme.warmTextSecondary)
                         }
                     }
                     .padding(.vertical, 6)
                 }
+                .listRowBackground(AppTheme.cardBg)
 
                 // Profile Section
                 Section {
                     settingsRow(icon: "person", label: "Edit Profile", color: AppTheme.orange) {
                         showEditProfile = true
                     }
-                } header: { Text("Profile").textCase(nil) }
+                } header: { Text("Profile").foregroundStyle(AppTheme.warmTextPrimary).textCase(nil) }
+                .listRowBackground(AppTheme.cardBg)
 
                 // App Settings Section
                 Section {
@@ -61,7 +66,8 @@ struct ProfileView: View {
                             showEnrollAlert = true
                         }
                     }
-                } header: { Text("App Settings").textCase(nil) }
+                } header: { Text("App Settings").foregroundStyle(AppTheme.warmTextPrimary).textCase(nil) }
+                .listRowBackground(AppTheme.cardBg)
 
                 // Sign Out
                 Section {
@@ -72,8 +78,10 @@ struct ProfileView: View {
                             .frame(maxWidth: .infinity, alignment: .center)
                     }
                 }
+                .listRowBackground(AppTheme.cardBg)
             }
             .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
             .navigationTitle("Account")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -81,13 +89,17 @@ struct ProfileView: View {
                     Button {
                         dismiss()
                     } label: {
-                        Image(systemName: "xmark")
-                            .font(.subheadline.bold())
-                            .foregroundStyle(AppTheme.warmTextSecondary)
-                            .frame(width: 30, height: 30)
-                            .background(Circle().fill(Color(.secondarySystemBackground)))
+                        ZStack {
+                            Circle().fill(.white)
+                                .frame(width: 28, height: 28)
+                                .shadow(color: .black.opacity(0.05), radius: 2)
+                            Image(systemName: "xmark")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundStyle(AppTheme.warmTextPrimary)
+                        }
                     }
                 }
+            }
             }
         }
         .alert("Sign Out?", isPresented: $showSignOutAlert) {
@@ -130,7 +142,7 @@ struct ProfileView: View {
                     .frame(width: 30, height: 30)
                     .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(color))
 
-                Text(label).font(.subheadline).foregroundStyle(AppTheme.textPrimary)
+                Text(label).font(.subheadline).foregroundStyle(AppTheme.warmTextPrimary)
                 Spacer()
                 
                 if label == "Email 2FA" {
