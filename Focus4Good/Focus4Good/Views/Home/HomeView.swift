@@ -67,12 +67,14 @@ struct HomeView: View {
                         ZStack {
                             Circle()
                                 .fill(AppTheme.orange.opacity(0.15))
-                                .frame(width: 38, height: 38)
                             Image(systemName: "person.fill")
                                 .font(.system(size: 15, weight: .semibold))
                                 .foregroundStyle(AppTheme.orange)
                         }
+                        .frame(width: 38, height: 38)
+                        .clipShape(Circle())
                     }
+                    .buttonStyle(.plain)
                 }
             }
             .sheet(isPresented: $showProfile) {
@@ -397,23 +399,6 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Spacer()
 
-                    // Top-left pill badge
-                    HStack {
-                        Spacer()
-                        HStack(spacing: 5) {
-                            Image(systemName: "star.fill")
-                                .font(.system(size: 10, weight: .bold))
-                            Text("\(focusPoints) pts")
-                                .font(.system(size: 11, weight: .bold))
-                        }
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(Capsule().fill(.ultraThinMaterial).environment(\.colorScheme, .dark))
-                    }
-
-                    Spacer()
-
                     // Title & subtitle
                     VStack(alignment: .leading, spacing: 4) {
                         Text("NGO Connect")
@@ -468,6 +453,20 @@ struct HomeView: View {
             .frame(height: height)
             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
             .shadow(color: .black.opacity(0.15), radius: 12, x: 0, y: 6)
+            // Points badge pinned to top-right corner
+            .overlay(alignment: .topTrailing) {
+                HStack(spacing: 5) {
+                    Image(systemName: "star.fill")
+                        .font(.system(size: 10, weight: .bold))
+                    Text("\(focusPoints) pts")
+                        .font(.system(size: 11, weight: .bold))
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Capsule().fill(.ultraThinMaterial).environment(\.colorScheme, .dark))
+                .padding(12)
+            }
         }
         .buttonStyle(HomeCardButtonStyle())
         .opacity(appeared ? 1 : 0)
