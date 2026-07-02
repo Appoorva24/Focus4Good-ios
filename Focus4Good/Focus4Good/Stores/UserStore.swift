@@ -55,17 +55,29 @@ class UserStore {
         errorMessage = nil
         do {
             // 1. Create the auth account
-            let response = try await client.auth.signUp(
+            let _ = try await client.auth.signUp(
                 email: email,
                 password: password,
                 data: ["full_name": .string(fullName)]  // passed to trigger
             )
-            let userId = response.user.id
-            // 2. Trigger auto-creates profile. Fetch it.
+            
+            let session = try await client.auth.session
+            let userId = session.user.id
             await fetchCurrentUser(userId: userId)
+            
             isAuthenticated = true
-            // 3. Preload tasks/progress for the new user
+            isMfaRequired = false
             await loadUserData(userId: userId)
+            
+            // TEMPORARILY DISABLED 2FA
+            // self.isMfaRequired = true
+            // self.isLoading = false
+            // 
+            // // Call Edge Function to send OTP
+            // _ = try await client.functions.invoke(
+            //     "send-otp",
+            //     options: .init(body: ["email": email])
+            // )
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -76,32 +88,30 @@ class UserStore {
         isLoading = true
         errorMessage = nil
         do {
-            let session = try await client.auth.signIn(
+            let _ = try await client.auth.signIn(
                 email: email,
                 password: password
             )
             
-            // Check Custom Email 2FA Level
-            let isEmail2FAEnabled = session.user.userMetadata["email_2fa_enabled"]?.boolValue ?? false
-            if isEmail2FAEnabled {
-                self.isMfaRequired = true
-                self.isLoading = false
-                
-                // Call Edge Function to send OTP
-                _ = try await client.functions.invoke(
-                    "send-otp",
-                    options: .init(body: ["email": email])
-                )
-                return
-            }
-            
+            let session = try await client.auth.session
             let userId = session.user.id
             await fetchCurrentUser(userId: userId)
+            
             isAuthenticated = true
-            // Preload tasks/progress so Schedule is populated immediately
+            isMfaRequired = false
             await loadUserData(userId: userId)
+            
+            // TEMPORARILY DISABLED 2FA
+            // self.isMfaRequired = true
+            // self.isLoading = false
+            // 
+            // // Call Edge Function to send OTP
+            // _ = try await client.functions.invoke(
+            //     "send-otp",
+            //     options: .init(body: ["email": email])
+            // )
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = "Invalid email or password"
         }
         isLoading = false
     }
@@ -200,24 +210,6 @@ class UserStore {
         _ = try await client.auth.update(user: UserAttributes(password: newPassword))
     }
     // MARK: - Email 2FA Methods
-    func checkMFAStatus() async {
-        do {
-            let session = try await client.auth.session
-            hasMfaEnabled = session.user.userMetadata["email_2fa_enabled"]?.boolValue ?? false
-        } catch {
-            hasMfaEnabled = false
-        }
-    }
-    
-    func enrollEmailMFA() async throws {
-        _ = try await client.auth.update(user: UserAttributes(data: ["email_2fa_enabled": .bool(true)]))
-        await checkMFAStatus()
-    }
-    
-    func unenrollEmailMFA() async throws {
-        _ = try await client.auth.update(user: UserAttributes(data: ["email_2fa_enabled": .bool(false)]))
-        await checkMFAStatus()
-    }
     
     func verifyLoginMFA(email: String, code: String) async {
         isLoading = true
@@ -278,7 +270,6 @@ class UserStore {
                 .execute()
                 .value
             currentUser = user
-            await checkMFAStatus()
         } catch {
             errorMessage = "Failed to load profile: \(error.localizedDescription)"
         }

@@ -7,8 +7,6 @@ struct ProfileView: View {
     @State private var showEditProfile = false
     @State private var showNotificationsAlert = false
     @State private var showTimezoneAlert = false
-    @State private var showEnrollAlert = false
-    @State private var showUnenrollAlert = false
 
     private var userName: String { userStore.currentUser?.fullName ?? "Loading…" }
     private var userEmail: String { userStore.currentUser?.email ?? "" }
@@ -112,22 +110,6 @@ struct ProfileView: View {
         .alert("Timezone", isPresented: $showTimezoneAlert) {
             Button("OK", role: .cancel) {}
         } message: { Text("Current timezone: New Delhi (IST)") }
-        .alert("Disable Email 2FA?", isPresented: $showUnenrollAlert) {
-            Button("Cancel", role: .cancel) {}
-            Button("Disable", role: .destructive) {
-                Task {
-                    try? await userStore.unenrollEmailMFA()
-                }
-            }
-        } message: { Text("Are you sure you want to disable Email Two-Factor Authentication?") }
-        .alert("Enable Email 2FA?", isPresented: $showEnrollAlert) {
-            Button("Cancel", role: .cancel) {}
-            Button("Enable") {
-                Task {
-                    try? await userStore.enrollEmailMFA()
-                }
-            }
-        } message: { Text("We will send a 6-digit code to your email every time you log in.") }
         .sheet(isPresented: $showEditProfile) {
             EditProfileView()
         }

@@ -116,9 +116,6 @@ class BreatheAudioService: NSObject, AVSpeechSynthesizerDelegate {
     /// Stop all speech immediately.
     func stopAll() {
         synthesizer.stopSpeaking(at: .immediate)
-        try? AVAudioSession.sharedInstance().setActive(
-            false, options: .notifyOthersOnDeactivation
-        )
     }
 
     // MARK: - Private Helpers

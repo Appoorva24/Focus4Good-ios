@@ -154,8 +154,32 @@ struct JPMRSessionView: View {
 
             VStack(spacing: 0) {
                 Spacer()
-                circleArea
+
+                HStack(alignment: .center) {
+                    Image(systemName: displayIcon)
+                        .font(.system(size: 36))
+                        .foregroundStyle(Color.accentColor)
+                        .contentTransition(.symbolEffect(.replace))
+                    
+                    Spacer()
+                    
+                    if isRunning {
+                        Text("\(countdown)")
+                            .font(.system(size: 36, weight: .bold, design: .rounded))
+                            .foregroundStyle(stage == .tensing ? Color.accentColor : .primary)
+                            .contentTransition(.numericText())
+                    } else {
+                         Text("--")
+                            .font(.system(size: 36, weight: .bold, design: .rounded))
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .padding(.horizontal, 60)
+                .padding(.bottom, 20)
+
+                bodyImageArea
                 infoArea.padding(.top, 28)
+                
                 Spacer()
                 progressArea.padding(.bottom, 24)
                 actionButton.padding(.bottom, 48)
@@ -240,34 +264,52 @@ struct JPMRSessionView: View {
         }
     }
 
-    // MARK: - Subviews
+    // MARK: - Highlight Data
 
-    private var circleArea: some View {
+    private func highlightPositions(for group: Int) -> [CGPoint] {
+        switch group {
+        case 1: return [CGPoint(x: 0.45, y: 0.92), CGPoint(x: 0.55, y: 0.92)] // Feet
+        case 2: return [CGPoint(x: 0.43, y: 0.78), CGPoint(x: 0.57, y: 0.78)] // Calves
+        case 3: return [CGPoint(x: 0.41, y: 0.65), CGPoint(x: 0.59, y: 0.65)] // Thighs
+        case 4: return [CGPoint(x: 0.5, y: 0.52)] // Hips & Buttocks
+        case 5: return [CGPoint(x: 0.5, y: 0.42)] // Abdomen
+        case 6: return [CGPoint(x: 0.5, y: 0.32)] // Chest
+        case 7: return [CGPoint(x: 0.23, y: 0.58), CGPoint(x: 0.77, y: 0.58)] // Hands & Forearms
+        case 8: return [CGPoint(x: 0.3, y: 0.38), CGPoint(x: 0.7, y: 0.38)] // Upper Arms
+        case 9: return [CGPoint(x: 0.35, y: 0.25), CGPoint(x: 0.65, y: 0.25)] // Shoulders
+        case 10: return [CGPoint(x: 0.5, y: 0.20)] // Neck
+        case 11: return [CGPoint(x: 0.5, y: 0.12)] // Face
+        default: return []
+        }
+    }
+
+    private var bodyImageArea: some View {
         ZStack {
-            Circle()
-                .stroke(Color.accentColor.opacity(0.15), lineWidth: 8)
-                .frame(width: 220, height: 220)
-
-            Circle()
-                .fill(Color.accentColor.opacity(circleFillOpacity))
-                .frame(width: 180, height: 180)
-                .scaleEffect(circleScale)
-                .animation(.easeInOut(duration: Double(max(countdown, 1))), value: stage)
-
-            VStack(spacing: 10) {
-                Image(systemName: displayIcon)
-                    .font(.system(size: 40))
-                    .foregroundStyle(Color.accentColor)
-                    .contentTransition(.symbolEffect(.replace))
-
-                Text("\(countdown)")
-                    .font(.system(size: 44, weight: .bold, design: .rounded))
-                    .foregroundStyle(stage == .tensing ? Color.accentColor : .secondary)
-                    .contentTransition(.numericText())
-                    .opacity(isRunning ? 1 : 0)
+            Image("jpmr_body")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 320, height: 320)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .shadow(color: Color.black.opacity(0.1), radius: 10)
+            
+            if stage == .tensing {
+                GeometryReader { geo in
+                    ForEach(0..<highlightPositions(for: currentStep.groupNumber).count, id: \.self) { i in
+                        let pos = highlightPositions(for: currentStep.groupNumber)[i]
+                        Circle()
+                            .fill(Color.accentColor)
+                            .frame(width: 70, height: 70)
+                            .blur(radius: 20)
+                            .position(x: pos.x * geo.size.width, y: pos.y * geo.size.height)
+                            .opacity(0.75)
+                    }
+                }
+                .frame(width: 320, height: 320)
+                .animation(.easeInOut(duration: 0.5), value: currentStep.groupNumber)
+                .animation(.easeInOut(duration: 0.5), value: stage)
             }
         }
-        .frame(width: 240, height: 240)
+        .frame(height: 320)
     }
 
     private var infoArea: some View {
