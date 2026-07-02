@@ -36,7 +36,7 @@ struct BraindumpDetailView: View {
                 }
                 .padding()
             }
-            .background(Color(.systemGroupedBackground))
+            .background(AppTheme.appGradient.ignoresSafeArea())
             .navigationTitle(entry.title ?? "Entry")
             .navigationBarTitleDisplayMode(.inline)
     }

@@ -58,7 +58,7 @@ struct ASMRPlayerView: View {
             }
             .frame(maxWidth: .infinity)
         }
-        .background(Color(.systemBackground))
+        .background(AppTheme.appGradient.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             if audio.isLoaded(soundName: sound.name) {

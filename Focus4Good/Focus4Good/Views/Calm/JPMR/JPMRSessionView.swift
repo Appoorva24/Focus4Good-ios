@@ -150,7 +150,7 @@ struct JPMRSessionView: View {
 
     var body: some View {
         ZStack {
-            Color(.systemGroupedBackground).ignoresSafeArea()
+            AppTheme.appGradient.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 Spacer()

@@ -8,6 +8,7 @@ struct BraindumpCanvasView: UIViewRepresentable {
     @Binding var hasDrawing: Bool
     @Binding var isActive: Bool
     @Binding var clearTrigger: UUID
+    @Binding var undoTrigger: UUID
 
     func makeUIView(context: Context) -> PKCanvasView {
         let canvas = PKCanvasView()
@@ -20,6 +21,7 @@ struct BraindumpCanvasView: UIViewRepresentable {
         let toolPicker = PKToolPicker()
         context.coordinator.toolPicker = toolPicker
         context.coordinator.lastClearTrigger = clearTrigger
+        context.coordinator.lastUndoTrigger = undoTrigger
 
         if isActive {
             toolPicker.setVisible(true, forFirstResponder: canvas)
@@ -50,6 +52,12 @@ struct BraindumpCanvasView: UIViewRepresentable {
             uiView.drawing = PKDrawing()
             context.coordinator.isClearingCanvas = false
         }
+        
+        // Handle undo trigger
+        if context.coordinator.lastUndoTrigger != undoTrigger {
+            context.coordinator.lastUndoTrigger = undoTrigger
+            uiView.undoManager?.undo()
+        }
 
         if isActive {
             toolPicker.setVisible(true, forFirstResponder: uiView)
@@ -78,6 +86,7 @@ struct BraindumpCanvasView: UIViewRepresentable {
         var hasDrawing: Binding<Bool>
         var toolPicker: PKToolPicker?
         var lastClearTrigger: UUID = UUID()
+        var lastUndoTrigger: UUID = UUID()
         var isClearingCanvas = false
 
         init(canvasData: Binding<Data>, hasDrawing: Binding<Bool>) {

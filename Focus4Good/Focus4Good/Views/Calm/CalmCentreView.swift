@@ -27,9 +27,9 @@ struct CalmCentreView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 24)
             }
-            .background(Color(.systemGroupedBackground).ignoresSafeArea())
+            .background(AppTheme.appGradient.ignoresSafeArea())
             .navigationTitle("Calm Centre")
-            .navigationDestination(isPresented: $showBraindump) { BraindumpPasswordView() }
+            .navigationDestination(isPresented: $showBraindump) { BraindumpHomeView() }
             .navigationDestination(isPresented: $showBreathe) { BreatheSessionView() }
             .navigationDestination(isPresented: $showJPMR) { JPMRSessionView() }
             .navigationDestination(isPresented: $showASMR) { SensorySootheView() }
