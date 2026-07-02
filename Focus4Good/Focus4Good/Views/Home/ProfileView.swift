@@ -57,13 +57,6 @@ struct ProfileView: View {
                     settingsRow(icon: "globe", label: "Timezone", color: AppTheme.sky) {
                         showTimezoneAlert = true
                     }
-                    settingsRow(icon: "lock.shield", label: "Email 2FA", color: AppTheme.sage) {
-                        if userStore.hasMfaEnabled {
-                            showUnenrollAlert = true
-                        } else {
-                            showEnrollAlert = true
-                        }
-                    }
                 } header: { Text("App Settings").foregroundStyle(AppTheme.warmTextPrimary).textCase(nil) }
                 .listRowBackground(AppTheme.cardBg)
 
