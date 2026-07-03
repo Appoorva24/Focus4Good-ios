@@ -13,7 +13,7 @@ struct CommunityRowView: View {
     }
 
     private var isJoined: Bool {
-        communityStore.isMember(communityId: community.id, userId: currentUserId)
+        community.creatorId == currentUserId || communityStore.isMember(communityId: community.id, userId: currentUserId)
     }
 
     /// Posts belonging to this community
@@ -73,10 +73,17 @@ struct CommunityRowView: View {
     private var communityInfo: some View {
         HStack {
             Group {
-                if let urlStr = community.coverImageUrl, let url = URL(string: urlStr) {
-                    AsyncImage(url: url) { phase in
-                        if let img = phase.image { img.resizable().scaledToFill() }
-                        else { Image(systemName: "person.3.fill").font(.callout).foregroundStyle(.secondary) }
+                if let urlStr = community.coverImageUrl {
+                    if urlStr.hasPrefix("asset://") {
+                        Image(urlStr.replacingOccurrences(of: "asset://", with: ""))
+                            .resizable().scaledToFill()
+                    } else if let url = URL(string: urlStr) {
+                        AsyncImage(url: url) { phase in
+                            if let img = phase.image { img.resizable().scaledToFill() }
+                            else { Image(systemName: "person.3.fill").font(.callout).foregroundStyle(.secondary) }
+                        }
+                    } else {
+                        Image(systemName: "person.3.fill").font(.callout).foregroundStyle(.secondary)
                     }
                 } else {
                     Image(systemName: "person.3.fill").font(.callout).foregroundStyle(.secondary)
@@ -102,12 +109,15 @@ struct CommunityRowView: View {
     var body: some View {
         cardContent
             .padding()
-            .background(Color(.systemBackground))
-            .overlay(
-                RoundedRectangle(cornerRadius: 20)
-                    .stroke(Color.black.opacity(0.12), lineWidth: 1)
+            .background(
+                LinearGradient(
+                    colors: [Color(.systemBackground), AppTheme.cardGradientEnd],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
             )
-            .clipShape(RoundedRectangle(cornerRadius: 20))
+            .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
+            .shadow(color: AppTheme.orange.opacity(0.10), radius: 10, y: 3)
             .padding(.horizontal, 10)
             .navigationDestination(isPresented: $showPosts) {
                 CommunityDetailView(community: community, selectedTab: $selectedTab)
@@ -136,7 +146,11 @@ struct CommunityDetailView: View {
     @Environment(UserStore.self) private var userStore
     @Environment(\.dismiss) private var dismiss
     @State private var showLeaveAlert = false
+    @State private var showDissolveAlert = false
+    @State private var showTransferSheet = false
     @State private var showAddPost = false
+    @State private var showMembersSheet = false
+    @State private var showPostsSheet = false
 
     private var posts: [Post] {
         communityStore.posts(in: community)
@@ -146,8 +160,12 @@ struct CommunityDetailView: View {
         userStore.currentUser?.id ?? UUID()
     }
 
+    private var otherMembers: [CommunityMember] {
+        communityStore.communityMembers.filter { $0.communityId == community.id && $0.userId != currentUserId }
+    }
+
     private var isJoined: Bool {
-        communityStore.isMember(communityId: community.id, userId: currentUserId)
+        community.creatorId == currentUserId || communityStore.isMember(communityId: community.id, userId: currentUserId)
     }
 
     var body: some View {
@@ -158,10 +176,17 @@ struct CommunityDetailView: View {
                 VStack(spacing: 12) {
                     // Avatar
                     Group {
-                        if let urlStr = community.coverImageUrl, let url = URL(string: urlStr) {
-                            AsyncImage(url: url) { phase in
-                                if let img = phase.image { img.resizable().scaledToFill() }
-                                else { Image(systemName: "person.3.fill").font(.largeTitle).foregroundStyle(.secondary) }
+                        if let urlStr = community.coverImageUrl {
+                            if urlStr.hasPrefix("asset://") {
+                                Image(urlStr.replacingOccurrences(of: "asset://", with: ""))
+                                    .resizable().scaledToFill()
+                            } else if let url = URL(string: urlStr) {
+                                AsyncImage(url: url) { phase in
+                                    if let img = phase.image { img.resizable().scaledToFill() }
+                                    else { Image(systemName: "person.3.fill").font(.largeTitle).foregroundStyle(.secondary) }
+                                }
+                            } else {
+                                Image(systemName: "person.3.fill").font(.largeTitle).foregroundStyle(.secondary)
                             }
                         } else {
                             Image(systemName: "person.3.fill").font(.largeTitle).foregroundStyle(.secondary)
@@ -185,21 +210,32 @@ struct CommunityDetailView: View {
 
                     // Native-style Stats Row
                     HStack(spacing: 40) {
-                        VStack(spacing: 4) {
-                            Text("\(community.memberCount)")
-                                .font(.headline)
-                            Text("Members")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                        Button {
+                            showMembersSheet = true
+                        } label: {
+                            VStack(spacing: 4) {
+                                Text("\(community.memberCount)")
+                                    .font(.headline)
+                                Text("Members")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
+                        .buttonStyle(.plain)
 
-                        VStack(spacing: 4) {
-                            Text(community.isPrivate && !isJoined ? "—" : "\(posts.count)")
-                                .font(.headline)
-                            Text("Posts")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                        Button {
+                            showPostsSheet = true
+                        } label: {
+                            VStack(spacing: 4) {
+                                Text(community.isPrivate && !isJoined ? "—" : "\(posts.count)")
+                                    .font(.headline)
+                                Text("Posts")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
+                        .buttonStyle(.plain)
+                        .disabled(community.isPrivate && !isJoined)
                     }
                     .padding(.top, 8)
                 }
@@ -295,7 +331,15 @@ struct CommunityDetailView: View {
                         }
                         
                         Button {
-                            showLeaveAlert = true
+                            if community.creatorId == currentUserId {
+                                if otherMembers.isEmpty {
+                                    showDissolveAlert = true
+                                } else {
+                                    showTransferSheet = true
+                                }
+                            } else {
+                                showLeaveAlert = true
+                            }
                         } label: {
                             Image(systemName: "rectangle.portrait.and.arrow.right")
                                 .foregroundStyle(.red)
@@ -312,6 +356,9 @@ struct CommunityDetailView: View {
                 }
             }
         }
+        .task {
+            await communityStore.fetchMembers(communityId: community.id)
+        }
         .alert("Leave Community", isPresented: $showLeaveAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Leave", role: .destructive) {
@@ -324,8 +371,32 @@ struct CommunityDetailView: View {
         } message: {
             Text("Are you sure you want to leave \"\(community.name)\"?")
         }
+        .alert("Leave & Dissolve Community", isPresented: $showDissolveAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Leave & Dissolve", role: .destructive) {
+                Task {
+                    await communityStore.dissolveCommunity(community)
+                    selectedTab = .forYou
+                    dismiss()
+                }
+            }
+        } message: {
+            Text("You are the only member left. If you leave, this community will be dissolved. Are you sure you want to leave and dissolve \"\(community.name)\"?")
+        }
+        .sheet(isPresented: $showTransferSheet) {
+            TransferOwnershipSheet(community: community, otherMembers: otherMembers) {
+                selectedTab = .forYou
+                dismiss()
+            }
+        }
         .sheet(isPresented: $showAddPost) {
             AddPostView(isPresented: $showAddPost, community: community)
+        }
+        .sheet(isPresented: $showMembersSheet) {
+            CommunityMembersSheet(community: community)
+        }
+        .sheet(isPresented: $showPostsSheet) {
+            CommunityPostsSheet(community: community)
         }
     }
 }

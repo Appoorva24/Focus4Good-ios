@@ -26,6 +26,8 @@ struct ScheduleView: View {
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
+            AppTheme.pageGradient.ignoresSafeArea()
+
             VStack(spacing: 0) {
                 calendarView
                 
@@ -72,15 +74,24 @@ struct ScheduleView: View {
     private var emptyDayState: some View {
         VStack(spacing: 16) {
             Spacer()
-            Image(systemName: "cup.and.saucer")
-                .font(.system(size: 60))
-                .foregroundStyle(AppTheme.orange.opacity(0.5))
+            ZStack {
+                Circle()
+                    .fill(AppTheme.orange.opacity(0.08))
+                    .frame(width: 120, height: 120)
+                Image(systemName: "text.badge.checkmark")
+                    .font(.system(size: 48, weight: .light))
+                    .foregroundStyle(AppTheme.orange.opacity(0.6))
+                Image(systemName: "sparkles")
+                    .font(.system(size: 18))
+                    .foregroundStyle(AppTheme.orange.opacity(0.4))
+                    .offset(x: 38, y: -38)
+            }
             Text("No tasks for this day")
                 .font(.headline)
-                .foregroundStyle(AppTheme.textSecondary)
+                .foregroundStyle(AppTheme.warmTextSecondary)
             Text("Tap + to add one")
                 .font(.subheadline)
-                .foregroundStyle(AppTheme.textSecondary.opacity(0.7))
+                .foregroundStyle(AppTheme.warmTextSecondary.opacity(0.7))
             Spacer()
         }
     }
@@ -104,7 +115,7 @@ struct ScheduleView: View {
             // Month & Year header
             Text(selectedDate.formatted(.dateTime.month(.wide).year()))
                 .font(.title3.bold())
-                .foregroundStyle(AppTheme.textPrimary)
+                .foregroundStyle(AppTheme.warmTextPrimary)
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
 
@@ -121,11 +132,11 @@ struct ScheduleView: View {
                                 VStack(spacing: 6) {
                                     Text(date.formatted(.dateTime.weekday(.short)).uppercased())
                                         .font(.system(size: 11, weight: .semibold))
-                                        .foregroundStyle(isSelected ? .white.opacity(0.85) : AppTheme.textSecondary)
+                                        .foregroundStyle(isSelected ? .white.opacity(0.85) : AppTheme.warmTextSecondary)
 
                                     Text(date.formatted(.dateTime.day()))
                                         .font(.system(size: 18, weight: .bold, design: .rounded))
-                                        .foregroundStyle(isSelected ? .white : (isToday ? AppTheme.orange : AppTheme.textPrimary))
+                                        .foregroundStyle(isSelected ? .white : (isToday ? AppTheme.orange : AppTheme.warmTextPrimary))
                                 }
                                 .frame(width: 44, height: 60)
                                 .background(
@@ -160,11 +171,12 @@ struct ScheduleView: View {
             Section {
                 ForEach(tasksForSelectedDate) { task in
                     TaskRowView(task: task, date: selectedDate, selectedTask: $selectedTask)
+                        .listRowBackground(AppTheme.cardBg)
                 }
             } header: {
                 HStack {
                     Text(selectedDate.formatted(date: .abbreviated, time: .omitted))
-                        .font(.headline).foregroundStyle(AppTheme.textPrimary).textCase(nil)
+                        .font(.headline).foregroundStyle(AppTheme.warmTextPrimary).textCase(nil)
                     Spacer()
                     let remaining = tasksForSelectedDate.filter { !taskStore.isTaskCompleted($0, on: selectedDate) }.count
                     if remaining > 0 {
@@ -174,6 +186,7 @@ struct ScheduleView: View {
             }
         }
         .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
     }
 
     // MARK: - Floating Add Button (only shown when tasks exist)
@@ -219,7 +232,7 @@ struct TaskRowView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(task.title)
                     .font(.subheadline.weight(.medium))
-                    .foregroundStyle(isCompleted ? AppTheme.textSecondary : AppTheme.textPrimary)
+                    .foregroundStyle(isCompleted ? AppTheme.warmTextSecondary : AppTheme.warmTextPrimary)
                     .strikethrough(isCompleted)
                     .lineLimit(1)
 
@@ -232,14 +245,14 @@ struct TaskRowView: View {
                             Image(systemName: "clock").font(.caption2)
                             Text(time.formatted(.dateTime.hour().minute())).font(.caption)
                         }
-                        .foregroundStyle(AppTheme.textSecondary)
+                        .foregroundStyle(AppTheme.warmTextSecondary)
                     }
                     if let duration = task.estimatedDuration {
                         HStack(spacing: 3) {
                             Image(systemName: "timer").font(.caption2)
                             Text("\(duration)m").font(.caption)
                         }
-                        .foregroundStyle(AppTheme.textSecondary)
+                        .foregroundStyle(AppTheme.warmTextSecondary)
                     }
                 }
             }

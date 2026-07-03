@@ -13,6 +13,7 @@ struct NGO: Identifiable, Codable, Hashable {
     var yearsActive: Int
     var projectCount: Int
     var isVerified: Bool
+    var galleryImages: [String]?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -26,6 +27,7 @@ struct NGO: Identifiable, Codable, Hashable {
         case yearsActive = "years_active"
         case projectCount = "project_count"
         case isVerified = "is_verified"
+        case galleryImages = "gallery_images"
     }
 }
 

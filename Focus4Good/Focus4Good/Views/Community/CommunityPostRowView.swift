@@ -22,6 +22,7 @@ private func timeAgo(_ date: Date) -> String {
 struct CommunityPostRowView: View {
     var post: Post
     @State private var showComments: Bool = false
+    @State private var showLikesList: Bool = false
     @Environment(CommunityStore.self) private var communityStore
     @Environment(UserStore.self) private var userStore
 
@@ -38,139 +39,238 @@ struct CommunityPostRowView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-
             // ── Author Header ──
-            HStack {
+            HStack(spacing: 12) {
                 Group {
                     if let urlStr = post.authorImageUrl, let url = URL(string: urlStr) {
                         AsyncImage(url: url) { phase in
                             if let img = phase.image { img.resizable().scaledToFill() }
-                            else { Image(systemName: "person.fill").font(.title3).foregroundStyle(.secondary) }
+                            else { Image(systemName: "person.crop.circle.fill").font(.title2).foregroundStyle(.secondary) }
                         }
                     } else {
-                        Image(systemName: "person.fill").font(.title3).foregroundStyle(.secondary)
+                        Image(systemName: "person.crop.circle.fill").font(.title2).foregroundStyle(.secondary)
                     }
                 }
-                .frame(width: 40, height: 40)
+                .frame(width: 38, height: 38)
                 .clipShape(Circle())
                 .background(Circle().fill(Color(.systemGray5)))
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(post.authorName ?? "Anonymous")
                         .font(.subheadline.bold())
+                        .foregroundStyle(.primary)
 
                     Text(timeAgo(post.createdAt))
-                        .font(.caption)
-                        .foregroundStyle(.gray)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
 
                 Spacer()
 
                 if let hashtag = post.hashtag {
                     Text("#\(hashtag)")
-                        .font(.caption)
-                        .padding(.horizontal, 10)
+                        .font(.caption2.bold())
+                        .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .foregroundStyle(.blue)
-                        .background(Color.blue.opacity(0.12))
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .foregroundStyle(AppTheme.orange)
+                        .background(AppTheme.orange.opacity(0.12))
+                        .clipShape(Capsule())
                 }
             }
 
             // ── Content ──
             Text(post.content)
-                .font(.callout)
+                .font(.body)
+                .foregroundStyle(.primary)
+                .padding(.vertical, 2)
 
             // ── Post Image ──
-            if let imageUrl = post.imageUrl, let url = URL(string: imageUrl) {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFill()
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 220)
-                            .clipped()
-                            .clipShape(RoundedRectangle(cornerRadius: 16))
-                    case .failure:
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(Color(.systemGray5))
-                            .frame(height: 220)
-                            .overlay {
-                                Image(systemName: "photo")
-                                    .foregroundStyle(.secondary)
-                            }
-                    default:
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(Color(.systemGray5))
-                            .frame(height: 220)
-                            .overlay {
-                                ProgressView()
-                            }
+            if let imageUrl = post.imageUrl {
+                if imageUrl.hasPrefix("asset://") {
+                    let assetName = imageUrl.replacingOccurrences(of: "asset://", with: "")
+                    Image(assetName)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 220)
+                        .clipped()
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                } else if let url = URL(string: imageUrl) {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .scaledToFill()
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 220)
+                                .clipped()
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                        case .failure:
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color(.systemGray5))
+                                .frame(height: 220)
+                                .overlay {
+                                    Image(systemName: "photo")
+                                        .foregroundStyle(.secondary)
+                                }
+                        default:
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color(.systemGray5))
+                                .frame(height: 220)
+                                .overlay {
+                                    ProgressView()
+                                }
+                        }
                     }
                 }
             }
 
             // ── Like & Comment Bar ──
-            HStack(spacing: 4) {
-                Button {
-                    guard let uid = currentUserId else { return }
-                    Task { await communityStore.toggleLike(postId: post.id, userId: uid) }
-                } label: {
-                    Image(systemName: isLiked ? "heart.fill" : "heart")
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundStyle(isLiked ? AppTheme.orange : AppTheme.orange.opacity(0.5))
+            HStack(spacing: 24) {
+                // Likes Group (Heart Icon + Count)
+                HStack(spacing: 6) {
+                    // Like Button (Heart Icon)
+                    Button {
+                        guard let uid = currentUserId else { return }
+                        Task { await communityStore.toggleLike(postId: post.id, userId: uid) }
+                    } label: {
+                        Image(systemName: isLiked ? "heart.fill" : "heart")
+                            .font(.system(size: 18))
+                            .foregroundStyle(isLiked ? Color.red : Color(.secondaryLabel))
+                    }
+                    .buttonStyle(.plain)
+
+                    // Like Count Button (Tappable count)
+                    Button {
+                        if post.likeCount > 0 {
+                            showLikesList = true
+                        }
+                    } label: {
+                        Text("\(post.likeCount)")
+                            .font(.subheadline)
+                            .foregroundStyle(isLiked ? Color.red : Color(.secondaryLabel))
+                            .fontWeight(post.likeCount > 0 ? .semibold : .regular)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(post.likeCount == 0)
                 }
 
-                Text("\(post.likeCount)")
-                    .foregroundStyle(isLiked ? AppTheme.orange : AppTheme.orange.opacity(0.5))
-
-                Spacer().frame(width: 12)
-
+                // Comment Button
                 Button {
                     showComments = true
                 } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "message")
-                            .font(.system(size: 20, weight: .bold))
-                        if commentCount > 0 {
-                            Text("\(commentCount)")
-                                .font(.subheadline)
-                        }
+                    HStack(spacing: 6) {
+                        Image(systemName: "bubble.right")
+                            .font(.system(size: 18))
+                            .foregroundStyle(Color(.secondaryLabel))
+                        Text("\(commentCount)")
+                            .font(.subheadline)
+                            .foregroundStyle(Color(.secondaryLabel))
                     }
-                    .foregroundStyle(AppTheme.orange.opacity(0.5))
                 }
-
-                Spacer()
-
-                // ── Save Button ──
-                Button {
-                    guard let uid = currentUserId else { return }
-                    Task { await communityStore.toggleSave(postId: post.id, userId: uid) }
-                } label: {
-                    let isSaved: Bool = {
-                        guard let uid = currentUserId else { return false }
-                        return communityStore.isSaved(postId: post.id, userId: uid)
-                    }()
-                    Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundStyle(isSaved ? AppTheme.orange : AppTheme.orange.opacity(0.5))
-                }
+                .buttonStyle(.plain)
             }
             .padding(.top, 4)
+            
+            Divider()
+                .padding(.top, 8)
         }
-        .padding()
-        .background(Color(.systemBackground))
-        .overlay(
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(Color.black.opacity(0.12), lineWidth: 0.5)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 20))
-        .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
+        .padding(.vertical, 12)
         .padding(.horizontal, 16)
+        .background(
+            LinearGradient(
+                colors: [Color(.systemBackground), AppTheme.cardGradientEnd],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
+        .shadow(color: AppTheme.orange.opacity(0.10), radius: 10, y: 3)
+        .padding(.horizontal, 10)
         .fullScreenCover(isPresented: $showComments) {
             CommentsSheetView(post: post)
+        }
+        .sheet(isPresented: $showLikesList) {
+            PostLikesSheetView(post: post)
+        }
+        .task {
+            await communityStore.fetchLikes(postId: post.id)
+        }
+    }
+}
+
+// MARK: - Post Likes Sheet
+
+struct PostLikesSheetView: View {
+    let post: Post
+    @Environment(CommunityStore.self) private var communityStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var likers: [User] = []
+    @State private var isLoading = false
+
+    var body: some View {
+        NavigationStack {
+            VStack {
+                if isLoading {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if likers.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "heart.slash")
+                            .font(.system(size: 40))
+                            .foregroundStyle(.gray.opacity(0.4))
+                        Text("No likes yet")
+                            .font(.headline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    List(likers) { user in
+                        HStack(spacing: 12) {
+                            Group {
+                                if let urlStr = user.profileImageUrl, let url = URL(string: urlStr) {
+                                    AsyncImage(url: url) { phase in
+                                        if let img = phase.image { img.resizable().scaledToFill() }
+                                        else { Image(systemName: "person.crop.circle.fill").font(.subheadline).foregroundStyle(.secondary) }
+                                    }
+                                } else {
+                                    Image(systemName: "person.crop.circle.fill").font(.subheadline).foregroundStyle(.secondary)
+                                }
+                            }
+                            .frame(width: 40, height: 40)
+                            .clipShape(Circle())
+                            .background(Circle().fill(Color(.systemGray5)))
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(user.fullName)
+                                    .font(.subheadline.bold())
+                                    .foregroundStyle(.primary)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .listStyle(.plain)
+                }
+            }
+            .navigationTitle("Likes")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+            .task {
+                isLoading = true
+                await communityStore.fetchLikes(postId: post.id)
+                let postLikes = communityStore.postLikes.filter { $0.postId == post.id }
+                let userIds = postLikes.map { $0.userId }
+                likers = await communityStore.fetchProfiles(for: userIds)
+                isLoading = false
+            }
         }
     }
 }
@@ -319,6 +419,9 @@ struct CommentsSheetView: View {
                     }
                     .fontWeight(.semibold)
                 }
+            }
+            .task {
+                await communityStore.fetchComments(postId: post.id)
             }
         }
     }

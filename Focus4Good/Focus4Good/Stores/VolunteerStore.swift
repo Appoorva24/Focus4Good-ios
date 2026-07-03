@@ -122,38 +122,25 @@ class VolunteerStore {
         }
     }
 
-    // MARK: - Static Dummy Data (2 NGOs, fully featured)
+    // MARK: - Static Dummy Data (Primary NGO)
 
     /// Fixed IDs so events can reference them deterministically
     static let ngo1ID = UUID(uuidString: "a1000000-0000-0000-0000-000000000001")!
-    static let ngo2ID = UUID(uuidString: "a2000000-0000-0000-0000-000000000002")!
 
     static let dummyNGOs: [NGO] = [
         NGO(
             id: ngo1ID,
-            name: "Teach For India",
-            location: "Mumbai, Maharashtra",
-            mission: "Eliminating educational inequity by placing passionate graduates as full-time teachers in low-income schools across India — building a movement of leaders committed to a day when all children attain an excellent education.",
-            founderName: "Shaheen Mistri",
-            founderPhone: "+91-22-6656-0200",
-            imageName: "ngo",
+            name: "Sondhara Welfare Trust",
+            location: "Maharashtra, India",
+            mission: "Empowering communities through sustainable development, education, and welfare programs.",
+            founderName: "Sondhara Trust",
+            founderPhone: "+91-00000-00000",
+            imageName: "sondhara_logo",
             studentCount: 38000,
             yearsActive: 15,
             projectCount: 12,
-            isVerified: true
-        ),
-        NGO(
-            id: ngo2ID,
-            name: "Pratham Education Foundation",
-            location: "New Delhi, Delhi",
-            mission: "Improving quality of education for underprivileged children across India through innovative, scalable teaching methods that reach millions of children directly in their villages and schools.",
-            founderName: "Madhav Chavan",
-            founderPhone: "+91-11-4141-0000",
-            imageName: "ngo",
-            studentCount: 75000,
-            yearsActive: 28,
-            projectCount: 20,
-            isVerified: true
+            isVerified: true,
+            galleryImages: ["ngo", "ngo", "ngo", "ngo"]
         )
     ]
 

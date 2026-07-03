@@ -11,7 +11,9 @@ struct OnboardingView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            Color(.systemBackground).ignoresSafeArea()
+            // ── Rich gradient background ─────────────────────
+            AppTheme.pageGradient
+                .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 // ── Navigation bar ───────────────────────────────
@@ -19,7 +21,7 @@ struct OnboardingView: View {
                     // Back button
                     Button {
                         if currentPage > 0 {
-                            withAnimation { currentPage -= 1 }
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { currentPage -= 1 }
                         }
                     } label: {
                         Image(systemName: "chevron.left")
@@ -28,7 +30,7 @@ struct OnboardingView: View {
                             .frame(width: 44, height: 44)
                             .background(
                                 Circle()
-                                    .fill(Color(.systemGray6))
+                                    .fill(.ultraThinMaterial)
                                     .opacity(currentPage > 0 ? 1 : 0)
                             )
                     }
@@ -41,7 +43,7 @@ struct OnboardingView: View {
                         markSeenAndComplete()
                     }
                     .font(.body.weight(.medium))
-                    .foregroundStyle(AppTheme.textPrimary)
+                    .foregroundStyle(AppTheme.warmTextSecondary)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 8)
                 }
@@ -81,6 +83,8 @@ private struct OnboardingPageContent: View {
     @Binding var currentPage: Int
     let onFinish: () -> Void
 
+    @State private var imageAppeared = false
+
     var body: some View {
         GeometryReader { _ in
             VStack(spacing: 0) {
@@ -92,21 +96,24 @@ private struct OnboardingPageContent: View {
                     .scaledToFit()
                     .frame(width: 280, height: 280)
                     .clipped()
+                    .scaleEffect(imageAppeared ? 1.0 : 0.85)
+                    .opacity(imageAppeared ? 1 : 0)
+                    .animation(.spring(response: 0.6, dampingFraction: 0.7), value: imageAppeared)
 
                 Spacer(minLength: 32)
 
                 // ── Text area ────────────────────────────────────
                 VStack(spacing: 14) {
                     Text(page.title)
-                        .font(.system(size: 26, weight: .bold))
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
                         .multilineTextAlignment(.center)
-                        .foregroundStyle(AppTheme.textPrimary)
+                        .foregroundStyle(AppTheme.warmTextPrimary)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, 24)
 
                     Text(page.subtitle)
                         .font(.system(size: 15))
-                        .foregroundStyle(AppTheme.textSecondary)
+                        .foregroundStyle(AppTheme.warmTextSecondary)
                         .multilineTextAlignment(.center)
                         .lineSpacing(6)
                         .fixedSize(horizontal: false, vertical: true)
@@ -115,30 +122,31 @@ private struct OnboardingPageContent: View {
 
                 Spacer(minLength: 28)
 
-                // ── Dots ─────────────────────────────────────────
+                // ── Animated pill indicator ──────────────────────
                 HStack(spacing: 8) {
                     ForEach(0..<totalPages, id: \.self) { index in
-                        Circle()
+                        Capsule()
                             .fill(index == pageIndex
-                                  ? AppTheme.textPrimary
-                                  : Color(.systemGray3))
-                            .frame(width: 8, height: 8)
+                                  ? AppTheme.orange
+                                  : AppTheme.orange.opacity(0.25))
+                            .frame(width: index == pageIndex ? 28 : 8, height: 8)
+                            .animation(.spring(response: 0.35, dampingFraction: 0.75), value: pageIndex)
                     }
                 }
                 .padding(.bottom, 32)
 
-                // ── Next / Get Started button ────────────────────
+                // ── Gradient CTA button ──────────────────────────
                 Button(action: handleNext) {
                     Text(pageIndex == totalPages - 1 ? "Get Started" : "Next")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundStyle(AppTheme.textPrimary)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 56)
-                        .background(Capsule().fill(AppTheme.orange))
                 }
+                .buttonStyle(GradientButtonStyle())
                 .padding(.horizontal, 32)
                 .padding(.bottom, 36)
             }
+        }
+        .onAppear {
+            imageAppeared = false
+            withAnimation { imageAppeared = true }
         }
     }
 
@@ -146,7 +154,7 @@ private struct OnboardingPageContent: View {
         if pageIndex == totalPages - 1 {
             onFinish()
         } else {
-            withAnimation { currentPage += 1 }
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { currentPage += 1 }
         }
     }
 }

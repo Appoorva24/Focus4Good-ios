@@ -1,5 +1,7 @@
 import Foundation
 import Supabase
+import AuthenticationServices
+import CryptoKit
 import Auth
 
 @MainActor
@@ -12,6 +14,9 @@ class UserStore {
     var isAuthenticated = false
     var isLoading = false
     var errorMessage: String?
+    var showNewUserBonusPopup = false
+    /// Raw nonce for Apple Sign-In verification
+    private var currentNonce: String?
     var isSessionReady = false
     var hasMfaEnabled = false
     var isMfaRequired = false
@@ -111,6 +116,68 @@ class UserStore {
         isLoading = false
     }
     
+    // MARK: - Apple Sign-In
+    
+    /// Generates a cryptographic nonce for Apple Sign-In.
+    /// Returns the SHA256 hash to pass to the ASAuthorizationAppleIDRequest.
+    func prepareAppleSignIn() -> String {
+        let nonce = randomNonceString()
+        currentNonce = nonce
+        return sha256(nonce)
+    }
+    
+    /// Handles the Apple Sign-In credential after successful authorization.
+    func handleAppleSignIn(credential: ASAuthorizationAppleIDCredential) async {
+        guard let identityTokenData = credential.identityToken,
+              let idToken = String(data: identityTokenData, encoding: .utf8),
+              let nonce = currentNonce else {
+            errorMessage = "Apple Sign-In failed: could not retrieve credentials."
+            return
+        }
+        
+        isLoading = true
+        errorMessage = nil
+        do {
+            let session = try await client.auth.signInWithIdToken(
+                credentials: .init(provider: .apple, idToken: idToken, nonce: nonce)
+            )
+            let userId = session.user.id
+            await fetchCurrentUser(userId: userId)
+            isAuthenticated = true
+            await loadUserData(userId: userId)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isLoading = false
+        currentNonce = nil
+    }
+    
+    // MARK: - Google Sign-In (Supabase OAuth)
+    
+    func signInWithGoogle() async {
+        isLoading = true
+        errorMessage = nil
+        do {
+            let session = try await client.auth.signInWithOAuth(
+                provider: .google,
+                redirectTo: URL(string: "focus4good://login-callback")
+            )
+            let userId = session.user.id
+            await fetchCurrentUser(userId: userId)
+            isAuthenticated = true
+            await loadUserData(userId: userId)
+        } catch {
+            // Don't show error when user cancels the web auth session
+            if let sessionError = error as? ASWebAuthenticationSessionError,
+               sessionError.code == .canceledLogin {
+                // User cancelled — no error to display
+            } else {
+                errorMessage = error.localizedDescription
+            }
+        }
+        isLoading = false
+    }
+    
     func signOut() {
         Task {
             try? await client.auth.signOut()
@@ -186,6 +253,9 @@ class UserStore {
         async let folders: ()     = CalmCentreStore.shared.fetchBrainDumpFolders(userId: userId)
         async let entries: ()     = CalmCentreStore.shared.fetchBrainDumpEntries(userId: userId)
         _ = await (progress, communities, categories, ngos, events, regs, breathing, jpmr, meditation, asmr, folders, entries)
+        
+        // Ensure default community and posts exist
+        await CommunityStore.shared.seedSondharaCommunityIfNeeded(userId: userId)
     }
     
     // MARK: - Profile CRUD
@@ -305,6 +375,25 @@ class UserStore {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+    
+    // MARK: - Nonce Helpers (Apple Sign-In)
+    
+    private func randomNonceString(length: Int = 32) -> String {
+        precondition(length > 0)
+        var randomBytes = [UInt8](repeating: 0, count: length)
+        let errorCode = SecRandomCopyBytes(kSecRandomDefault, randomBytes.count, &randomBytes)
+        if errorCode != errSecSuccess {
+            fatalError("Unable to generate nonce. SecRandomCopyBytes failed with OSStatus \(errorCode)")
+        }
+        let charset: [Character] = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
+        return String(randomBytes.map { charset[Int($0) % charset.count] })
+    }
+    
+    private func sha256(_ input: String) -> String {
+        let inputData = Data(input.utf8)
+        let hashedData = SHA256.hash(data: inputData)
+        return hashedData.compactMap { String(format: "%02x", $0) }.joined()
     }
 }
 
