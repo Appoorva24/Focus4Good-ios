@@ -89,6 +89,8 @@ struct CalmCentreView: View {
                         Image("breathe")
                             .resizable()
                             .scaledToFill()
+                            .scaleEffect(1.15)
+                            .offset(x: -15, y: 12)
                             .frame(minWidth: 0, maxWidth: .infinity, minHeight: 90, maxHeight: 90)
                             .clipped()
                         
@@ -116,6 +118,8 @@ struct CalmCentreView: View {
                         Image("JPMR")
                             .resizable()
                             .scaledToFill()
+                            .scaleEffect(1.15)
+                            .offset(y: 12)
                             .frame(minWidth: 0, maxWidth: .infinity, minHeight: 90, maxHeight: 90)
                             .clipped()
                         
@@ -170,6 +174,8 @@ struct CalmCentreView: View {
                         Image("DEEPFOCUS")
                             .resizable()
                             .scaledToFill()
+                            .scaleEffect(1.3)
+                            .offset(x: 5, y: 0)
                             .frame(minWidth: 0, maxWidth: .infinity, minHeight: 105, maxHeight: 105)
                             .clipped()
                         
