@@ -30,7 +30,6 @@ struct DeepFocusBrowseView: View {
             let artworkSize = max(0, geo.size.width - 56)
 
             ZStack {
-                Color(.systemBackground).ignoresSafeArea()
 
                 VStack(spacing: 0) {
                     Spacer()

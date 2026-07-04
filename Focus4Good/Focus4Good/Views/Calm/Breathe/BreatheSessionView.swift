@@ -55,6 +55,9 @@ struct BreatheSessionView: View {
     @State private var isRunning = false
     @State private var showCompletion = false
     @State private var timer: Timer?
+    @State private var ringProgress: CGFloat = 0.0
+    @State private var phaseStartTime: Date? = nil
+    @State private var elapsedPauseTime: TimeInterval = 0.0
 
     private let userId = UUID()
 
@@ -91,12 +94,30 @@ struct BreatheSessionView: View {
 
     private var breathingCircle: some View {
         ZStack {
-            // Normal Breathing Circle
+            // Inner scaling circle
             Circle()
                 .fill(Color.accentColor.opacity(0.4))
                 .frame(width: 240, height: 240)
                 .scaleEffect(0.6 + phase.circleScale * 0.4)
                 .animation(.easeInOut(duration: Double(phase.duration)), value: phase)
+
+            // Outer track
+            Circle()
+                .stroke(Color.white.opacity(0.2), lineWidth: 6)
+                .frame(width: 280, height: 280)
+            
+            // White progress ring
+            if phase != .idle {
+                Circle()
+                    .trim(from: 0, to: ringProgress)
+                    .stroke(
+                        Color.white.opacity(0.9),
+                        style: StrokeStyle(lineWidth: 6, lineCap: .round)
+                    )
+                    .rotationEffect(.degrees(-90))
+                    .frame(width: 280, height: 280)
+                    .animation(.linear(duration: 0.02), value: ringProgress)
+            }
         }
     }
 
@@ -121,7 +142,7 @@ struct BreatheSessionView: View {
         Button {
             isRunning ? pauseSession() : resumeSession()
         } label: {
-            Text(isRunning ? "Pause" : "Start")
+            Text(isRunning ? "Pause" : (phase == .idle ? "Start" : "Resume"))
                 .font(.headline)
                 .foregroundStyle(.white)
                 .frame(width: 160, height: 52)
@@ -209,33 +230,42 @@ struct BreatheSessionView: View {
 
     // MARK: - Session Logic
 
+
+    private func pauseSession() {
+        stopTimer()
+        BreatheAudioService.shared.pauseAll()
+        if let start = phaseStartTime {
+            elapsedPauseTime += Date().timeIntervalSince(start)
+            phaseStartTime = nil
+        }
+        isRunning = false
+    }
+
     private func resumeSession() {
         if phase == .idle {
             isRunning = true
             currentCycle = 1
-            BreatheAudioService.shared.speakIntro(cycles: selectedCycles)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [self] in
-                guard isRunning else { return }
-                startPhase(.breatheIn)
+            BreatheAudioService.shared.speakIntro(cycles: selectedCycles) {
+                DispatchQueue.main.async {
+                    guard self.isRunning else { return }
+                    self.startPhase(.breatheIn)
+                }
             }
         } else {
             isRunning = true
-            BreatheAudioService.shared.speakPhase(
-                phase.rawValue, cycle: currentCycle, totalCycles: selectedCycles
-            )
+            phaseStartTime = Date()
+            BreatheAudioService.shared.resumeAll()
             startTimer()
         }
-    }
-
-    private func pauseSession() {
-        stopTimer()
-        BreatheAudioService.shared.stopAll()
-        isRunning = false
     }
 
     private func startPhase(_ newPhase: BreathingPhase) {
         phase = newPhase
         countdown = newPhase.duration
+        elapsedPauseTime = 0
+        ringProgress = 0
+        phaseStartTime = Date()
+        
         BreatheAudioService.shared.speakPhase(
             newPhase.rawValue, cycle: currentCycle, totalCycles: selectedCycles
         )
@@ -244,7 +274,7 @@ struct BreatheSessionView: View {
 
     private func startTimer() {
         stopTimer()
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in tick() }
+        timer = Timer.scheduledTimer(withTimeInterval: 0.02, repeats: true) { _ in tick() }
     }
 
     private func stopTimer() {
@@ -253,11 +283,25 @@ struct BreatheSessionView: View {
     }
 
     private func tick() {
-        guard countdown > 1 else {
-            advancePhase()
-            return
+        guard phase != .idle else { return }
+        
+        var elapsed: TimeInterval = elapsedPauseTime
+        if let start = phaseStartTime {
+            elapsed += Date().timeIntervalSince(start)
         }
-        countdown -= 1
+        
+        let duration = Double(phase.duration)
+        let remaining = Int(ceil(max(0, duration - elapsed)))
+        
+        if remaining != countdown {
+            countdown = remaining
+        }
+        
+        ringProgress = CGFloat(min(1.0, elapsed / duration))
+        
+        if elapsed >= duration {
+            advancePhase()
+        }
     }
 
     private func advancePhase() {
@@ -268,9 +312,6 @@ struct BreatheSessionView: View {
                 completeSession()
                 return
             }
-            BreatheAudioService.shared.speakCycleTransition(
-                currentCycle: currentCycle, totalCycles: selectedCycles
-            )
             currentCycle += 1
         }
 

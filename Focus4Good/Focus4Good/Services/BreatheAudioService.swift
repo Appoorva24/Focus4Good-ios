@@ -16,6 +16,7 @@ class BreatheAudioService: NSObject, AVSpeechSynthesizerDelegate {
     //synthesizer - takes any text and convert that into speech
     private let synthesizer = AVSpeechSynthesizer()
     private var selectedVoice: AVSpeechSynthesisVoice?
+    private var onSpeechFinished: (() -> Void)?
 
     private override init() {
         super.init()
@@ -51,57 +52,32 @@ class BreatheAudioService: NSObject, AVSpeechSynthesizerDelegate {
     // MARK: - Full Guided Experience
 
     /// Welcome and settle the user before the session begins.
-    func speakIntro(cycles: Int) {
+    func speakIntro(cycles: Int, completion: @escaping () -> Void) {
         configureAudioSession()
-        let text = "Welcome to your breathing space. "
-            + "Find a comfortable position. "
-            + "We will practice \(cycles) \(cycles == 1 ? "round" : "rounds") "
-            + "of the 4, 7, 8 breathing technique together. "
-            + "Breathe in for 4 seconds, hold for 7, and breathe out slowly for 8. "
-            + "Let go of any tension. Let's begin."
+        onSpeechFinished = completion
+        let text = "Welcome. Let's begin \(cycles) rounds of the 4, 7, 8 breathing technique."
         speakCalm(text)
     }
 
     /// Guide the user through each breathing phase.
     func speakPhase(_ phaseName: String, cycle: Int, totalCycles: Int) {
         configureAudioSession()
-
+        onSpeechFinished = nil // Clear any pending completion
         let text: String
         switch phaseName {
         case "Breathe In":
-            if cycle == 1 {
-                text = "Breathe in slowly through your nose. Fill your lungs gently."
-            } else {
-                text = "Breathe in. Slowly and deeply."
-            }
+            text = cycle == 1 ? "Breathe in." : "Round \(cycle). Breathe in."
         case "Hold":
-            text = "Hold your breath. Stay calm and relaxed."
+            text = "Hold."
         case "Breathe Out":
-            if cycle == totalCycles {
-                text = "Now breathe out slowly through your mouth. Let everything go."
-            } else {
-                text = "Breathe out gently through your mouth. Release all the tension."
-            }
+            text = "Breathe out."
         default:
             text = phaseName
         }
-
         speakCalm(text)
     }
 
-    /// Announce the transition between cycles.
-    func speakCycleTransition(currentCycle: Int, totalCycles: Int) {
-        configureAudioSession()
-        let remaining = totalCycles - currentCycle
-        let text: String
-        if remaining == 1 {
-            text = "Beautiful. One more round to go. You're doing wonderfully."
-        } else {
-            text = "Well done. \(remaining) more \(remaining == 1 ? "round" : "rounds") remaining. "
-                + "Keep this gentle rhythm."
-        }
-        speakCalm(text)
-    }
+    // speakCycleTransition removed to prevent overlapping, transition handled in speakPhase.
 
     /// Speak a calming completion message.
     func speakCompletion(cycles: Int) {
@@ -113,9 +89,24 @@ class BreatheAudioService: NSObject, AVSpeechSynthesizerDelegate {
         speakCalm(text)
     }
 
-    /// Stop all speech immediately.
     func stopAll() {
+        onSpeechFinished = nil
         synthesizer.stopSpeaking(at: .immediate)
+    }
+
+    func pauseAll() {
+        synthesizer.pauseSpeaking(at: .immediate)
+    }
+
+    func resumeAll() {
+        synthesizer.continueSpeaking()
+    }
+
+    // MARK: - AVSpeechSynthesizerDelegate
+
+    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
+        onSpeechFinished?()
+        onSpeechFinished = nil
     }
 
     // MARK: - Private Helpers

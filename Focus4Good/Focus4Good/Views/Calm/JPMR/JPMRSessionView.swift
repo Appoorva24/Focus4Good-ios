@@ -106,8 +106,8 @@ private enum EndingStep: Int, CaseIterable {
 
 // MARK: - Timing Constants
 
-private let tenseDuration = 7
-private let restDuration  = 20
+private let tenseDuration = 5
+private let restDuration  = 10
 private let prepDuration  = 20
 
 // MARK: - JPMRSessionView
@@ -117,7 +117,7 @@ struct JPMRSessionView: View {
     @Environment(CalmCentreStore.self) private var store
     @Environment(\.dismiss) private var dismiss
 
-    @State private var selectedGroups: Set<Int> = Set(1...11)
+    @State private var selectedGroups: Set<Int> = [11, 9, 7, 6, 5, 1]
     @State private var stage: SessionStage = .idle
     @State private var countdown      = 0
     @State private var stepIndex      = 0
@@ -127,14 +127,19 @@ struct JPMRSessionView: View {
     @State private var showVideoTutorial = false
     @State private var elapsedSeconds = 0
     @State private var timer: Timer?
+    @State private var ringProgress: CGFloat = 0.0
+    @State private var phaseStartTime: Date? = nil
+    @State private var elapsedPauseTime: TimeInterval = 0.0
 
     private let userId = UUID()
 
     private var activeSteps: [MuscleStep] {
-        allSteps.filter { selectedGroups.contains($0.groupNumber) }
+        activeGroupsSorted.compactMap { groupNum in
+            allSteps.first(where: { $0.groupNumber == groupNum })
+        }
     }
 
-    private var activeGroupsSorted: [Int] { selectedGroups.sorted() }
+    private var activeGroupsSorted: [Int] { selectedGroups.sorted(by: >) }
 
     private var currentStep: MuscleStep {
         activeSteps[min(stepIndex, max(activeSteps.count - 1, 0))]
@@ -144,9 +149,6 @@ struct JPMRSessionView: View {
         EndingStep(rawValue: min(endingIndex, EndingStep.allCases.count - 1)) ?? .deepBreaths
     }
 
-    private var activePreset: SessionPreset? {
-        SessionPreset.allCases.first { $0.groups == selectedGroups }
-    }
 
     var body: some View {
         ZStack {
@@ -155,30 +157,8 @@ struct JPMRSessionView: View {
             VStack(spacing: 0) {
                 Spacer()
 
-                HStack(alignment: .center) {
-                    Image(systemName: displayIcon)
-                        .font(.system(size: 36))
-                        .foregroundStyle(Color.accentColor)
-                        .contentTransition(.symbolEffect(.replace))
-                    
-                    Spacer()
-                    
-                    if isRunning {
-                        Text("\(countdown)")
-                            .font(.system(size: 36, weight: .bold, design: .rounded))
-                            .foregroundStyle(stage == .tensing ? Color.accentColor : .primary)
-                            .contentTransition(.numericText())
-                    } else {
-                         Text("--")
-                            .font(.system(size: 36, weight: .bold, design: .rounded))
-                            .foregroundStyle(.tertiary)
-                    }
-                }
-                .padding(.horizontal, 60)
-                .padding(.bottom, 20)
 
-                bodyImageArea
-                infoArea.padding(.top, 28)
+                circularImageArea
                 
                 Spacer()
                 progressArea.padding(.bottom, 24)
@@ -283,30 +263,79 @@ struct JPMRSessionView: View {
         }
     }
 
-    private var bodyImageArea: some View {
+    private var imageForCurrentStep: String? {
+        let isTensing = (stage == .tensing)
+        
+        if currentStep.name == "Forehead" {
+            return isTensing ? "forhead_tense" : "forhead_relax"
+        }
+        if currentStep.name == "Eyes" {
+            return isTensing ? "eyes_tense" : "eyes_relax"
+        }
+        
+        switch currentStep.groupNumber {
+        case 1: return isTensing ? "toe_tense" : "toe_release" // Feet/Toes
+        case 5: return isTensing ? "stomach_tense" : "stomach_release" // Abdomen
+        case 6: return isTensing ? "chest_tense" : "chest_release" // Chest
+        case 7: return isTensing ? "fist_tense" : "fist_release" // Hands & Forearms
+        case 9: return isTensing ? "shoulder_tense" : "shoulder_release" // Shoulders
+        default: return nil
+        }
+    }
+
+    private var circularImageArea: some View {
         ZStack {
-            Image("jpmr_body")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 320, height: 320)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-                .shadow(color: Color.black.opacity(0.1), radius: 10)
-            
-            if stage == .tensing {
-                GeometryReader { geo in
-                    ForEach(0..<highlightPositions(for: currentStep.groupNumber).count, id: \.self) { i in
-                        let pos = highlightPositions(for: currentStep.groupNumber)[i]
-                        Circle()
-                            .fill(Color.accentColor)
-                            .frame(width: 70, height: 70)
-                            .blur(radius: 20)
-                            .position(x: pos.x * geo.size.width, y: pos.y * geo.size.height)
-                            .opacity(0.75)
+            if stage == .ending {
+                Image(systemName: currentEnding.icon)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: 120)
+                    .foregroundStyle(Color.accentColor)
+                    .animation(.easeInOut(duration: 0.5), value: currentEnding)
+            } else {
+                if let imageName = imageForCurrentStep {
+                    ZStack {
+                        Image(imageName)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 280, height: 280)
+                            .clipShape(Circle())
+                            .shadow(color: stage == .tensing ? Color.accentColor.opacity(0.5) : Color.clear, radius: 15)
+                            .scaleEffect(stage == .tensing ? 1.05 : 1.0)
+                            .animation(.easeInOut(duration: 1.0), value: stage)
+                            .animation(.easeInOut(duration: 0.5), value: currentStep.groupNumber)
+                        
+                        if stage == .tensing || stage == .resting {
+                            Circle()
+                                .trim(from: 0, to: ringProgress)
+                                .stroke(
+                                    Color.white.opacity(0.9),
+                                    style: StrokeStyle(lineWidth: 6, lineCap: .round)
+                                )
+                                .rotationEffect(.degrees(-90))
+                                .frame(width: 304, height: 304)
+                                .scaleEffect(stage == .tensing ? 1.05 : 1.0)
+                                .animation(.easeInOut(duration: 1.0), value: stage)
+                                .animation(.linear(duration: 0.02), value: ringProgress)
+                        }
                     }
+                } else {
+                    let isTensing = stage == .tensing
+                    ZStack {
+                        Circle()
+                            .fill(Color.accentColor.opacity(isTensing ? 0.3 : 0.1))
+                            .frame(width: 220, height: 220)
+                        Image(systemName: currentStep.icon)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(height: 80)
+                            .foregroundStyle(isTensing ? Color.accentColor : Color.accentColor.opacity(0.7))
+                            .scaleEffect(isTensing ? 1.1 : 1.0)
+                    }
+                    .frame(width: 280, height: 280)
+                    .animation(.easeInOut(duration: 0.5), value: currentStep.groupNumber)
+                    .animation(.easeInOut(duration: 0.5), value: stage)
                 }
-                .frame(width: 320, height: 320)
-                .animation(.easeInOut(duration: 0.5), value: currentStep.groupNumber)
-                .animation(.easeInOut(duration: 0.5), value: stage)
             }
         }
         .frame(height: 320)
@@ -373,55 +402,51 @@ struct JPMRSessionView: View {
         }
         if stage == .ending || stage == .complete { return .accentColor }
 
-        let currentGroup = currentStep.groupNumber
-        if group < currentGroup { return .accentColor }
-        if group == currentGroup { return Color.accentColor.opacity(0.5) }
+        guard let groupIndex = activeGroupsSorted.firstIndex(of: group),
+              let currentIndex = activeGroupsSorted.firstIndex(of: currentStep.groupNumber) else {
+            return Color(.systemGray4)
+        }
+
+        if groupIndex < currentIndex { return .accentColor }
+        if groupIndex == currentIndex { return Color.accentColor.opacity(0.5) }
         return Color(.systemGray4)
     }
 
     private var groupMenu: some View {
         Menu {
-            ForEach(SessionPreset.allCases, id: \.label) { preset in
-                Button {
-                    selectedGroups = preset.groups
-                } label: {
-                    HStack {
-                        Text("\(preset.label) — \(preset.detail)")
-                        if activePreset == preset { Image(systemName: "checkmark") }
-                    }
+            Button {
+                // Currently active
+            } label: {
+                HStack {
+                    Text("Full Body Relaxation")
+                    Image(systemName: "checkmark")
                 }
             }
-
+            
             Divider()
-
+            
             Button {
                 showVideoTutorial = true
             } label: {
                 Label("Video Tutorial", systemImage: "play.rectangle.fill")
             }
         } label: {
-            HStack(spacing: 4) {
-                Text("\(selectedGroups.count)")
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-
-                Image(systemName: "figure.mind.and.body")
-                    .font(.title3)
-            }
-            .foregroundStyle(Color.accentColor)
+            Image(systemName: "figure.mind.and.body")
+                .font(.title3)
+                .foregroundStyle(Color.accentColor)
         }
     }
 
     private var actionButton: some View {
         Button {
-            isRunning ? stopSession() : startSession()
+            isRunning ? pauseSession() : resumeSession()
         } label: {
-            Text(isRunning ? "Stop" : "Start")
+            Text(isRunning ? "Pause" : (stage == .idle || stage == .complete ? "Start" : "Resume"))
                 .font(.headline)
                 .foregroundStyle(.white)
                 .frame(width: 160, height: 52)
-                .background(Capsule().fill(isRunning ? Color(.systemGray3) : Color.accentColor))
-                .shadow(color: (isRunning ? Color.clear : Color.accentColor.opacity(0.3)), radius: 8, x: 0, y: 4)
+                .background(Capsule().fill(Color.accentColor))
+                .shadow(color: Color.accentColor.opacity(0.3), radius: 8, x: 0, y: 4)
         }
         .disabled(selectedGroups.isEmpty)
     }
@@ -484,7 +509,28 @@ struct JPMRSessionView: View {
         endingIndex = 0
         elapsedSeconds = 0
         isRunning = true
-        enterPreparation()
+        enterTense()
+    }
+
+    private func pauseSession() {
+        stopTimer()
+        JPMRAudioService.shared.pauseAll()
+        if let start = phaseStartTime {
+            elapsedPauseTime += Date().timeIntervalSince(start)
+            phaseStartTime = nil
+        }
+        isRunning = false
+    }
+
+    private func resumeSession() {
+        if stage == .idle || stage == .complete {
+            startSession()
+            return
+        }
+        isRunning = true
+        phaseStartTime = Date()
+        JPMRAudioService.shared.resumeAll()
+        startTimer()
     }
 
     private func stopSession() {
@@ -496,11 +542,21 @@ struct JPMRSessionView: View {
         stepIndex = 0
         endingIndex = 0
         elapsedSeconds = 0
+        elapsedPauseTime = 0
+        phaseStartTime = nil
+        ringProgress = 0
+    }
+
+    private func resetTiming() {
+        phaseStartTime = Date()
+        elapsedPauseTime = 0.0
+        ringProgress = 0.0
     }
 
     private func enterPreparation() {
         stage = .preparation
         countdown = prepDuration
+        resetTiming()
         JPMRAudioService.shared.speakPreparation(groupCount: selectedGroups.count)
         startTimer()
     }
@@ -508,6 +564,7 @@ struct JPMRSessionView: View {
     private func enterTense() {
         stage = .tensing
         countdown = tenseDuration
+        resetTiming()
         JPMRAudioService.shared.speakTense(muscleName: currentStep.name, instruction: currentStep.tenseInstruction)
         startTimer()
     }
@@ -515,6 +572,7 @@ struct JPMRSessionView: View {
     private func enterRest() {
         stage = .resting
         countdown = restDuration
+        resetTiming()
         JPMRAudioService.shared.speakRest(muscleName: currentStep.name, releaseNote: currentStep.releaseNote)
         startTimer()
     }
@@ -527,13 +585,14 @@ struct JPMRSessionView: View {
     private func enterEndingStep() {
         stage = .ending
         countdown = currentEnding.duration
+        resetTiming()
         JPMRAudioService.shared.speakEndingStep(title: currentEnding.title, instruction: currentEnding.instruction)
         startTimer()
     }
 
     private func startTimer() {
         stopTimer()
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in tick() }
+        timer = Timer.scheduledTimer(withTimeInterval: 0.02, repeats: true) { _ in tick() }
     }
 
     private func stopTimer() {
@@ -542,12 +601,37 @@ struct JPMRSessionView: View {
     }
 
     private func tick() {
-        elapsedSeconds += 1
-        guard countdown > 1 else {
-            advance()
-            return
+        var elapsed: TimeInterval = elapsedPauseTime
+        if let start = phaseStartTime {
+            elapsed += Date().timeIntervalSince(start)
         }
-        countdown -= 1
+        
+        let duration: Double
+        if stage == .tensing {
+            duration = Double(tenseDuration)
+        } else if stage == .resting {
+            duration = Double(restDuration)
+        } else if stage == .ending {
+            duration = Double(currentEnding.duration)
+        } else {
+            duration = Double(prepDuration)
+        }
+        
+        let remaining = Int(ceil(max(0, duration - elapsed)))
+        if remaining != countdown {
+            countdown = remaining
+        }
+        
+        if stage == .tensing || stage == .resting {
+            ringProgress = CGFloat(min(1.0, elapsed / duration))
+        } else {
+            ringProgress = 0.0
+        }
+        
+        if elapsed >= duration {
+            elapsedSeconds += Int(duration)
+            advance()
+        }
     }
 
     private func advance() {
@@ -561,21 +645,10 @@ struct JPMRSessionView: View {
 
         case .resting:
             if stepIndex >= activeSteps.count - 1 {
-                enterEnding()
+                completeSession()
             } else {
-                stopTimer()
-                let nextIndex = stepIndex + 1
-                let nextStep = activeSteps[nextIndex]
-                let groupIndex = (activeGroupsSorted.firstIndex(of: nextStep.groupNumber) ?? 0) + 1
-                JPMRAudioService.shared.speakGroupTransition(
-                    nextName: nextStep.name,
-                    currentIndex: groupIndex,
-                    totalGroups: selectedGroups.count
-                )
-                stepIndex = nextIndex
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [self] in
-                    enterTense()
-                }
+                stepIndex += 1
+                enterTense()
             }
 
         case .ending:
@@ -596,7 +669,7 @@ struct JPMRSessionView: View {
         isRunning = false
         stage = .complete
 
-        JPMRAudioService.shared.speakCompletion(groupCount: selectedGroups.count)
+        // JPMRAudioService.shared.speakCompletion(groupCount: selectedGroups.count)
 
         Task {
             await store.logJpmrSession(userId: userId, durationSeconds: elapsedSeconds)

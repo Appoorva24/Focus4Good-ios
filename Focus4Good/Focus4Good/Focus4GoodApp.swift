@@ -45,7 +45,7 @@ struct Focus4GoodApp: App {
 
                 case .onboarding:
                     OnboardingView(onComplete: {
-                        appState = .auth
+                        appState = .app
                     })
 
                 case .auth:
@@ -64,9 +64,10 @@ struct Focus4GoodApp: App {
             // Watch for sign-out: when isAuthenticated flips to false while in the
             // app, send the user back to the auth screen immediately.
             .onChange(of: userStore.isAuthenticated) { _, isAuth in
-                if !isAuth && appState == .app {
-                    appState = .auth
-                }
+                // Bypassed for now
+                // if !isAuth && appState == .app {
+                //     appState = .auth
+                // }
             }
             .environment(userStore)
             .environment(taskStore)
@@ -78,6 +79,7 @@ struct Focus4GoodApp: App {
                 // Request notification permission on first launch
                 Task { _ = await NotificationManager.shared.requestPermission() }
             }
+            .preferredColorScheme(.light) // Force light mode
         }
         // ── Re-engagement notifications: schedule on background, cancel on active ──
         .onChange(of: scenePhase) { _, newPhase in
@@ -118,10 +120,8 @@ struct Focus4GoodApp: App {
         
         if !hasSeenOnboarding {
             appState = .onboarding
-        } else if userStore.isAuthenticated {
-            appState = .app
         } else {
-            appState = .auth
+            appState = .app
         }
     }
 }

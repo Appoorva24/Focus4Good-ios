@@ -68,13 +68,13 @@ enum AppTheme {
 
     /// Page background gradient (top → bottom)
     static let pageBgTop = Color(UIColor { tc in
-        tc.userInterfaceStyle == .dark ? UIColor(hex6: 0x1C1917) : UIColor(hex6: 0xFFFBEB)
+        tc.userInterfaceStyle == .dark ? UIColor(hex6: 0x1C1917) : UIColor(hex6: 0xFFD5B3)
     })
     static let pageBgMid = Color(UIColor { tc in
-        tc.userInterfaceStyle == .dark ? UIColor(hex6: 0x211F1B) : UIColor(hex6: 0xFFF7E0)
+        tc.userInterfaceStyle == .dark ? UIColor(hex6: 0x211F1B) : UIColor(hex6: 0xFFE4CF)
     })
     static let pageBgBot = Color(UIColor { tc in
-        tc.userInterfaceStyle == .dark ? UIColor(hex6: 0x292524) : UIColor(hex6: 0xFEF3C7)
+        tc.userInterfaceStyle == .dark ? UIColor(hex6: 0x292524) : UIColor(hex6: 0xFFF2E6)
     })
 
     /// Card gradient end tint
