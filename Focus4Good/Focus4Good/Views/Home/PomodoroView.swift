@@ -39,7 +39,7 @@ struct PomodoroView: View {
     }
 
     private let totalSessions: Int
-    private let sessionDuration = 25 * 60
+    private let sessionDuration: Int
     private let breakDuration = 5 * 60
     private let pointsPerSession = 20
     private let pointsOnCompletion = 50
@@ -48,7 +48,10 @@ struct PomodoroView: View {
         self.task = task
         let duration = task.estimatedDuration ?? 25
         self.totalSessions = max(1, Int(ceil(Double(duration) / 25.0)))
-        self._timeRemaining = State(initialValue: 25 * 60)
+        
+        let sessionLength = (duration < 25 && duration > 0) ? duration : 25
+        self.sessionDuration = sessionLength * 60
+        self._timeRemaining = State(initialValue: sessionLength * 60)
     }
 
     private var progress: Double {
@@ -500,7 +503,7 @@ struct PomodoroView: View {
 
     private func handleSessionEnd() {
         timer?.invalidate()
-        totalFocusMinutes += 25
+        totalFocusMinutes += (sessionDuration / 60)
 
         if currentSession >= totalSessions {
             // All sessions done — award task completion bonus (+50)
