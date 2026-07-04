@@ -22,6 +22,7 @@ struct BraindumpWriteView: View {
     @State private var entryTitle = ""
     @State private var isCanvasActive = false
     @State private var clearTrigger = UUID()
+    @State private var undoTrigger = UUID()
 
     private var hasText: Bool {
         !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -42,11 +43,11 @@ struct BraindumpWriteView: View {
         .navigationBarBackButtonHidden(true)
         .toolbar { toolbarContent }
         .alert("Name your dump", isPresented: $showNameAlert) {
-            TextField("e.g. Late Night Thoughts", text: $entryTitle)
+            TextField("", text: $entryTitle)
             Button("Save") { performSave() }
+                .tint(.primary)
             Button("Skip", role: .cancel) { performSave() }
-        } message: {
-            Text("Give a title to find it easily later.")
+                .tint(.primary)
         }
         .toolbar(selectedMode == .draw ? .hidden : .visible, for: .tabBar)
         .animation(.easeInOut(duration: 0.25), value: selectedMode)
@@ -82,7 +83,7 @@ struct BraindumpWriteView: View {
                 drawingCanvasArea
             }
         }
-        .background(Color(.systemGroupedBackground))
+        .background(AppTheme.appGradient.ignoresSafeArea())
     }
 
     private var modePicker: some View {
@@ -132,7 +133,7 @@ struct BraindumpWriteView: View {
     }
 
     private var drawingCanvasArea: some View {
-        BraindumpCanvasView(canvasData: $canvasData, hasDrawing: $hasDrawing, isActive: $isCanvasActive, clearTrigger: $clearTrigger)
+        BraindumpCanvasView(canvasData: $canvasData, hasDrawing: $hasDrawing, isActive: $isCanvasActive, clearTrigger: $clearTrigger, undoTrigger: $undoTrigger)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(Color(.systemBackground))
@@ -161,11 +162,9 @@ struct BraindumpWriteView: View {
         if selectedMode == .draw && hasDrawing {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
-                    clearTrigger = UUID()
-                    canvasData = Data()
-                    hasDrawing = false
+                    undoTrigger = UUID()
                 } label: {
-                    Image(systemName: "arrow.counterclockwise")
+                    Image(systemName: "arrow.uturn.backward")
                         .fontWeight(.semibold)
                         .foregroundStyle(.primary)
                 }
@@ -186,7 +185,7 @@ struct BraindumpWriteView: View {
 
     private var savedOverlay: some View {
         ZStack {
-            Color.black.opacity(0.4)
+            AppTheme.appGradient
                 .ignoresSafeArea()
                 .onTapGesture {
                     showSavedPopup = false

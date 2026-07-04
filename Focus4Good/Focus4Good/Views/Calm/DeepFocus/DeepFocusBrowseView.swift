@@ -30,7 +30,6 @@ struct DeepFocusBrowseView: View {
             let artworkSize = max(0, geo.size.width - 56)
 
             ZStack {
-                Color(.systemBackground).ignoresSafeArea()
 
                 VStack(spacing: 0) {
                     Spacer()
@@ -74,7 +73,7 @@ struct DeepFocusBrowseView: View {
             }
             .animation(.spring(response: 0.4, dampingFraction: 0.8), value: showCompletion)
         }
-        .background(Color(.systemBackground))
+        .background(AppTheme.appGradient.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { loadFavourite() }
         .onDisappear { stopTimer() }

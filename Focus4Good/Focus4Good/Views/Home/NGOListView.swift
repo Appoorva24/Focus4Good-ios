@@ -1,159 +1,47 @@
 import SwiftUI
 
-// MARK: - NGO List View
+// MARK: - NGO Connect View
 
 struct NGOListView: View {
     @Environment(VolunteerStore.self) private var volunteerStore
     @Environment(UserStore.self) private var userStore
+    
+    private var ngo: NGO? {
+        volunteerStore.ngos.first
+    }
+    
+    private var currentLevel: Int {
+        // Temporarily hardcoded to 5 to unlock all levels for testing
+        // userStore.currentUser?.currentLevel ?? 1
+        5
+    }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                if volunteerStore.ngos.isEmpty {
-                    emptyState
-                } else {
-                    ForEach(volunteerStore.ngos) { ngo in
-                        NavigationLink(value: ngo) {
-                            NGOCardView(ngo: ngo)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
+        Group {
+            if let ngo = ngo {
+                NGOConnectDetailView(ngo: ngo, currentLevel: currentLevel)
+            } else {
+                ProgressView()
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
-            .padding(.bottom, 24)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(AppTheme.pageGradient)
         .navigationTitle("NGO Connect")
-        .navigationBarTitleDisplayMode(.large)
-        .navigationDestination(for: NGO.self) { ngo in
-            NGODetailView(ngo: ngo)
-        }
-    }
-
-    private var emptyState: some View {
-        VStack(spacing: 16) {
-            Spacer().frame(height: 60)
-            Image(systemName: "building.2.crop.circle")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 72, height: 72)
-                .foregroundStyle(AppTheme.orange.opacity(0.5))
-
-            Text("No NGOs available")
-                .font(.title3.bold())
-                .foregroundStyle(AppTheme.textPrimary)
-
-            Text("Check back later for volunteering opportunities")
-                .font(.subheadline)
-                .foregroundStyle(AppTheme.textSecondary)
-                .multilineTextAlignment(.center)
-            Spacer()
-        }
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
-// MARK: - NGO Card
+// MARK: - Details View
 
-struct NGOCardView: View {
+struct NGOConnectDetailView: View {
     let ngo: NGO
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Image with Verified Badge
-            ZStack(alignment: .topLeading) {
-                if let image = UIImage(named: ngo.imageName) {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(height: 180)
-                        .clipped()
-                } else {
-                    Rectangle()
-                        .fill(Color(.systemGray5))
-                        .frame(height: 180)
-                }
-
-                if ngo.isVerified {
-                    HStack(spacing: 4) {
-                        Image(systemName: "checkmark.seal.fill")
-                            .font(.system(size: 12))
-                        Text("Verified")
-                            .font(.system(size: 12, weight: .bold))
-                    }
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(Color.green)
-                    .clipShape(Capsule())
-                    .padding(12)
-                }
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-
-            // Details
-            VStack(alignment: .leading, spacing: 8) {
-                Text(ngo.name)
-                    .font(.title3.bold())
-                    .foregroundStyle(AppTheme.textPrimary)
-
-                HStack(spacing: 4) {
-                    Image(systemName: "location.north.fill") // Paperplane-ish icon matching screenshot
-                        .font(.caption2)
-                        .rotationEffect(.degrees(45))
-                        .foregroundStyle(AppTheme.orange)
-                    Text(ngo.location)
-                        .font(.subheadline)
-                        .foregroundStyle(AppTheme.textSecondary)
-                }
-
-                Text(ngo.mission)
-                    .font(.subheadline)
-                    .foregroundStyle(AppTheme.textSecondary)
-                    .lineLimit(2)
-                    .padding(.top, 2)
-
-                // Stats row
-                HStack(spacing: 24) {
-                    statBadgeStyle(value: "\(String(format: "%.0f", Double(ngo.studentCount)/1000.0))K+", label: "Students")
-                    statBadgeStyle(value: "\(ngo.yearsActive)", label: "Years")
-                    statBadgeStyle(value: "\(ngo.projectCount)", label: "Projects")
-                }
-                .padding(.top, 4)
-            }
-        }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 24)
-                .fill(Color(.systemBackground))
-        )
-    }
-
-    private func statBadgeStyle(value: String, label: String) -> some View {
-        VStack(spacing: 4) {
-            Text(value)
-                .font(.subheadline.bold())
-                .foregroundStyle(AppTheme.orange)
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(AppTheme.textSecondary)
-        }
-    }
-}
-
-// MARK: - NGO Detail View
-
-struct NGODetailView: View {
-    let ngo: NGO
+    let currentLevel: Int
     @Environment(VolunteerStore.self) private var volunteerStore
-    @Environment(UserStore.self) private var userStore
     @State private var showingRegistration = false
-
+    
     private var events: [VolunteerEvent] {
         volunteerStore.events(for: ngo)
     }
-
+    
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 24) {
@@ -164,13 +52,6 @@ struct NGODetailView: View {
                         .scaledToFill()
                         .frame(height: 250)
                         .clipped()
-                        .clipShape(RoundedRectangle(cornerRadius: 24))
-                        .padding(.horizontal, 16)
-                        .padding(.top, 16)
-                } else {
-                    Rectangle()
-                        .fill(Color(.systemGray5))
-                        .frame(height: 250)
                         .clipShape(RoundedRectangle(cornerRadius: 24))
                         .padding(.horizontal, 16)
                         .padding(.top, 16)
@@ -190,7 +71,7 @@ struct NGODetailView: View {
                                     .foregroundStyle(Color.green)
                             }
                         }
-
+                        
                         HStack(spacing: 4) {
                             Image(systemName: "location.north.fill")
                                 .font(.caption)
@@ -201,47 +82,11 @@ struct NGODetailView: View {
                                 .foregroundStyle(AppTheme.textSecondary)
                         }
                     }
-
-                    // Stats Bar
-                    HStack {
-                        Spacer()
-                        VStack(spacing: 4) {
-                            Text("\(String(format: "%.0f", Double(ngo.studentCount)/1000.0))K+")
-                                .font(.subheadline.bold())
-                                .foregroundStyle(AppTheme.orange)
-                            Text("Students")
-                                .font(.caption)
-                                .foregroundStyle(AppTheme.textSecondary)
-                        }
-                        Spacer()
-                        Divider()
-                        Spacer()
-                        VStack(spacing: 4) {
-                            Text("\(ngo.yearsActive)")
-                                .font(.subheadline.bold())
-                                .foregroundStyle(AppTheme.orange)
-                            Text("Years Active")
-                                .font(.caption)
-                                .foregroundStyle(AppTheme.textSecondary)
-                        }
-                        Spacer()
-                        Divider()
-                        Spacer()
-                        VStack(spacing: 4) {
-                            Text("\(ngo.projectCount)")
-                                .font(.subheadline.bold())
-                                .foregroundStyle(AppTheme.orange)
-                            Text("Projects")
-                                .font(.caption)
-                                .foregroundStyle(AppTheme.textSecondary)
-                        }
-                        Spacer()
-                    }
-                    .padding(.vertical, 16)
-                    .background(Color(.systemGray6))
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-
-                    // Mission
+                    
+                    // Stats
+                    NGOStatsView(ngo: ngo)
+                    
+                    // Mission (Level 1)
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Our Mission")
                             .font(.title3.bold())
@@ -250,73 +95,193 @@ struct NGODetailView: View {
                             .foregroundStyle(AppTheme.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
-
-                    // Founder
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Founder")
-                            .font(.title3.bold())
-                        HStack(spacing: 12) {
-                            ZStack {
-                                Circle()
-                                    .fill(AppTheme.orange.opacity(0.15))
-                                    .frame(width: 48, height: 48)
-                                Image(systemName: "person.fill")
-                                    .font(.title3)
-                                    .foregroundStyle(AppTheme.orange)
-                            }
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(ngo.founderName)
-                                    .font(.headline)
-                                Text(ngo.founderPhone)
-                                    .font(.caption)
-                                    .foregroundStyle(AppTheme.textSecondary)
-                            }
-                        }
+                    
+                    // Level 2: Gallery
+                    LevelLockedSection(title: "Highlights", requiredLevel: 2, currentLevel: currentLevel, lockedIcon: "photo.on.rectangle.angled", description: "View the gallery of past events and impact.") {
+                        NGOGalleryView(images: ngo.galleryImages ?? ["ngo"])
                     }
-
-                    // Events
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text("Upcoming Events")
-                            .font(.title3.bold())
-
-                        if events.isEmpty {
-                            Text("No upcoming events")
-                                .font(.subheadline)
-                                .foregroundStyle(AppTheme.textSecondary)
-                                .padding(.vertical, 8)
-                        } else {
-                            ForEach(events) { event in
-                                EventCardView(event: event)
+                    
+                    // Level 3: Volunteer
+                    LevelLockedSection(title: "Volunteer & Visit", requiredLevel: 3, currentLevel: currentLevel, lockedIcon: "hand.raised.fill", description: "Join our next event and make a direct impact.") {
+                        VStack(alignment: .leading, spacing: 16) {
+                            if events.isEmpty {
+                                Text("No upcoming events")
+                                    .font(.subheadline)
+                                    .foregroundStyle(AppTheme.textSecondary)
+                            } else {
+                                ForEach(events) { event in
+                                    EventCardView(event: event)
+                                }
+                            }
+                            Button {
+                                showingRegistration = true
+                            } label: {
+                                Text("Register as Volunteer")
+                                    .font(.headline)
+                                    .foregroundStyle(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                                    .background(AppTheme.orange)
+                                    .clipShape(Capsule())
                             }
                         }
                     }
                     
-                    Spacer()
-                        .frame(height: 80) // Space for floating button
+                    // Level 4: Community Gallery
+                    LevelLockedSection(title: "Community Gallery", requiredLevel: 4, currentLevel: currentLevel, lockedIcon: "square.and.pencil", description: "Post your own experiences and photos from visits.") {
+                        VStack(alignment: .center, spacing: 16) {
+                            Text("Share your experience working with \(ngo.name)!")
+                                .font(.subheadline)
+                                .foregroundStyle(AppTheme.textSecondary)
+                                .multilineTextAlignment(.center)
+                            
+                            Button {
+                                // Add Post action
+                            } label: {
+                                HStack {
+                                    Image(systemName: "camera.fill")
+                                    Text("Post Photo")
+                                }
+                                .font(.headline)
+                                .foregroundStyle(AppTheme.orange)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(AppTheme.orange.opacity(0.1))
+                                .clipShape(Capsule())
+                            }
+                        }
+                    }
+                    
+                    Spacer().frame(height: 40)
                 }
                 .padding(.horizontal, 16)
             }
+            .padding(.bottom, 24)
         }
-        .background(Color(.systemBackground))
-        .navigationTitle(ngo.name)
-        .navigationBarTitleDisplayMode(.inline)
-        .overlay(alignment: .bottom) {
-            Button {
-                showingRegistration = true
-            } label: {
-                Text("Register as Volunteer")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(AppTheme.orange)
-                    .clipShape(Capsule())
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 24)
-            }
-        }
+        .background(AppTheme.pageGradient)
         .navigationDestination(isPresented: $showingRegistration) {
             VolunteerRegistrationView(ngo: ngo)
+        }
+    }
+}
+
+// MARK: - Level Locked Section
+
+struct LevelLockedSection<Content: View>: View {
+    let title: String
+    let requiredLevel: Int
+    let currentLevel: Int
+    let lockedIcon: String
+    let description: String
+    @ViewBuilder let content: Content
+    
+    var isUnlocked: Bool {
+        currentLevel >= requiredLevel
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text(title)
+                    .font(.title3.bold())
+                Spacer()
+                if !isUnlocked {
+                    HStack(spacing: 4) {
+                        Image(systemName: "lock.fill")
+                        Text("Lvl \(requiredLevel)")
+                    }
+                    .font(.caption.bold())
+                    .foregroundStyle(Color(.systemGray3))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color(.systemGray6))
+                    .clipShape(Capsule())
+                }
+            }
+            
+            if isUnlocked {
+                content
+            } else {
+                VStack(spacing: 12) {
+                    Image(systemName: lockedIcon)
+                        .font(.system(size: 32))
+                        .foregroundStyle(Color(.systemGray3))
+                    
+                    Text(description)
+                        .font(.subheadline)
+                        .foregroundStyle(AppTheme.textSecondary)
+                        .multilineTextAlignment(.center)
+                        
+                    Text("Unlock at Level \(requiredLevel)")
+                        .font(.caption.bold())
+                        .foregroundStyle(AppTheme.orange)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(24)
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(AppTheme.cardBg)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                )
+            }
+        }
+    }
+}
+
+// MARK: - Components
+
+struct NGOStatsView: View {
+    let ngo: NGO
+    var body: some View {
+        HStack {
+            Spacer()
+            statItem(value: "\(String(format: "%.0f", Double(ngo.studentCount)/1000.0))K+", label: "People")
+            Spacer()
+            Divider()
+            Spacer()
+            statItem(value: "\(ngo.yearsActive)", label: "Years Active")
+            Spacer()
+            Divider()
+            Spacer()
+            statItem(value: "\(ngo.projectCount)", label: "Projects")
+            Spacer()
+        }
+        .padding(.vertical, 16)
+        .background(AppTheme.cardBg)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: Color.black.opacity(0.05), radius: 10, y: 5)
+    }
+    
+    private func statItem(value: String, label: String) -> some View {
+        VStack(spacing: 4) {
+            Text(value)
+                .font(.subheadline.bold())
+                .foregroundStyle(AppTheme.orange)
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(AppTheme.textSecondary)
+        }
+    }
+}
+
+struct NGOGalleryView: View {
+    let images: [String]
+    let columns = [GridItem(.flexible()), GridItem(.flexible())]
+    
+    var body: some View {
+        LazyVGrid(columns: columns, spacing: 12) {
+            ForEach(images.indices, id: \.self) { index in
+                if let uiImage = UIImage(named: images[index]) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(height: 120)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+            }
         }
     }
 }
@@ -338,8 +303,9 @@ struct EventCardView: View {
                     .foregroundStyle(AppTheme.textSecondary)
             }
             .frame(width: 56, height: 64)
-            .background(Color(.systemGray6))
+            .background(AppTheme.cardBg)
             .clipShape(RoundedRectangle(cornerRadius: 12))
+            .shadow(color: Color.black.opacity(0.05), radius: 5)
 
             // Details
             VStack(alignment: .leading, spacing: 6) {
@@ -368,14 +334,11 @@ struct EventCardView: View {
             }
             
             Spacer()
-            
-            Image(systemName: "chevron.right")
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color(.systemGray3))
         }
         .padding(16)
-        .background(Color(.systemGray6).opacity(0.5))
+        .background(AppTheme.cardBg)
         .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: Color.black.opacity(0.05), radius: 8, y: 4)
     }
 }
 
@@ -420,8 +383,9 @@ struct VolunteerRegistrationView: View {
                             RegistrationTextField(icon: "phone.fill", placeholder: "Phone", text: $phone)
                                 .keyboardType(.phonePad)
                         }
-                        .background(Color(.systemBackground))
+                        .background(AppTheme.cardBg)
                         .clipShape(RoundedRectangle(cornerRadius: 16))
+                        .shadow(color: Color.black.opacity(0.05), radius: 10, y: 5)
                     }
                     
                     // Experience Section
@@ -451,8 +415,9 @@ struct VolunteerRegistrationView: View {
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
                         }
-                        .background(Color(.systemBackground))
+                        .background(AppTheme.cardBg)
                         .clipShape(RoundedRectangle(cornerRadius: 16))
+                        .shadow(color: Color.black.opacity(0.05), radius: 10, y: 5)
                     }
                     
                     Spacer().frame(height: 100)
@@ -460,7 +425,7 @@ struct VolunteerRegistrationView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(AppTheme.pageGradient)
             .navigationTitle("Volunteer Registration")
             .navigationBarTitleDisplayMode(.inline)
             
@@ -525,7 +490,7 @@ struct VolunteerRegistrationView: View {
                     }
                 }
                 .padding(24)
-                .background(Color(.systemBackground))
+                .background(AppTheme.cardBg)
                 .clipShape(RoundedRectangle(cornerRadius: 24))
                 .padding(.horizontal, 40)
                 .shadow(radius: 20)
@@ -534,7 +499,6 @@ struct VolunteerRegistrationView: View {
             }
         }
         .animation(.easeInOut(duration: 0.2), value: showSuccessAlert)
-        // Form fields start empty — user fills in their own details
     }
 }
 

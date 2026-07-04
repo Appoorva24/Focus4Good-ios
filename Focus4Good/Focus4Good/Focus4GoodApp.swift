@@ -29,6 +29,9 @@ struct Focus4GoodApp: App {
 
     // ── Navigation state ────────────────────────────────────────────
     @State private var appState: AppState = .splash
+    
+    // ── Scene phase (for re-engagement notifications) ───────────────
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
@@ -42,7 +45,7 @@ struct Focus4GoodApp: App {
 
                 case .onboarding:
                     OnboardingView(onComplete: {
-                        appState = .auth
+                        appState = .app
                     })
 
                 case .auth:
@@ -61,9 +64,10 @@ struct Focus4GoodApp: App {
             // Watch for sign-out: when isAuthenticated flips to false while in the
             // app, send the user back to the auth screen immediately.
             .onChange(of: userStore.isAuthenticated) { _, isAuth in
-                if !isAuth && appState == .app {
-                    appState = .auth
-                }
+                // Bypassed for now
+                // if !isAuth && appState == .app {
+                //     appState = .auth
+                // }
             }
             .environment(userStore)
             .environment(taskStore)
@@ -75,8 +79,32 @@ struct Focus4GoodApp: App {
                 // Request notification permission on first launch
                 Task { _ = await NotificationManager.shared.requestPermission() }
             }
+            .preferredColorScheme(.light) // Force light mode
+        }
+        // ── Re-engagement notifications: schedule on background, cancel on active ──
+        .onChange(of: scenePhase) { _, newPhase in
+            switch newPhase {
+            case .background:
+                // User left the app — schedule catchy comeback notifications
+                Task {
+                    let streak = userStore.currentUser?.currentStreak ?? 0
+                    let points = userStore.currentUser?.focusPoints ?? 0
+                    let level  = userStore.currentUser?.currentLevel ?? 1
+                    await NotificationManager.shared.scheduleReengagementNotifications(
+                        streak: streak,
+                        points: points,
+                        level: level
+                    )
+                }
+            case .active:
+                // User is back — cancel any pending re-engagement notifications
+                NotificationManager.shared.cancelReengagementNotifications()
+            default:
+                break
+            }
         }
     }
+
 
     // MARK: - Helpers
 
@@ -92,10 +120,8 @@ struct Focus4GoodApp: App {
         
         if !hasSeenOnboarding {
             appState = .onboarding
-        } else if userStore.isAuthenticated {
-            appState = .app
         } else {
-            appState = .auth
+            appState = .app
         }
     }
 }

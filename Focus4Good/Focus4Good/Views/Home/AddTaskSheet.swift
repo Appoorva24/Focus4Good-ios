@@ -18,14 +18,19 @@ struct AddTaskSheet: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    TextField("Task Name", text: $title).font(.body)
-                } header: { Text("Task Name").textCase(nil) }
+            ZStack {
+                AppTheme.pageGradient.ignoresSafeArea()
+                
+                List {
+                    Section {
+                        TextField("Task Name", text: $title).font(.body).foregroundStyle(AppTheme.warmTextPrimary)
+                    } header: { Text("Task Name").foregroundStyle(AppTheme.warmTextPrimary).textCase(nil) }
+                    .listRowBackground(AppTheme.cardBg)
 
                 Section {
                     Toggle(isOn: $isDateEnabled.animation()) {
                         Label("Start Date", systemImage: "calendar")
+                            .foregroundStyle(AppTheme.warmTextPrimary)
                     }
                     .tint(AppTheme.orange)
 
@@ -37,6 +42,7 @@ struct AddTaskSheet: View {
 
                     Toggle(isOn: $isEndDateEnabled.animation()) {
                         Label("End Date", systemImage: "calendar.badge.clock")
+                            .foregroundStyle(AppTheme.warmTextPrimary)
                     }
                     .tint(AppTheme.orange)
 
@@ -48,6 +54,7 @@ struct AddTaskSheet: View {
 
                     Toggle(isOn: $isTimeEnabled.animation()) {
                         Label("Time", systemImage: "clock")
+                            .foregroundStyle(AppTheme.warmTextPrimary)
                     }
                     .tint(AppTheme.orange)
 
@@ -56,37 +63,52 @@ struct AddTaskSheet: View {
                             .datePickerStyle(.wheel)
                             .tint(AppTheme.orange)
                     }
-                } header: { Text("Date & Time").textCase(nil) }
+                } header: { Text("Date & Time").foregroundStyle(AppTheme.warmTextPrimary).textCase(nil) }
+                .listRowBackground(AppTheme.cardBg)
 
                 Section {
                     pickerRow(icon: "arrow.2.circlepath", label: "Repeat", value: repeatType.displayName) {
                         showRepeatPicker = true
                     }
-                } header: { Text("Repeat").textCase(nil) }
+                } header: { Text("Repeat").foregroundStyle(AppTheme.warmTextPrimary).textCase(nil) }
+                .listRowBackground(AppTheme.cardBg)
 
                 Section {
                     HStack {
                         Label("Duration", systemImage: "timer")
-                            .foregroundStyle(AppTheme.textPrimary)
+                            .foregroundStyle(AppTheme.warmTextPrimary)
                         Spacer()
                         Stepper("\(estimatedDuration) min", value: $estimatedDuration, in: 25...125, step: 25)
                             .fixedSize()
                     }
-                } header: { Text("More Options").textCase(nil) }
+                } header: { Text("More Options").foregroundStyle(AppTheme.warmTextPrimary).textCase(nil) }
+                .listRowBackground(AppTheme.cardBg)
             }
             .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
             .navigationTitle("Add Task")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { dismiss() }.foregroundStyle(AppTheme.textSecondary)
+                    Button("Cancel") { dismiss() }
+                        .font(.subheadline.bold())
+                        .foregroundStyle(AppTheme.orange)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Capsule().fill(.white))
+                        .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Save") { saveTask() }
-                        .font(.headline)
-                        .foregroundStyle(title.isEmpty ? AppTheme.textSecondary : AppTheme.orange)
+                        .font(.subheadline.bold())
+                        .foregroundStyle(title.isEmpty ? AppTheme.warmTextSecondary : AppTheme.orange)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Capsule().fill(.white))
+                        .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
                         .disabled(title.isEmpty)
                 }
+            }
             }
             .confirmationDialog("Repeat", isPresented: $showRepeatPicker, titleVisibility: .visible) {
                 ForEach(UserTask.RepeatType.allCases, id: \.self) { type in
@@ -113,10 +135,10 @@ struct AddTaskSheet: View {
     private func pickerRow(icon: String, label: String, value: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack {
-                Label(label, systemImage: icon).foregroundStyle(AppTheme.textPrimary)
+                Label(label, systemImage: icon).foregroundStyle(AppTheme.warmTextPrimary)
                 Spacer()
-                Text(value).foregroundStyle(AppTheme.textPrimary)
-                Image(systemName: "chevron.up.chevron.down").font(.caption).foregroundStyle(AppTheme.textSecondary)
+                Text(value).foregroundStyle(AppTheme.warmTextPrimary)
+                Image(systemName: "chevron.up.chevron.down").font(.caption).foregroundStyle(AppTheme.warmTextSecondary)
             }
         }
         .buttonStyle(.plain)

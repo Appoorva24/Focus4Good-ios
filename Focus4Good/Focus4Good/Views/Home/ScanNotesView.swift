@@ -22,7 +22,7 @@ struct ScanNotesView: View {
                 // Icon
                 ZStack {
                     Circle()
-                        .fill(Color(hex: "FFF3E8"))
+                        .fill(AppTheme.accentLight)
                         .frame(width: 120, height: 120)
                     Image(systemName: "doc.text.viewfinder")
                         .font(.system(size: 52))
@@ -194,9 +194,10 @@ struct DocumentScannerView: UIViewControllerRepresentable {
                     let text = await recognizeText(from: image)
                     allText += text + "\n"
                 }
+                let finalFormattedText = allText
                 await MainActor.run {
-                    parent.recognizedText = allText
-                    parent.onComplete(allText)
+                    parent.recognizedText = finalFormattedText
+                    parent.onComplete(finalFormattedText)
                 }
             }
         }

@@ -18,10 +18,17 @@ struct AddCommunityView: View {
     @State private var showCamera = false
     @State private var showPhotoPicker = false
 
+    @State private var isSubmitting = false
+    @State private var errorMessage: String?
+    @State private var showErrorAlert = false
+
     var body: some View {
         NavigationStack {
-            VStack {
-                // MARK: Cover Photo Section
+            ZStack {
+                AppTheme.pageGradient.ignoresSafeArea()
+
+                VStack {
+                    // MARK: Cover Photo Section
                 VStack {
                     if let coverImage {
                         coverImage
@@ -62,19 +69,20 @@ struct AddCommunityView: View {
                     HStack {
                         Text("Name")
                             .font(.headline)
-                            .foregroundStyle(Color.primary)
+                            .foregroundStyle(AppTheme.warmTextPrimary)
 
                         Spacer()
 
                         TextField("Community Name", text: $nameOfCommunity)
                             .multilineTextAlignment(.trailing)
-                            .foregroundStyle(.gray)
+                            .foregroundStyle(AppTheme.warmTextPrimary)
                     }
                     .padding()
                     Divider()
 
                     HStack {
                         Text("Category").font(.headline)
+                            .foregroundStyle(AppTheme.warmTextPrimary)
                         Spacer()
                         Menu {
                             Button("Hyperactivity") { category = "Hyperactivity" }
@@ -87,10 +95,10 @@ struct AddCommunityView: View {
                         } label: {
                             HStack(spacing: 4) {
                                 Text(category.isEmpty ? "Select" : category)
-                                    .foregroundStyle(category.isEmpty ? .gray : .primary)
+                                    .foregroundStyle(category.isEmpty ? AppTheme.warmTextSecondary : AppTheme.warmTextPrimary)
                                 Image(systemName: "chevron.up.chevron.down")
                                     .font(.caption)
-                                    .foregroundStyle(.gray)
+                                    .foregroundStyle(AppTheme.warmTextSecondary)
                             }
                         }
                     }
@@ -104,11 +112,11 @@ struct AddCommunityView: View {
                     }
                     .padding()
                 }
-                .background(Color(.systemGray6))
+                .background(AppTheme.cardBg)
                 .clipShape(RoundedRectangle(cornerRadius: 14))
                 .overlay(
                     RoundedRectangle(cornerRadius: 14)
-                        .stroke(Color.white.opacity(1.0), lineWidth: 1)
+                        .stroke(AppTheme.orange.opacity(0.1), lineWidth: 1)
                 )
                 .padding(.horizontal)
 
@@ -117,29 +125,37 @@ struct AddCommunityView: View {
                         Toggle(isOn: $isPrivate) {
                             Text("Private Community")
                                 .font(.headline)
-                                .foregroundStyle(Color.primary)
+                                .foregroundStyle(AppTheme.warmTextPrimary)
                         }
                         Spacer()
                     }
                     .padding()
                 }
-                .background(Color(.systemGray6))
+                .background(AppTheme.cardBg)
                 .clipShape(RoundedRectangle(cornerRadius: 14))
                 .overlay(
                     RoundedRectangle(cornerRadius: 14)
-                        .stroke(Color.white.opacity(1.0), lineWidth: 1)
+                        .stroke(AppTheme.orange.opacity(0.1), lineWidth: 1)
                 )
                 .padding(.horizontal)
 
                 Button {
                     Task {
                         guard let userId = userStore.currentUser?.id else { return }
+                        isSubmitting = true
                         
                         // Upload cover image to Supabase Storage if present
                         var uploadedCoverUrl: String?
                         if let imageData = coverImageData {
                             let path = "communities/\(userId.uuidString)/\(UUID().uuidString).jpg"
-                            uploadedCoverUrl = try? await communityStore.uploadImage(data: imageData, path: path)
+                            do {
+                                uploadedCoverUrl = try await communityStore.uploadImage(data: imageData, path: path)
+                            } catch {
+                                isSubmitting = false
+                                errorMessage = "Failed to upload cover image. Please verify that the 'community-images' storage bucket is created in your Supabase dashboard and set to public.\n\nError: \(error.localizedDescription)"
+                                showErrorAlert = true
+                                return
+                            }
                         }
                         
                         await communityStore.createCommunity(
@@ -150,18 +166,26 @@ struct AddCommunityView: View {
                             userId: userId,
                             coverImageUrl: uploadedCoverUrl
                         )
+                        isSubmitting = false
                         addCommunity = false
                     }
                 } label: {
-                    Text("Create Community")
-                        .font(.headline)
-                        .foregroundStyle(Color.primary)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 40)
-                        .background(nameOfCommunity.isEmpty ? AppTheme.orange.opacity(0.4) : AppTheme.orange)
-                        .clipShape(RoundedRectangle(cornerRadius: 25))
+                    HStack {
+                        if isSubmitting {
+                            ProgressView()
+                                .tint(.white)
+                                .padding(.trailing, 8)
+                        }
+                        Text(isSubmitting ? "Creating..." : "Create Community")
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 40)
+                    .background(nameOfCommunity.isEmpty || isSubmitting ? AppTheme.orange.opacity(0.4) : AppTheme.orange)
+                    .clipShape(RoundedRectangle(cornerRadius: 25))
                 }
-                .disabled(nameOfCommunity.isEmpty)
+                .disabled(nameOfCommunity.isEmpty || isSubmitting)
                 .padding(.horizontal)
                 .padding(.top, 8)
 
@@ -175,6 +199,12 @@ struct AddCommunityView: View {
                         addCommunity = false
                     } label: {
                         Text("Cancel")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(AppTheme.orange)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Capsule().fill(.white))
+                            .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
                     }
                 }
             }
@@ -195,6 +225,12 @@ struct AddCommunityView: View {
                         coverImage = Image(uiImage: uiImage)
                     }
                 }
+            }
+            .alert("Upload Failed", isPresented: $showErrorAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(errorMessage ?? "An unknown error occurred.")
+            }
             }
         }
     }

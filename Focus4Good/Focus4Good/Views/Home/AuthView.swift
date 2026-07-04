@@ -1,4 +1,5 @@
 import SwiftUI
+import AuthenticationServices
 
 // MARK: - AuthView
 
@@ -26,34 +27,48 @@ struct AuthView: View {
 
     var body: some View {
         ZStack {
-            Color(.systemBackground).ignoresSafeArea()
+            // ── Rich gradient background ─────────────────────
+            AppTheme.pageGradient
+                .ignoresSafeArea()
 
             if userStore.isMfaRequired {
                 TwoFactorVerifyView(email: email)
             } else {
                 ScrollView {
-                    VStack(spacing: 32) {
-                    Spacer().frame(height: 40)
+                    VStack(spacing: 28) {
+                    Spacer().frame(height: 32)
 
                     // ── Logo / Header ─────────────────────────────
                     VStack(spacing: 16) {
-                        // SwiftUI-drawn logo on an orange background circle
-                        Image("AppLogo")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 100, height: 100)
-                            .shadow(color: AppTheme.orange.opacity(0.35), radius: 12, y: 4)
+                        // Logo with subtle glow
+                        ZStack {
+                            Circle()
+                                .fill(AppTheme.orange.opacity(0.12))
+                                .frame(width: 120, height: 120)
+                                .blur(radius: 10)
+
+                            Image("AppLogo")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 100, height: 100)
+                        }
 
                         Text("Focus4Good")
-                            .font(.largeTitle.bold())
-                            .foregroundStyle(AppTheme.textPrimary)
+                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [AppTheme.orange, AppTheme.orangeDeep],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
 
                         Text(isSignUp ? "Create your account" : "Welcome back")
                             .font(.subheadline)
-                            .foregroundStyle(AppTheme.textSecondary)
+                            .foregroundStyle(AppTheme.warmTextSecondary)
                     }
 
-                    // ── Form Fields ───────────────────────────────
+                    // ── Form Fields (glass card) ─────────────────
                     VStack(spacing: 16) {
                         if isSignUp {
                             AuthTextField(
@@ -85,7 +100,9 @@ struct AuthView: View {
                             )
                         }
                     }
-                    .padding(.horizontal, 24)
+                    .padding(20)
+                    .glassCard()
+                    .padding(.horizontal, 20)
 
                     // ── Forgot Password Button ─────────────────────────────
                     if !isSignUp {
@@ -94,7 +111,7 @@ struct AuthView: View {
                             Button("Forgot Password?") {
                                 showForgotPassword = true
                             }
-                            .font(.subheadline)
+                            .font(.subheadline.weight(.medium))
                             .foregroundStyle(AppTheme.orange)
                         }
                         .padding(.horizontal, 24)
@@ -104,12 +121,12 @@ struct AuthView: View {
                     if let error = userStore.errorMessage {
                         Text(error)
                             .font(.caption)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(AppTheme.destructive)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 24)
                     }
 
-                    // ── Submit Button ─────────────────────────────
+                    // ── Submit Button (gradient) ─────────────────
                     Button {
                         Task {
                             if isSignUp {
@@ -124,19 +141,95 @@ struct AuthView: View {
                                 ProgressView().tint(.white)
                             } else {
                                 Text(isSignUp ? "Create Account" : "Sign In")
-                                    .font(.headline)
                             }
                         }
+                        .font(.headline)
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
                         .background(
                             Capsule().fill(
-                                isFormValid ? AppTheme.orange : AppTheme.orange.opacity(0.4)
+                                isFormValid
+                                    ? AnyShapeStyle(AppTheme.buttonGradient)
+                                    : AnyShapeStyle(AppTheme.orange.opacity(0.3))
                             )
                         )
+                        .shadow(color: isFormValid ? AppTheme.orange.opacity(0.3) : .clear, radius: 12, y: 6)
                     }
                     .disabled(!isFormValid || userStore.isLoading)
+                    .padding(.horizontal, 24)
+                    .animation(.easeInOut(duration: 0.2), value: isFormValid)
+
+                    // ── Or Divider ───────────────────────────────
+                    HStack(spacing: 12) {
+                        Capsule()
+                            .fill(AppTheme.warmTextSecondary.opacity(0.3))
+                            .frame(height: 1)
+                        Text("or continue with")
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.warmTextSecondary)
+                            .fixedSize()
+                        Capsule()
+                            .fill(AppTheme.warmTextSecondary.opacity(0.3))
+                            .frame(height: 1)
+                    }
+                    .padding(.horizontal, 24)
+
+                    // ── Social Sign-In ────────────────────────────
+                    VStack(spacing: 12) {
+                        // Sign in with Apple
+                        SignInWithAppleButton(.signIn) { request in
+                            let hashedNonce = userStore.prepareAppleSignIn()
+                            request.requestedScopes = [.fullName, .email]
+                            request.nonce = hashedNonce
+                        } onCompletion: { result in
+                            switch result {
+                            case .success(let authorization):
+                                if let credential = authorization.credential as? ASAuthorizationAppleIDCredential {
+                                    Task {
+                                        await userStore.handleAppleSignIn(credential: credential)
+                                    }
+                                }
+                            case .failure(let error):
+                                if (error as NSError).code != 1001 {
+                                    userStore.errorMessage = error.localizedDescription
+                                }
+                            }
+                        }
+                        .signInWithAppleButtonStyle(.black)
+                        .frame(height: 56)
+                        .clipShape(Capsule())
+
+                        // Sign in with Google
+                        Button {
+                            Task {
+                                await userStore.signInWithGoogle()
+                            }
+                        } label: {
+                            HStack(spacing: 10) {
+                                ZStack {
+                                    Circle()
+                                        .fill(Color(hex: "4285F4"))
+                                        .frame(width: 24, height: 24)
+                                    Text("G")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundStyle(.white)
+                                }
+                                Text("Sign in with Google")
+                                    .font(.headline)
+                            }
+                            .foregroundStyle(AppTheme.textPrimary)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 56)
+                            .background(.ultraThinMaterial)
+                            .clipShape(Capsule())
+                            .overlay(
+                                Capsule()
+                                    .stroke(Color.white.opacity(0.15), lineWidth: 0.5)
+                            )
+                        }
+                        .disabled(userStore.isLoading)
+                    }
                     .padding(.horizontal, 24)
 
                     // ── Toggle Sign In / Sign Up ──────────────────
@@ -152,7 +245,7 @@ struct AuthView: View {
                     } label: {
                         HStack(spacing: 4) {
                             Text(isSignUp ? "Already have an account?" : "Don't have an account?")
-                                .foregroundStyle(AppTheme.textSecondary)
+                                .foregroundStyle(AppTheme.warmTextSecondary)
                             Text(isSignUp ? "Sign In" : "Sign Up")
                                 .fontWeight(.semibold)
                                 .foregroundStyle(AppTheme.orange)
@@ -184,26 +277,34 @@ private struct AuthTextField: View {
     var keyboardType: UIKeyboardType = .default
     var autocapitalization: TextInputAutocapitalization = .sentences
 
+    @FocusState private var isFocused: Bool
+
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
-                .foregroundStyle(AppTheme.orange)
+                .foregroundStyle(isFocused ? AppTheme.orange : AppTheme.warmTextSecondary)
                 .frame(width: 20)
+                .animation(.easeInOut(duration: 0.2), value: isFocused)
 
             TextField(placeholder, text: $text)
                 .font(.subheadline)
                 .keyboardType(keyboardType)
                 .textInputAutocapitalization(autocapitalization)
                 .autocorrectionDisabled()
+                .focused($isFocused)
         }
         .padding(16)
         .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(Color(.secondarySystemBackground))
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(.secondarySystemBackground).opacity(0.6))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(Color(.systemGray4), lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(
+                    isFocused ? AppTheme.orange.opacity(0.6) : Color.white.opacity(0.1),
+                    lineWidth: isFocused ? 1.5 : 0.5
+                )
+                .animation(.easeInOut(duration: 0.2), value: isFocused)
         )
     }
 }
@@ -215,11 +316,14 @@ private struct AuthPasswordField: View {
     @Binding var text: String
     @Binding var showPassword: Bool
 
+    @FocusState private var isFocused: Bool
+
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: "lock")
-                .foregroundStyle(AppTheme.orange)
+                .foregroundStyle(isFocused ? AppTheme.orange : AppTheme.warmTextSecondary)
                 .frame(width: 20)
+                .animation(.easeInOut(duration: 0.2), value: isFocused)
 
             Group {
                 if showPassword {
@@ -231,23 +335,28 @@ private struct AuthPasswordField: View {
             .font(.subheadline)
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
+            .focused($isFocused)
 
             Button {
                 showPassword.toggle()
             } label: {
                 Image(systemName: showPassword ? "eye.slash" : "eye")
-                    .foregroundStyle(AppTheme.textSecondary)
+                    .foregroundStyle(AppTheme.warmTextSecondary)
                     .font(.caption)
             }
         }
         .padding(16)
         .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(Color(.secondarySystemBackground))
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(.secondarySystemBackground).opacity(0.6))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(Color(.systemGray4), lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(
+                    isFocused ? AppTheme.orange.opacity(0.6) : Color.white.opacity(0.1),
+                    lineWidth: isFocused ? 1.5 : 0.5
+                )
+                .animation(.easeInOut(duration: 0.2), value: isFocused)
         )
     }
 }

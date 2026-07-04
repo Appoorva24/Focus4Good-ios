@@ -13,38 +13,52 @@ struct ProfileView: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            ZStack {
+                AppTheme.pageGradient.ignoresSafeArea()
+                
+                List {
                 // User Card
                 Section {
                     HStack(spacing: 14) {
+                        // Gradient ring avatar
                         ZStack {
-                            Circle().fill(AppTheme.orange.opacity(0.15)).frame(width: 56, height: 56)
-                            Image(systemName: "person.fill").font(.title2).foregroundStyle(AppTheme.orange)
+                            Circle()
+                                .fill(AppTheme.buttonGradient)
+                                .frame(width: 58, height: 58)
+                            Circle()
+                                .fill(Color(.systemBackground))
+                                .frame(width: 52, height: 52)
+                            Image(systemName: "person.fill")
+                                .font(.title2)
+                                .foregroundStyle(AppTheme.orange)
                         }
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(userName).font(.headline)
-                            Text(userEmail).font(.caption).foregroundStyle(AppTheme.textSecondary)
+                            Text(userName).font(.headline).foregroundStyle(AppTheme.warmTextPrimary)
+                            Text(userEmail).font(.caption).foregroundStyle(AppTheme.warmTextSecondary)
                         }
                     }
                     .padding(.vertical, 6)
                 }
+                .listRowBackground(AppTheme.cardBg)
 
                 // Profile Section
                 Section {
-                    settingsRow(icon: "person", label: "Edit Profile") {
+                    settingsRow(icon: "person", label: "Edit Profile", color: AppTheme.orange) {
                         showEditProfile = true
                     }
-                } header: { Text("Profile").textCase(nil) }
+                } header: { Text("Profile").foregroundStyle(AppTheme.warmTextPrimary).textCase(nil) }
+                .listRowBackground(AppTheme.cardBg)
 
                 // App Settings Section
                 Section {
-                    settingsRow(icon: "bell", label: "Notifications") {
+                    settingsRow(icon: "bell", label: "Notifications", color: AppTheme.rose) {
                         showNotificationsAlert = true
                     }
-                    settingsRow(icon: "globe", label: "Timezone") {
+                    settingsRow(icon: "globe", label: "Timezone", color: AppTheme.sky) {
                         showTimezoneAlert = true
                     }
-                } header: { Text("App Settings").textCase(nil) }
+                } header: { Text("App Settings").foregroundStyle(AppTheme.warmTextPrimary).textCase(nil) }
+                .listRowBackground(AppTheme.cardBg)
 
                 // Sign Out
                 Section {
@@ -55,8 +69,10 @@ struct ProfileView: View {
                             .frame(maxWidth: .infinity, alignment: .center)
                     }
                 }
+                .listRowBackground(AppTheme.cardBg)
             }
             .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
             .navigationTitle("Account")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -64,11 +80,17 @@ struct ProfileView: View {
                     Button {
                         dismiss()
                     } label: {
-                        Image(systemName: "xmark")
-                            .font(.subheadline.bold())
-                            .foregroundStyle(AppTheme.textSecondary)
+                        ZStack {
+                            Circle().fill(.white)
+                                .frame(width: 28, height: 28)
+                                .shadow(color: .black.opacity(0.05), radius: 2)
+                            Image(systemName: "xmark")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundStyle(AppTheme.warmTextPrimary)
+                        }
                     }
                 }
+            }
             }
         }
         .alert("Sign Out?", isPresented: $showSignOutAlert) {
@@ -86,16 +108,25 @@ struct ProfileView: View {
         }
     }
 
-    private func settingsRow(icon: String, label: String, action: @escaping () -> Void) -> some View {
+    private func settingsRow(icon: String, label: String, color: Color, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack {
+            HStack(spacing: 12) {
                 Image(systemName: icon)
-                    .foregroundStyle(AppTheme.orange)
-                    .frame(width: 28, height: 28)
-                Text(label).font(.subheadline).foregroundStyle(AppTheme.textPrimary)
+                    .font(.subheadline)
+                    .foregroundStyle(.white)
+                    .frame(width: 30, height: 30)
+                    .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(color))
+
+                Text(label).font(.subheadline).foregroundStyle(AppTheme.warmTextPrimary)
                 Spacer()
                 
-                Image(systemName: "chevron.right").font(.caption).foregroundStyle(AppTheme.textSecondary)
+                if label == "Email 2FA" {
+                    Text(userStore.hasMfaEnabled ? "Enabled" : "Disabled")
+                        .font(.caption)
+                        .foregroundStyle(userStore.hasMfaEnabled ? AppTheme.sage : AppTheme.warmTextSecondary)
+                }
+                
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(AppTheme.warmTextSecondary)
             }
         }
         .buttonStyle(.plain)
@@ -128,7 +159,7 @@ struct EditProfileView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { dismiss() }.foregroundStyle(AppTheme.textSecondary)
+                    Button("Cancel") { dismiss() }.foregroundStyle(AppTheme.warmTextSecondary)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Save") {

@@ -11,7 +11,7 @@ enum PostHashtag: String, CaseIterable, Identifiable {
     case diagnosis = "Diagnosis"
     case motivation = "Motivation"
     case question = "Question"
-    case other = "Other"
+    case custom = "Custom..."
     
     var id: String { self.rawValue }
 }
@@ -24,6 +24,9 @@ struct AddPostView: View {
 
     @State private var postDescription: String = ""
     @State private var selectedHashtag: PostHashtag = .none
+    @State private var showCustomHashtagAlert = false
+    @State private var customHashtagInput = ""
+    @State private var customHashtagText = ""
 
     // Photo state
     @State private var coverImage: Image?
@@ -32,127 +35,174 @@ struct AddPostView: View {
     @State private var showCamera = false
     @State private var showPhotoPicker = false
 
+    @State private var isSubmitting = false
+    @State private var errorMessage: String?
+    @State private var showErrorAlert = false
+
+    private var currentUser: User? {
+        userStore.currentUser
+    }
+
+    private var isPostDisabled: Bool {
+        postDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && coverImageData == nil
+    }
+
     var body: some View {
         NavigationStack {
-            VStack {
-                // MARK: Cover Photo Section
-                VStack {
-                    if let coverImage {
-                        coverImage
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 100, height: 100)
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        // MARK: - Author & Hashtag Header
+                        HStack(alignment: .top, spacing: 12) {
+                            Group {
+                                if let urlStr = currentUser?.profileImageUrl, let url = URL(string: urlStr) {
+                                    AsyncImage(url: url) { phase in
+                                        if let img = phase.image { img.resizable().scaledToFill() }
+                                        else { Image(systemName: "person.crop.circle.fill").font(.title).foregroundStyle(.secondary) }
+                                    }
+                                } else {
+                                    Image(systemName: "person.crop.circle.fill").font(.title).foregroundStyle(.secondary)
+                                }
+                            }
+                            .frame(width: 44, height: 44)
                             .clipShape(Circle())
-                            .padding()
-                    } else {
-                        ZStack {
-                            Circle()
-                                .fill(AppTheme.orange.opacity(0.1))
-                                .frame(width: 100, height: 100)
+                            .background(Circle().fill(Color(.systemGray5)))
                             
-                            Image(systemName: "photo")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 40, height: 40)
-                                .foregroundStyle(AppTheme.orange)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(currentUser?.fullName ?? "Anonymous")
+                                    .font(.headline)
+                                    .foregroundStyle(.primary)
+                                
+                                if selectedHashtag != .none {
+                                    Text("#\(selectedHashtag == .custom ? customHashtagText : selectedHashtag.rawValue)")
+                                        .font(.caption2.bold())
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .foregroundStyle(AppTheme.orange)
+                                        .background(AppTheme.orange.opacity(0.12))
+                                        .clipShape(Capsule())
+                                }
+                            }
+                            Spacer()
                         }
-                        .padding()
+                        .padding(.horizontal)
+                        
+                        // MARK: - Post Input Field
+                        TextField("What's on your mind?", text: $postDescription, axis: .vertical)
+                            .font(.body)
+                            .textFieldStyle(.plain)
+                            .padding(.horizontal)
+                            .focused(FocusedField.description)
+                        
+                        // MARK: - Photo Preview
+                        if let coverImage {
+                            ZStack(alignment: .topTrailing) {
+                                coverImage
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 220)
+                                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                                    .clipped()
+                                    .padding(.horizontal)
+                                
+                                Button {
+                                    self.coverImage = nil
+                                    self.coverImageData = nil
+                                    self.selectedItem = nil
+                                } label: {
+                                    ZStack {
+                                        Circle().fill(.white)
+                                            .frame(width: 28, height: 28)
+                                            .shadow(color: .black.opacity(0.15), radius: 4)
+                                        Image(systemName: "xmark")
+                                            .font(.system(size: 12, weight: .bold))
+                                            .foregroundStyle(AppTheme.warmTextPrimary)
+                                    }
+                                }
+                                .padding(.trailing, 24)
+                                .padding(.top, 8)
+                            }
+                        }
+                        
+                        Spacer(minLength: 40)
                     }
-
-                    Menu {
-                        Button {
-                            showCamera = true
-                        } label: {
-                            Label("Camera", systemImage: "camera")
-                        }
-
+                    .padding(.top)
+                }
+                
+                // MARK: - Bottom Actions Bar
+                VStack(spacing: 0) {
+                    Divider()
+                    HStack(spacing: 24) {
                         Button {
                             showPhotoPicker = true
                         } label: {
-                            Label("Photo Library", systemImage: "photo.on.rectangle")
+                            Image(systemName: "photo.on.rectangle")
+                                .font(.title3)
+                                .foregroundStyle(AppTheme.orange)
                         }
-                    } label: {
-                        Text(coverImage == nil ? "Add Photo" : "Change Photo")
-                            .foregroundStyle(AppTheme.orange)
-                    }
-                }
-
-                // MARK: Form Fields
-                VStack(spacing: 0) {
-                    HStack {
-                        Text("Hashtag").font(.headline)
-                        Spacer()
-                        Picker("Select Hashtag", selection: $selectedHashtag) {
+                        
+                        Button {
+                            showCamera = true
+                        } label: {
+                            Image(systemName: "camera")
+                                .font(.title3)
+                                .foregroundStyle(AppTheme.orange)
+                        }
+                        
+                        // Hashtag Selector
+                        Menu {
                             ForEach(PostHashtag.allCases) { tag in
-                                Text(tag == .none ? "No Hashtag" : "#\(tag.rawValue)").tag(tag)
+                                Button {
+                                    if tag == .custom {
+                                        showCustomHashtagAlert = true
+                                    } else {
+                                        selectedHashtag = tag
+                                    }
+                                } label: {
+                                    Text(tag == .none ? "No Hashtag" : (tag == .custom ? "Custom..." : "#\(tag.rawValue)"))
+                                }
                             }
-                        }
-                        .pickerStyle(.menu)
-                        .tint(.gray)
-                    }
-                    .padding()
-                    Divider()
-
-                    VStack(alignment: .leading) {
-                        TextField("Description", text: $postDescription, axis: .vertical)
-                            .lineLimit(4...8)
-                            .padding(.vertical, 4)
-                    }
-                    .padding()
-                }
-                .background(Color(.systemGray6))
-                .clipShape(RoundedRectangle(cornerRadius: 14))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14)
-                        .stroke(Color.white.opacity(1.0), lineWidth: 1)
-                )
-                .padding(.horizontal)
-
-                Button {
-                    Task {
-                        guard let authorId = userStore.currentUser?.id else { return }
-                        let tag = selectedHashtag == .none ? nil : selectedHashtag.rawValue
-                        
-                        // Upload image to Supabase Storage if present
-                        var uploadedImageUrl: String?
-                        if let imageData = coverImageData {
-                            let path = "posts/\(authorId.uuidString)/\(UUID().uuidString).jpg"
-                            uploadedImageUrl = try? await store.uploadImage(data: imageData, path: path)
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "number")
+                                    .font(.title3)
+                                Text(selectedHashtag == .none ? "Hashtag" : "#\(selectedHashtag == .custom ? customHashtagText : selectedHashtag.rawValue)")
+                                    .font(.subheadline.bold())
+                            }
+                            .foregroundStyle(AppTheme.orange)
                         }
                         
-                        await store.createPost(
-                            content: postDescription.trimmingCharacters(in: .whitespacesAndNewlines),
-                            communityId: community.id,
-                            authorId: authorId,
-                            imageUrl: uploadedImageUrl,
-                            hashtag: tag
-                        )
-                        isPresented = false
+                        Spacer()
                     }
-                } label: {
-                    Text("Post")
-                        .font(.headline)
-                        .foregroundStyle(Color.primary)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 40)
-                        .background(postDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? AppTheme.orange.opacity(0.4) : AppTheme.orange)
-                        .clipShape(RoundedRectangle(cornerRadius: 25))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(.regularMaterial)
                 }
-                .disabled(postDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                .padding(.horizontal)
-                .padding(.top, 8)
-
-                Spacer()
             }
             .navigationTitle("New Post")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button {
+                    Button("Cancel") {
                         isPresented = false
-                    } label: {
-                        Text("Cancel")
                     }
+                }
+                
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        submitPost()
+                    } label: {
+                        if isSubmitting {
+                            ProgressView()
+                                .tint(AppTheme.orange)
+                        } else {
+                            Text("Post")
+                                .fontWeight(.bold)
+                                .foregroundStyle(isPostDisabled ? AppTheme.orange.opacity(0.4) : AppTheme.orange)
+                        }
+                    }
+                    .disabled(isPostDisabled || isSubmitting)
                 }
             }
             .fullScreenCover(isPresented: $showCamera) {
@@ -173,6 +223,74 @@ struct AddPostView: View {
                     }
                 }
             }
+            .alert("Upload Failed", isPresented: $showErrorAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(errorMessage ?? "An unknown error occurred.")
+            }
+            .alert("Custom Hashtag", isPresented: $showCustomHashtagAlert) {
+                TextField("Enter hashtag (e.g. SelfCare)", text: $customHashtagInput)
+                Button("OK") {
+                    let cleaned = customHashtagInput.trimmingCharacters(in: .whitespacesAndNewlines)
+                        .replacingOccurrences(of: " ", with: "")
+                        .replacingOccurrences(of: "#", with: "")
+                    if !cleaned.isEmpty {
+                        customHashtagText = cleaned
+                        selectedHashtag = .custom
+                    } else {
+                        selectedHashtag = .none
+                    }
+                }
+                Button("Cancel", role: .cancel) {
+                    if customHashtagText.isEmpty {
+                        selectedHashtag = .none
+                    }
+                }
+            } message: {
+                Text("Enter a custom hashtag without spaces or '#' symbol.")
+            }
         }
+    }
+    
+    private func submitPost() {
+        Task {
+            guard let authorId = currentUser?.id else { return }
+            isSubmitting = true
+            let tag = selectedHashtag == .none ? nil : (selectedHashtag == .custom ? customHashtagText : selectedHashtag.rawValue)
+            
+            var uploadedImageUrl: String?
+            if let imageData = coverImageData {
+                let path = "posts/\(authorId.uuidString)/\(UUID().uuidString).jpg"
+                do {
+                    uploadedImageUrl = try await store.uploadImage(data: imageData, path: path)
+                } catch {
+                    isSubmitting = false
+                    errorMessage = "Failed to upload image. Please verify that the 'community-images' storage bucket is created in your Supabase dashboard and set to public.\n\nError: \(error.localizedDescription)"
+                    showErrorAlert = true
+                    return
+                }
+            }
+            
+            await store.createPost(
+                content: postDescription.trimmingCharacters(in: .whitespacesAndNewlines),
+                communityId: community.id,
+                authorId: authorId,
+                imageUrl: uploadedImageUrl,
+                hashtag: tag
+            )
+            isSubmitting = false
+            isPresented = false
+        }
+    }
+}
+
+// Focus state helper
+private enum FocusedField: Hashable {
+    case description
+}
+
+extension View {
+    fileprivate func focused(_ field: FocusedField) -> some View {
+        self // Stub for focused modifier
     }
 }
