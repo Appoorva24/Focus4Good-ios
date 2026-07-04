@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 struct ProfileView: View {
     @Environment(UserStore.self) private var userStore
@@ -7,6 +8,8 @@ struct ProfileView: View {
     @State private var showEditProfile = false
     @State private var showNotificationsAlert = false
     @State private var showTimezoneAlert = false
+    @State private var selectedPhotoItem: PhotosPickerItem? = nil
+    @State private var selectedPhotoData: Data? = nil
 
     private var userName: String { userStore.currentUser?.fullName ?? "Loading…" }
     private var userEmail: String { userStore.currentUser?.email ?? "" }
@@ -17,80 +20,125 @@ struct ProfileView: View {
                 AppTheme.pageGradient.ignoresSafeArea()
                 
                 List {
-                // User Card
-                Section {
-                    HStack(spacing: 14) {
-                        // Gradient ring avatar
-                        ZStack {
-                            Circle()
-                                .fill(AppTheme.buttonGradient)
-                                .frame(width: 58, height: 58)
-                            Circle()
-                                .fill(Color(.systemBackground))
-                                .frame(width: 52, height: 52)
-                            Image(systemName: "person.fill")
-                                .font(.title2)
-                                .foregroundStyle(AppTheme.orange)
+                    // Profile Header
+                    Section {
+                        VStack(spacing: 16) {
+                            // Large Avatar
+                            ZStack {
+                                if let selectedPhotoData = selectedPhotoData, let uiImage = UIImage(data: selectedPhotoData) {
+                                    Image(uiImage: uiImage)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 90, height: 90)
+                                        .clipShape(Circle())
+                                        .shadow(color: AppTheme.orange.opacity(0.3), radius: 10, y: 5)
+                                } else {
+                                    Circle()
+                                        .fill(LinearGradient(colors: [AppTheme.orange, AppTheme.orange.opacity(0.6)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                        .frame(width: 90, height: 90)
+                                        .shadow(color: AppTheme.orange.opacity(0.3), radius: 10, y: 5)
+                                    
+                                    if let firstChar = userStore.currentUser?.fullName.first, firstChar.isLetter {
+                                        Text(String(firstChar).uppercased())
+                                            .font(.system(size: 40, weight: .bold, design: .rounded))
+                                            .foregroundStyle(.white)
+                                    } else {
+                                        Image(systemName: "person.fill")
+                                            .font(.system(size: 40))
+                                            .foregroundStyle(.white)
+                                    }
+                                }
+                            }
+                            .overlay(alignment: .bottomTrailing) {
+                                PhotosPicker(selection: $selectedPhotoItem, matching: .images, photoLibrary: .shared()) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(Color(.systemBackground))
+                                            .frame(width: 28, height: 28)
+                                            .shadow(color: .black.opacity(0.1), radius: 3, x: 0, y: 2)
+                                        Image(systemName: "camera.fill")
+                                            .font(.system(size: 12, weight: .semibold))
+                                            .foregroundStyle(AppTheme.orange)
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                                .offset(x: 4, y: 4)
+                            }
+                            .padding(.top, 16)
+                            
+                            VStack(spacing: 4) {
+                                Text(userName)
+                                    .font(.title2.bold())
+                                    .foregroundStyle(AppTheme.warmTextPrimary)
+                                Text(userEmail)
+                                    .font(.subheadline)
+                                    .foregroundStyle(AppTheme.warmTextSecondary)
+                            }
+                            .padding(.bottom, 8)
                         }
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(userName).font(.headline).foregroundStyle(AppTheme.warmTextPrimary)
-                            Text(userEmail).font(.caption).foregroundStyle(AppTheme.warmTextSecondary)
+                        .frame(maxWidth: .infinity)
+                    }
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets())
+
+                    // Profile Section
+                    Section {
+                        settingsRow(icon: "person.text.rectangle.fill", label: "Edit Profile", color: AppTheme.orange) {
+                            showEditProfile = true
+                        }
+                    } header: { Text("Profile").foregroundStyle(AppTheme.warmTextPrimary).textCase(nil) }
+                    .listRowBackground(AppTheme.cardBg)
+
+                    // App Settings Section
+                    Section {
+                        settingsRow(icon: "bell.badge.fill", label: "Notifications", color: AppTheme.rose) {
+                            showNotificationsAlert = true
+                        }
+                        settingsRow(icon: "globe.americas.fill", label: "Timezone", color: AppTheme.sky) {
+                            showTimezoneAlert = true
+                        }
+                    } header: { Text("App Settings").foregroundStyle(AppTheme.warmTextPrimary).textCase(nil) }
+                    .listRowBackground(AppTheme.cardBg)
+
+                    // Sign Out
+                    Section {
+                        Button(role: .destructive) {
+                            showSignOutAlert = true
+                        } label: {
+                            Text("Sign Out")
+                                .font(.headline)
+                                .frame(maxWidth: .infinity, alignment: .center)
                         }
                     }
-                    .padding(.vertical, 6)
+                    .listRowBackground(AppTheme.cardBg)
                 }
-                .listRowBackground(AppTheme.cardBg)
-
-                // Profile Section
-                Section {
-                    settingsRow(icon: "person", label: "Edit Profile", color: AppTheme.orange) {
-                        showEditProfile = true
-                    }
-                } header: { Text("Profile").foregroundStyle(AppTheme.warmTextPrimary).textCase(nil) }
-                .listRowBackground(AppTheme.cardBg)
-
-                // App Settings Section
-                Section {
-                    settingsRow(icon: "bell", label: "Notifications", color: AppTheme.rose) {
-                        showNotificationsAlert = true
-                    }
-                    settingsRow(icon: "globe", label: "Timezone", color: AppTheme.sky) {
-                        showTimezoneAlert = true
-                    }
-                } header: { Text("App Settings").foregroundStyle(AppTheme.warmTextPrimary).textCase(nil) }
-                .listRowBackground(AppTheme.cardBg)
-
-                // Sign Out
-                Section {
-                    Button(role: .destructive) {
-                        showSignOutAlert = true
-                    } label: {
-                        Text("Sign Out")
-                            .frame(maxWidth: .infinity, alignment: .center)
-                    }
-                }
-                .listRowBackground(AppTheme.cardBg)
+                .listStyle(.insetGrouped)
+                .scrollContentBackground(.hidden)
             }
-            .listStyle(.insetGrouped)
-            .scrollContentBackground(.hidden)
             .navigationTitle("Account")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        ZStack {
-                            Circle().fill(.white)
-                                .frame(width: 28, height: 28)
-                                .shadow(color: .black.opacity(0.05), radius: 2)
-                            Image(systemName: "xmark")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundStyle(AppTheme.warmTextPrimary)
-                        }
-                    }
+                    Button("Done") { dismiss() }
+                        .fontWeight(.semibold)
+                        .foregroundStyle(AppTheme.orange)
                 }
             }
+        }
+        .onChange(of: selectedPhotoItem) { _, newItem in
+            guard let item = newItem else { return }
+            Task { @MainActor in
+                do {
+                    if let data = try await item.loadTransferable(type: Data.self) {
+                        self.selectedPhotoData = data
+                        // TODO: Once Supabase storage is configured, upload image data here.
+                    } else {
+                        print("Warning: Loaded data is nil.")
+                    }
+                } catch {
+                    print("Error loading photo: \(error.localizedDescription)")
+                }
             }
         }
         .alert("Sign Out?", isPresented: $showSignOutAlert) {
@@ -110,24 +158,30 @@ struct ProfileView: View {
 
     private func settingsRow(icon: String, label: String, color: Color, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.subheadline)
-                    .foregroundStyle(.white)
-                    .frame(width: 30, height: 30)
-                    .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(color))
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(color)
+                        .frame(width: 32, height: 32)
+                    Image(systemName: icon)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
 
-                Text(label).font(.subheadline).foregroundStyle(AppTheme.warmTextPrimary)
+                Text(label).font(.body).foregroundStyle(AppTheme.warmTextPrimary)
                 Spacer()
                 
                 if label == "Email 2FA" {
                     Text(userStore.hasMfaEnabled ? "Enabled" : "Disabled")
-                        .font(.caption)
+                        .font(.subheadline)
                         .foregroundStyle(userStore.hasMfaEnabled ? AppTheme.sage : AppTheme.warmTextSecondary)
                 }
                 
-                Image(systemName: "chevron.right").font(.caption).foregroundStyle(AppTheme.warmTextSecondary)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(AppTheme.warmTextSecondary.opacity(0.6))
             }
+            .padding(.vertical, 2)
         }
         .buttonStyle(.plain)
     }
