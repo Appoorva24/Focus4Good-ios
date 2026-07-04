@@ -1,5 +1,63 @@
 import Foundation
 
+// MARK: - Impact Goal (Focus Points Donation Tiers)
+
+struct ImpactGoal: Identifiable, Hashable {
+    let id = UUID()
+    let title: String
+    let description: String
+    let icon: String
+    let pointsCost: Int
+    let impactLabel: String
+
+    static let allGoals: [ImpactGoal] = [
+        ImpactGoal(
+            title: "Stationery Kit",
+            description: "Pencils, notebooks, erasers & a geometry box for one child",
+            icon: "pencil.and.ruler.fill",
+            pointsCost: 500,
+            impactLabel: "1 Child"
+        ),
+        ImpactGoal(
+            title: "Textbooks",
+            description: "A full set of textbooks for one child for the academic year",
+            icon: "text.book.closed.fill",
+            pointsCost: 1000,
+            impactLabel: "1 Child / Year"
+        ),
+        ImpactGoal(
+            title: "School Kit",
+            description: "School bag, books, uniform & shoes — everything to start school",
+            icon: "backpack.fill",
+            pointsCost: 2500,
+            impactLabel: "1 Full Kit"
+        ),
+        ImpactGoal(
+            title: "Library Books",
+            description: "Donate 5 inspiring storybooks to the community center library",
+            icon: "books.vertical.fill",
+            pointsCost: 2000,
+            impactLabel: "5 Books"
+        ),
+        ImpactGoal(
+            title: "Art Supplies",
+            description: "Colors, sketchbooks, and craft materials for creative learning",
+            icon: "paintpalette.fill",
+            pointsCost: 750,
+            impactLabel: "1 Art Kit"
+        )
+    ]
+}
+
+// MARK: - Donation Record (local tracking)
+
+struct DonationRecord: Identifiable, Codable, Hashable {
+    var id = UUID()
+    let goalTitle: String
+    let pointsSpent: Int
+    let date: Date
+}
+
 // MARK: - NGO
 struct NGO: Identifiable, Codable, Hashable {
     var id: UUID = UUID()

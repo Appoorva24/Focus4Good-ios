@@ -275,13 +275,7 @@ struct HomeView: View {
         }
         .frame(maxWidth: .infinity)
         .frame(height: height)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color(.systemBackground))
-                .shadow(color: Color.black.opacity(0.06), radius: 12, x: 0, y: 4)
-                .shadow(color: AppTheme.orange.opacity(0.08), radius: 2, x: 0, y: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .glassCard(cornerRadius: 18)
     }
 
     // MARK: Today's Goal
@@ -346,13 +340,7 @@ struct HomeView: View {
         }
         .frame(maxWidth: .infinity)
         .frame(height: height)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color(.systemBackground))
-                .shadow(color: Color.black.opacity(0.06), radius: 12, x: 0, y: 4)
-                .shadow(color: AppTheme.sage.opacity(0.08), radius: 2, x: 0, y: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .glassCard(cornerRadius: 18)
     }
 
     // ─────────────────────────────────────────────────────────────────

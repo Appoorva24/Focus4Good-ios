@@ -312,6 +312,46 @@ class UserStore {
         }
     }
     
+    // MARK: - Focus Points Donation
+    
+    /// Total points donated across all time (persisted locally)
+    var totalPointsDonated: Int {
+        get { UserDefaults.standard.integer(forKey: "totalPointsDonated_\(currentUser?.id.uuidString ?? "")") }
+        set { UserDefaults.standard.set(newValue, forKey: "totalPointsDonated_\(currentUser?.id.uuidString ?? "")") }
+    }
+    
+    /// Donation history (persisted locally as JSON)
+    var donationHistory: [DonationRecord] {
+        get {
+            guard let data = UserDefaults.standard.data(forKey: "donationHistory_\(currentUser?.id.uuidString ?? "")") else { return [] }
+            return (try? JSONDecoder().decode([DonationRecord].self, from: data)) ?? []
+        }
+        set {
+            if let data = try? JSONEncoder().encode(newValue) {
+                UserDefaults.standard.set(data, forKey: "donationHistory_\(currentUser?.id.uuidString ?? "")")
+            }
+        }
+    }
+    
+    /// Donate focus points toward an impact goal. Returns true on success.
+    @discardableResult
+    func donatePoints(for goal: ImpactGoal) async -> Bool {
+        guard let user = currentUser, user.focusPoints >= goal.pointsCost else {
+            errorMessage = "Not enough Focus Points"
+            return false
+        }
+        
+        // Deduct points
+        await updateFocusPoints(by: -goal.pointsCost)
+        
+        // Track donation
+        totalPointsDonated += goal.pointsCost
+        let record = DonationRecord(goalTitle: goal.title, pointsSpent: goal.pointsCost, date: Date())
+        donationHistory = [record] + donationHistory
+        
+        return true
+    }
+    
     func updateStreak(newStreak: Int) async {
         guard var user = currentUser else { return }
         do {
