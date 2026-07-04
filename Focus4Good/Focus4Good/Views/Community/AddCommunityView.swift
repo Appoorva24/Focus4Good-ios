@@ -17,6 +17,12 @@ struct AddCommunityView: View {
     @State private var selectedItem: PhotosPickerItem?
     @State private var showCamera = false
     @State private var showPhotoPicker = false
+    
+    @State private var profileImage: Image?
+    @State private var profileImageData: Data?
+    @State private var profileSelectedItem: PhotosPickerItem?
+    @State private var showProfileCamera = false
+    @State private var showProfilePhotoPicker = false
 
     @State private var isSubmitting = false
     @State private var errorMessage: String?
@@ -28,41 +34,44 @@ struct AddCommunityView: View {
                 AppTheme.pageGradient.ignoresSafeArea()
 
                 VStack {
-                    // MARK: Cover Photo Section
-                VStack {
-                    if let coverImage {
-                        coverImage
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 100, height: 100)
-                            .clipShape(Circle())
-                            .padding()
-                    } else {
-                        Image("personimage")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 100, height: 100)
-                            .clipShape(Circle())
-                            .padding()
-                    }
-
+                // MARK: Cover Photo Section
+                ZStack(alignment: .bottomLeading) {
                     Menu {
-                        Button {
-                            showCamera = true
-                        } label: {
-                            Label("Camera", systemImage: "camera")
-                        }
-
-                        Button {
-                            showPhotoPicker = true
-                        } label: {
-                            Label("Photo Library", systemImage: "photo.on.rectangle")
-                        }
+                        Button { showCamera = true } label: { Label("Camera", systemImage: "camera") }
+                        Button { showPhotoPicker = true } label: { Label("Photo Library", systemImage: "photo.on.rectangle") }
                     } label: {
-                        Text(coverImage == nil ? "Add Cover Photo" : "Change Photo")
-                            .foregroundStyle(AppTheme.orange)
+                        ZStack {
+                            if let coverImage {
+                                coverImage.resizable().scaledToFill().frame(height: 160).frame(maxWidth: .infinity).clipShape(RoundedRectangle(cornerRadius: 16)).overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.black.opacity(0.1), lineWidth: 1))
+                            } else {
+                                RoundedRectangle(cornerRadius: 16).fill(AppTheme.orange.opacity(0.08)).frame(height: 160).frame(maxWidth: .infinity).overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [8])).foregroundColor(AppTheme.orange.opacity(0.5)))
+                                VStack(spacing: 12) {
+                                    Image(systemName: "photo.badge.plus").font(.system(size: 40)).foregroundStyle(AppTheme.orange)
+                                    Text(coverImage == nil ? "Add Cover Photo" : "Change Photo").font(.headline).foregroundStyle(AppTheme.orange)
+                                }
+                            }
+                        }
                     }
+                    
+                    Menu {
+                        Button { showProfileCamera = true } label: { Label("Camera", systemImage: "camera") }
+                        Button { showProfilePhotoPicker = true } label: { Label("Photo Library", systemImage: "photo.on.rectangle") }
+                    } label: {
+                        ZStack {
+                            Circle().fill(AppTheme.cardBg).frame(width: 80, height: 80).shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
+                            if let profileImage {
+                                profileImage.resizable().scaledToFill().frame(width: 72, height: 72).clipShape(Circle())
+                            } else {
+                                Image(systemName: "camera.circle.fill").resizable().foregroundStyle(AppTheme.orange, AppTheme.orange.opacity(0.2)).frame(width: 72, height: 72)
+                            }
+                        }
+                    }
+                    .padding(.leading, 16)
+                    .offset(y: 40)
                 }
+                .padding(.horizontal)
+                .padding(.top, 16)
+                .padding(.bottom, 48)
 
                 // MARK: Form Fields
                 VStack(spacing: 0) {
@@ -157,17 +166,29 @@ struct AddCommunityView: View {
                                 return
                             }
                         }
+                        var uploadedProfileUrl: String?
+                        if let profileData = profileImageData {
+                            let path = "communities/\(userId.uuidString)/profile_\(UUID().uuidString).jpg"
+                            uploadedProfileUrl = try? await communityStore.uploadImage(data: profileData, path: path)
+                        }
                         
-                        await communityStore.createCommunity(
-                            name: nameOfCommunity,
-                            description: description.isEmpty ? "A community about \(category.isEmpty ? "various topics" : category)." : description,
-                            categoryId: nil,
-                            isPrivate: isPrivate,
-                            userId: userId,
-                            coverImageUrl: uploadedCoverUrl
-                        )
-                        isSubmitting = false
-                        addCommunity = false
+                        do {
+                            try await communityStore.createCommunity(
+                                name: nameOfCommunity,
+                                description: description.isEmpty ? "A community about \(category.isEmpty ? "various topics" : category)." : description,
+                                categoryId: nil,
+                                isPrivate: isPrivate,
+                                userId: userId,
+                                coverImageUrl: uploadedCoverUrl,
+                                profileImageUrl: uploadedProfileUrl
+                            )
+                            isSubmitting = false
+                            addCommunity = false
+                        } catch {
+                            isSubmitting = false
+                            errorMessage = "Failed to create community: \(error.localizedDescription)"
+                            showErrorAlert = true
+                        }
                     }
                 } label: {
                     HStack {
@@ -199,30 +220,30 @@ struct AddCommunityView: View {
                         addCommunity = false
                     } label: {
                         Text("Cancel")
-                            .font(.subheadline.bold())
-                            .foregroundStyle(AppTheme.orange)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(Capsule().fill(.white))
-                            .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
                     }
                 }
             }
             .fullScreenCover(isPresented: $showCamera) {
-                CameraPickerView(image: $coverImage, imageData: $coverImageData)
-                    .ignoresSafeArea()
+                CameraPickerView(image: $coverImage, imageData: $coverImageData).ignoresSafeArea()
             }
-            .photosPicker(isPresented: $showPhotoPicker,
-                          selection: $selectedItem,
-                          matching: .images,
-                          photoLibrary: .shared())
+            .photosPicker(isPresented: $showPhotoPicker, selection: $selectedItem, matching: .images, photoLibrary: .shared())
             .onChange(of: selectedItem) { _, newItem in
                 Task {
-                    if let newItem,
-                       let data = try? await newItem.loadTransferable(type: Data.self),
-                       let uiImage = UIImage(data: data) {
+                    if let newItem, let data = try? await newItem.loadTransferable(type: Data.self), let uiImage = UIImage(data: data) {
                         coverImageData = data
                         coverImage = Image(uiImage: uiImage)
+                    }
+                }
+            }
+            .fullScreenCover(isPresented: $showProfileCamera) {
+                CameraPickerView(image: $profileImage, imageData: $profileImageData).ignoresSafeArea()
+            }
+            .photosPicker(isPresented: $showProfilePhotoPicker, selection: $profileSelectedItem, matching: .images, photoLibrary: .shared())
+            .onChange(of: profileSelectedItem) { _, newItem in
+                Task {
+                    if let newItem, let data = try? await newItem.loadTransferable(type: Data.self), let uiImage = UIImage(data: data) {
+                        profileImageData = data
+                        profileImage = Image(uiImage: uiImage)
                     }
                 }
             }

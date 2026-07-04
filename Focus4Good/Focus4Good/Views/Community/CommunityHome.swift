@@ -1,14 +1,8 @@
 import SwiftUI
 
-enum CommunityTab: String, CaseIterable {
-    case forYou = "For You"
-    case yourCommunities = "Your Communities"
-}
-
 struct CommunityHome: View {
     @State private var addCommunity: Bool = false
     @State private var showRecentPosts: Bool = false
-    @State private var selectedTab: CommunityTab = .forYou
     @State private var searchText: String = ""
     @State private var showSearch: Bool = false
     
@@ -28,10 +22,7 @@ struct CommunityHome: View {
             guard let community = communities.communities.first(where: { $0.id == post.communityId }) else {
                 return false
             }
-            if community.isPrivate {
-                return community.creatorId == currentUserId || communities.isMember(communityId: community.id, userId: currentUserId)
-            }
-            return true
+            return community.creatorId == currentUserId || communities.isMember(communityId: community.id, userId: currentUserId)
         }
     }
     
@@ -76,32 +67,52 @@ struct CommunityHome: View {
                         if !searchText.isEmpty {
                             searchResultsView
                         } else {
-                            // ── Segmented Control ──
-                            Picker("Tab", selection: $selectedTab) {
-                                ForEach(CommunityTab.allCases, id: \.self) { tab in
-                                    Text(tab.rawValue).tag(tab)
-                                }
-                            }
-                            .pickerStyle(.segmented)
-                            .padding(.horizontal, 16)
-                            .padding(.top, 8)
-                            
-                            if selectedTab == .forYou {
-                                forYouEmptyState
-                            } else {
-                                yourCommunitiesTab
-                            }
+                            yourCommunitiesTab
                         }
                     }
                     .padding(.bottom, 80) // space for FAB
                     .animation(.default, value: forYouCommunities)
                     .animation(.default, value: joinedCommunities)
-                    .animation(.default, value: selectedTab)
                     .scrollContentBackground(.hidden) // Make scroll view transparent
                 }
                 .background(progressBackground)
                 .navigationTitle("Community")
-
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            let now = Date().timeIntervalSince1970
+                            let joined = communities.communities.filter {
+                                $0.creatorId == currentUserId || communities.isMember(communityId: $0.id, userId: currentUserId)
+                            }
+                            for community in joined {
+                                UserDefaults.standard.set(now, forKey: "last_visited_\(community.id.uuidString)")
+                            }
+                            showRecentPosts = true
+                        } label: {
+                            ZStack(alignment: .topTrailing) {
+                                Image(systemName: "newspaper")
+                                    .foregroundStyle(AppTheme.orange)
+                                    .padding(.trailing, 4) // Make space for the badge
+                                
+                                let unreadRecentPostsCount = visibleRecentPosts.filter { post in
+                                    let key = "last_visited_\(post.communityId.uuidString)"
+                                    return post.createdAt.timeIntervalSince1970 > UserDefaults.standard.double(forKey: key)
+                                }.count
+                                
+                                if unreadRecentPostsCount > 0 {
+                                    Text(unreadRecentPostsCount > 9 ? "9+" : "\(unreadRecentPostsCount)")
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundStyle(.white)
+                                        .padding(.horizontal, 4)
+                                        .padding(.vertical, 2)
+                                        .background(AppTheme.orange)
+                                        .clipShape(Capsule())
+                                        .offset(x: 4, y: -4)
+                                }
+                            }
+                        }
+                    }
+                }
                 .searchable(text: $searchText, isPresented: $showSearch, placement: .toolbar, prompt: "Search")
                 .overlay(alignment: .bottomTrailing) {
                     Button {
@@ -126,7 +137,7 @@ struct CommunityHome: View {
                 .navigationDestination(isPresented: $showRecentPosts) {
                     VStack(spacing: 0) {
                         ScrollView {
-                            if communities.posts.isEmpty {
+                            if visibleRecentPosts.isEmpty {
                                 VStack(spacing: 12) {
                                     Image(systemName: "text.bubble")
                                         .font(.system(size: 40))
@@ -138,7 +149,7 @@ struct CommunityHome: View {
                                 }
                             } else {
                                 LazyVStack(spacing: 16) {
-                                    ForEach(communities.posts) { post in
+                                    ForEach(visibleRecentPosts) { post in
                                         CommunityPostRowView(post: post)
                                     }
                                 }
@@ -146,6 +157,7 @@ struct CommunityHome: View {
                             }
                         }
                     }
+                    .background(progressBackground)
                     .navigationTitle("Recent Posts")
                     .navigationBarTitleDisplayMode(.inline)
                 }
@@ -158,9 +170,7 @@ struct CommunityHome: View {
                     }
                     updateSnapshot()
                 }
-                .onChange(of: selectedTab) { _, _ in
-                    updateSnapshot()
-                }
+
                 .onChange(of: communities.communities) { _, _ in
                     updateSnapshot()
                 }
@@ -185,7 +195,7 @@ struct CommunityHome: View {
                 }
             } else {
                 ForEach(filteredCommunities) { community in
-                    CommunityRowView(community: community, selectedTab: $selectedTab)
+                    CommunityRowView(community: community)
                 }
             }
         }
@@ -204,7 +214,7 @@ struct CommunityHome: View {
                             .padding(.horizontal, 16)
                         
                         ForEach(createdCommunities) { community in
-                            CommunityRowView(community: community, selectedTab: $selectedTab)
+                            CommunityRowView(community: community)
                         }
                     }
                 }
@@ -218,7 +228,7 @@ struct CommunityHome: View {
                             .padding(.top, createdCommunities.isEmpty ? 0 : 8)
                         
                         ForEach(joinedCommunities) { community in
-                            CommunityRowView(community: community, selectedTab: $selectedTab)
+                            CommunityRowView(community: community)
                         }
                     }
                 }
@@ -232,7 +242,7 @@ struct CommunityHome: View {
                             .padding(.top, (createdCommunities.isEmpty && joinedCommunities.isEmpty) ? 0 : 8)
                         
                         ForEach(forYouCommunities) { community in
-                            CommunityRowView(community: community, selectedTab: $selectedTab)
+                            CommunityRowView(community: community)
                         }
                     }
                 }

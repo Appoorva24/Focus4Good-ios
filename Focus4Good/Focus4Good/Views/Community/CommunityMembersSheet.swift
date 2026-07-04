@@ -2,6 +2,7 @@ import SwiftUI
 
 struct CommunityMemberRow: Identifiable {
     let id: UUID // user id
+    let memberId: UUID // community_members id
     let name: String
     let email: String
     let imageUrl: String?
@@ -11,6 +12,7 @@ struct CommunityMemberRow: Identifiable {
 struct CommunityMembersSheet: View {
     let community: Community
     @Environment(CommunityStore.self) private var communityStore
+    @Environment(UserStore.self) private var userStore
     @Environment(\.dismiss) private var dismiss
     
     @State private var memberRows: [CommunityMemberRow] = []
@@ -23,6 +25,18 @@ struct CommunityMembersSheet: View {
         } else {
             return memberRows.filter { $0.name.localizedCaseInsensitiveContains(searchField) || $0.email.localizedCaseInsensitiveContains(searchField) }
         }
+    }
+    
+    var pendingRows: [CommunityMemberRow] {
+        filteredRows.filter { $0.role == "pending" }
+    }
+    
+    var activeRows: [CommunityMemberRow] {
+        filteredRows.filter { $0.role != "pending" }
+    }
+    
+    private var isOwner: Bool {
+        userStore.currentUser?.id == community.creatorId
     }
     
     var body: some View {
@@ -43,50 +57,18 @@ struct CommunityMembersSheet: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     List {
-                        ForEach(filteredRows) { row in
-                            HStack {
-                                Group {
-                                    if let urlStr = row.imageUrl, let url = URL(string: urlStr) {
-                                        AsyncImage(url: url) { phase in
-                                            if let img = phase.image { img.resizable().scaledToFill() }
-                                            else { Image(systemName: "person.fill").font(.subheadline).foregroundStyle(.secondary) }
-                                        }
-                                    } else {
-                                        Image(systemName: "person.fill").font(.subheadline).foregroundStyle(.secondary)
-                                    }
+                        if isOwner && !pendingRows.isEmpty {
+                            Section(header: Text("Pending Requests").foregroundStyle(AppTheme.orange)) {
+                                ForEach(pendingRows) { row in
+                                    memberRowView(row)
                                 }
-                                .frame(width: 36, height: 36)
-                                .clipShape(Circle())
-                                .background(Circle().fill(Color(.systemGray5)))
-                                
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(row.name)
-                                        .font(.body.bold())
-                                        .foregroundStyle(.primary)
-                                    Text(row.email)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                
-                                Spacer()
-                                
-                                // Role Badge
-                                let displayRole: String = {
-                                    if row.id == community.creatorId { return "Owner" }
-                                    return row.role.capitalized
-                                }()
-                                
-                                Text(displayRole)
-                                    .font(.caption2.bold())
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .foregroundStyle(displayRole == "Owner" || displayRole == "Admin" ? .white : .secondary)
-                                    .background(
-                                        Capsule()
-                                            .fill(displayRole == "Owner" || displayRole == "Admin" ? AppTheme.orange : Color(.systemGray4))
-                                    )
                             }
-                            .padding(.vertical, 4)
+                        }
+                        
+                        Section(header: Text(isOwner && !pendingRows.isEmpty ? "Members" : "")) {
+                            ForEach(activeRows) { row in
+                                memberRowView(row)
+                            }
                         }
                     }
                     .listStyle(.insetGrouped)
@@ -111,6 +93,85 @@ struct CommunityMembersSheet: View {
         }
     }
     
+    @ViewBuilder
+    private func memberRowView(_ row: CommunityMemberRow) -> some View {
+        HStack {
+            Group {
+                if let urlStr = row.imageUrl, let url = URL(string: urlStr) {
+                    AsyncImage(url: url) { phase in
+                        if let img = phase.image { img.resizable().scaledToFill() }
+                        else { Image(systemName: "person.fill").font(.subheadline).foregroundStyle(.secondary) }
+                    }
+                } else {
+                    Image(systemName: "person.fill").font(.subheadline).foregroundStyle(.secondary)
+                }
+            }
+            .frame(width: 36, height: 36)
+            .clipShape(Circle())
+            .background(Circle().fill(Color(.systemGray5)))
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(row.name)
+                    .font(.body.bold())
+                    .foregroundStyle(.primary)
+                Text(row.email)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            
+            Spacer()
+            
+            if row.role == "pending" && isOwner {
+                HStack(spacing: 12) {
+                    Button {
+                        if let member = communityStore.communityMembers.first(where: { $0.id == row.memberId }) {
+                            Task {
+                                await communityStore.acceptJoinRequest(member)
+                                await fetchAndBuildMembers()
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.title2)
+                            .foregroundStyle(.green)
+                    }
+                    .buttonStyle(.plain)
+                    
+                    Button {
+                        if let member = communityStore.communityMembers.first(where: { $0.id == row.memberId }) {
+                            Task {
+                                await communityStore.rejectJoinRequest(member)
+                                await fetchAndBuildMembers()
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title2)
+                            .foregroundStyle(.red)
+                    }
+                    .buttonStyle(.plain)
+                }
+            } else {
+                // Role Badge
+                let displayRole: String = {
+                    if row.id == community.creatorId { return "Owner" }
+                    return row.role.capitalized
+                }()
+                
+                Text(displayRole)
+                    .font(.caption2.bold())
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .foregroundStyle(displayRole == "Owner" || displayRole == "Admin" ? .white : .secondary)
+                    .background(
+                        Capsule()
+                            .fill(displayRole == "Owner" || displayRole == "Admin" ? AppTheme.orange : Color(.systemGray4))
+                    )
+            }
+        }
+        .padding(.vertical, 4)
+    }
+    
     private func fetchAndBuildMembers() async {
         let members = communityStore.communityMembers.filter { $0.communityId == community.id }
         guard !members.isEmpty else { return }
@@ -123,6 +184,7 @@ struct CommunityMembersSheet: View {
             if let profile = profiles.first(where: { $0.id == member.userId }) {
                 tempRows.append(CommunityMemberRow(
                     id: profile.id,
+                    memberId: member.id,
                     name: profile.fullName,
                     email: profile.email,
                     imageUrl: profile.profileImageUrl,

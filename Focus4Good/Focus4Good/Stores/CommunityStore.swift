@@ -25,7 +25,8 @@ class CommunityStore {
         postComments.filter { $0.postId == post.id }.sorted { $0.createdAt < $1.createdAt }
     }
     func isLiked(postId: UUID, userId: UUID) -> Bool { postLikes.contains { $0.postId == postId && $0.userId == userId } }
-    func isMember(communityId: UUID, userId: UUID) -> Bool { communityMembers.contains { $0.communityId == communityId && $0.userId == userId } }
+    func isMember(communityId: UUID, userId: UUID) -> Bool { communityMembers.contains { $0.communityId == communityId && $0.userId == userId && $0.role != "pending" } }
+    func hasPendingRequest(communityId: UUID, userId: UUID) -> Bool { communityMembers.contains { $0.communityId == communityId && $0.userId == userId && $0.role == "pending" } }
     func communities(in category: CommunityCategory) -> [Community] { communities.filter { $0.categoryId == category.id } }
     func memberRole(communityId: UUID, userId: UUID) -> String? { communityMembers.first { $0.communityId == communityId && $0.userId == userId }?.role }
     func isSaved(postId: UUID, userId: UUID) -> Bool { savedPostIds.contains(postId) }
@@ -193,52 +194,93 @@ class CommunityStore {
     }
 
     // MARK: - Communities
-    func createCommunity(name: String, description: String, categoryId: UUID?, isPrivate: Bool, userId: UUID, coverImageUrl: String? = nil) async {
+    func createCommunity(name: String, description: String, categoryId: UUID?, isPrivate: Bool, userId: UUID, coverImageUrl: String? = nil, profileImageUrl: String? = nil) async throws {
         let community = Community(
             categoryId: categoryId, creatorId: userId, name: name,
             description: description, coverImageUrl: coverImageUrl,
+            profileImageUrl: profileImageUrl,
             isPrivate: isPrivate, memberCount: 1, createdAt: Date()
         )
-        do {
-            let inserted: Community = try await client
-                .from("communities")
-                .insert(community)
-                .select().single().execute().value
-            communities.insert(inserted, at: 0)
+        let inserted: Community = try await client
+            .from("communities")
+            .insert(community)
+            .select().single().execute().value
+        communities.insert(inserted, at: 0)
 
-            // Auto-join as admin
-            let member = CommunityMember(userId: userId, communityId: inserted.id, role: "admin", joinedAt: Date())
-            let insertedMember: CommunityMember = try await client
-                .from("community_members")
-                .insert(member)
-                .select().single().execute().value
-            communityMembers.append(insertedMember)
-        } catch {
-            errorMessage = "Failed to create community: \(error.localizedDescription)"
-        }
+        // Auto-join as admin
+        let member = CommunityMember(userId: userId, communityId: inserted.id, role: "admin", joinedAt: Date())
+        let insertedMember: CommunityMember = try await client
+            .from("community_members")
+            .insert(member)
+            .select().single().execute().value
+        communityMembers.append(insertedMember)
     }
 
     func joinCommunity(_ community: Community, userId: UUID) async {
-        guard !isMember(communityId: community.id, userId: userId) else { return }
-        let member = CommunityMember(userId: userId, communityId: community.id, role: "member", joinedAt: Date())
+        guard !isMember(communityId: community.id, userId: userId) && !hasPendingRequest(communityId: community.id, userId: userId) else { return }
+        
+        let targetRole = community.isPrivate ? "pending" : "member"
+        let member = CommunityMember(userId: userId, communityId: community.id, role: targetRole, joinedAt: Date())
+        
         do {
             let inserted: CommunityMember = try await client
                 .from("community_members")
                 .insert(member)
                 .select().single().execute().value
             communityMembers.append(inserted)
-
-            // Update member count
-            if let index = communities.firstIndex(where: { $0.id == community.id }) {
+            
+            // Only update member count if they actually joined (not pending)
+            if targetRole == "member" {
+                if let index = communities.firstIndex(where: { $0.id == community.id }) {
+                    communities[index].memberCount += 1
+                    try await client
+                        .from("communities")
+                        .update(["member_count": communities[index].memberCount])
+                        .eq("id", value: community.id.uuidString)
+                        .execute()
+                }
+            }
+        } catch {
+            errorMessage = "Failed to join community: \(error.localizedDescription)"
+        }
+    }
+    
+    func acceptJoinRequest(_ member: CommunityMember) async {
+        do {
+            try await client
+                .from("community_members")
+                .update(["role": "member"])
+                .eq("id", value: member.id.uuidString)
+                .execute()
+                
+            if let index = communityMembers.firstIndex(where: { $0.id == member.id }) {
+                communityMembers[index].role = "member"
+            }
+            
+            if let index = communities.firstIndex(where: { $0.id == member.communityId }) {
                 communities[index].memberCount += 1
                 try await client
                     .from("communities")
                     .update(["member_count": communities[index].memberCount])
-                    .eq("id", value: community.id.uuidString)
+                    .eq("id", value: member.communityId.uuidString)
                     .execute()
             }
         } catch {
-            errorMessage = "Failed to join community: \(error.localizedDescription)"
+            errorMessage = "Failed to accept request: \(error.localizedDescription)"
+        }
+    }
+    
+    func rejectJoinRequest(_ member: CommunityMember) async {
+        do {
+            try await client
+                .from("community_members")
+                .delete()
+                .eq("id", value: member.id.uuidString)
+                .execute()
+                
+            communityMembers.removeAll(where: { $0.id == member.id })
+        } catch {
+            errorMessage = "Failed to reject request: \(error.localizedDescription)"
         }
     }
 
