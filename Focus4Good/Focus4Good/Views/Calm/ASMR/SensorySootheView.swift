@@ -89,10 +89,6 @@ struct SensorySootheView: View {
 
     private var playlistsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Featured Playlists")
-                .font(.title2)
-                .fontWeight(.bold)
-                .padding(.horizontal)
             
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 16) {
