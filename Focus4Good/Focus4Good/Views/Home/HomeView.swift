@@ -26,7 +26,7 @@ struct HomeView: View {
     }
 
     private var focusPoints: Int {
-        userStore.currentUser?.focusPoints ?? 120
+        userStore.currentUser?.focusPoints ?? 0
     }
 
     private var greetingEmoji: String {
@@ -87,6 +87,14 @@ struct HomeView: View {
                 }
             }
             .onAppear {
+                if !UserDefaults.standard.bool(forKey: "didResetPoints") {
+                    Task {
+                        if let pts = userStore.currentUser?.focusPoints, pts > 0 {
+                            await userStore.updateFocusPoints(by: -pts)
+                        }
+                        UserDefaults.standard.set(true, forKey: "didResetPoints")
+                    }
+                }
                 withAnimation(.easeOut(duration: 0.5).delay(0.1)) {
                     appeared = true
                 }
@@ -259,6 +267,8 @@ struct HomeView: View {
                         .font(.system(size: 22, weight: .bold, design: .rounded))
                         .foregroundStyle(AppTheme.warmTextPrimary)
                         .contentTransition(.numericText())
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
                     Text("pts")
                         .font(.system(size: 9, weight: .medium))
                         .foregroundStyle(AppTheme.warmTextSecondary)
@@ -324,6 +334,8 @@ struct HomeView: View {
                         .font(.system(size: 22, weight: .bold, design: .rounded))
                         .foregroundStyle(AppTheme.warmTextPrimary)
                         .contentTransition(.numericText())
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
                     Text("%")
                         .font(.system(size: 9, weight: .medium))
                         .foregroundStyle(AppTheme.warmTextSecondary)

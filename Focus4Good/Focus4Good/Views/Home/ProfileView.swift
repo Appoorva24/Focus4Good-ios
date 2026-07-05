@@ -141,18 +141,7 @@ struct ProfileView: View {
                         settingsRow(icon: "globe.americas.fill", label: "Timezone", color: AppTheme.sky) {
                             showTimezoneAlert = true
                         }
-                        // TEMP DEBUG BUTTON
-                        settingsRow(icon: "ladybug.fill", label: "Add 10k Points (Debug)", color: .gray) {
-                            Task {
-                                await userStore.updateFocusPoints(by: 10000)
-                            }
-                        }
-                        // TEMP DEBUG BUTTON 2
-                        settingsRow(icon: "arrow.counterclockwise", label: "Reset Badges & Impact", color: .red) {
-                            userStore.totalPointsDonated = 0
-                            userStore.donationHistory = []
-                            UserDefaults.standard.set("[]", forKey: "unlockedBadgeIds")
-                        }
+                        // App Settings Section continues
                     } header: { Text("App Settings").foregroundStyle(AppTheme.warmTextPrimary).textCase(nil) }
                     .listRowBackground(AppTheme.cardBg)
 
