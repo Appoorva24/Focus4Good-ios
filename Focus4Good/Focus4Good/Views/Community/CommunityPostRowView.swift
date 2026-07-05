@@ -23,7 +23,7 @@ struct CommunityPostRowView: View {
     var post: Post
     @State private var showComments: Bool = false
     @State private var showLikesList: Bool = false
-    @State private var showInfoAlert: Bool = false
+    @State private var showReportAlert: Bool = false
     @Environment(CommunityStore.self) private var communityStore
     @Environment(UserStore.self) private var userStore
 
@@ -32,6 +32,11 @@ struct CommunityPostRowView: View {
     private var isLiked: Bool {
         guard let uid = currentUserId else { return false }
         return communityStore.isLiked(postId: post.id, userId: uid)
+    }
+
+    private var isSaved: Bool {
+        guard let uid = currentUserId else { return false }
+        return communityStore.isSaved(postId: post.id, userId: uid)
     }
 
     private var commentCount: Int {
@@ -103,12 +108,16 @@ struct CommunityPostRowView: View {
                         } label: {
                             Label("Delete", systemImage: "trash")
                         }
+                    } else {
+                        Button(role: .destructive) {
+                            showReportAlert = true
+                        } label: {
+                            Label("Report", systemImage: "flag")
+                        }
                     }
                     
-                    Button {
-                        showInfoAlert = true
-                    } label: {
-                        Label("Info", systemImage: "info.circle")
+                    ShareLink(item: post.content) {
+                        Label("Share", systemImage: "square.and.arrow.up")
                     }
                 } label: {
                     Image(systemName: "ellipsis")
@@ -209,6 +218,19 @@ struct CommunityPostRowView: View {
                     }
                 }
                 .buttonStyle(.plain)
+                
+                Spacer()
+                
+                // Save Button
+                Button {
+                    guard let uid = currentUserId else { return }
+                    Task { await communityStore.toggleSave(postId: post.id, userId: uid) }
+                } label: {
+                    Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
+                        .font(.system(size: 18))
+                        .foregroundStyle(isSaved ? AppTheme.orange : Color(.secondaryLabel))
+                }
+                .buttonStyle(.plain)
             }
             .padding(.top, 4)
             
@@ -235,10 +257,13 @@ struct CommunityPostRowView: View {
         .task {
             await communityStore.fetchLikes(postId: post.id)
         }
-        .alert("Post Information", isPresented: $showInfoAlert) {
-            Button("OK", role: .cancel) { }
+        .alert("Report Post", isPresented: $showReportAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Submit", role: .destructive) {
+                // TODO: Implement report submission
+            }
         } message: {
-            Text("Author: \(post.authorName ?? "Anonymous")\nPosted: \(post.createdAt.formatted())\nLikes: \(post.likeCount)\nComments: \(commentCount)")
+            Text("Are you sure you want to report this post? Our team will review it shortly.")
         }
     }
 }
