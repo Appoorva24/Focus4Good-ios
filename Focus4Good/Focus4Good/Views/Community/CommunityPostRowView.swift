@@ -23,6 +23,7 @@ struct CommunityPostRowView: View {
     var post: Post
     @State private var showComments: Bool = false
     @State private var showLikesList: Bool = false
+    @State private var showReportAlert: Bool = false
     @Environment(CommunityStore.self) private var communityStore
     @Environment(UserStore.self) private var userStore
 
@@ -31,6 +32,11 @@ struct CommunityPostRowView: View {
     private var isLiked: Bool {
         guard let uid = currentUserId else { return false }
         return communityStore.isLiked(postId: post.id, userId: uid)
+    }
+
+    private var isSaved: Bool {
+        guard let uid = currentUserId else { return false }
+        return communityStore.isSaved(postId: post.id, userId: uid)
     }
 
     private var commentCount: Int {
@@ -60,9 +66,17 @@ struct CommunityPostRowView: View {
                         .font(.subheadline.bold())
                         .foregroundStyle(.primary)
 
-                    Text(timeAgo(post.createdAt))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                    HStack(spacing: 4) {
+                        Text(timeAgo(post.createdAt))
+                        if let communityName = communityStore.communities.first(where: { $0.id == post.communityId })?.name {
+                            Text("•")
+                            Text(communityName)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                        }
+                    }
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
                 }
 
                 Spacer()
@@ -75,6 +89,40 @@ struct CommunityPostRowView: View {
                         .foregroundStyle(AppTheme.orange)
                         .background(AppTheme.orange.opacity(0.12))
                         .clipShape(Capsule())
+                }
+                
+                Menu {
+                    if currentUserId == post.authorId {
+                        if Date().timeIntervalSince(post.createdAt) <= 300 {
+                            Button {
+                                // TODO: Add Update functionality
+                            } label: {
+                                Label("Update", systemImage: "pencil")
+                            }
+                        }
+                        
+                        Button(role: .destructive) {
+                            Task {
+                                await communityStore.deletePost(post)
+                            }
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    } else {
+                        Button(role: .destructive) {
+                            showReportAlert = true
+                        } label: {
+                            Label("Report", systemImage: "flag")
+                        }
+                    }
+                    
+                    ShareLink(item: post.content) {
+                        Label("Share", systemImage: "square.and.arrow.up")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .foregroundStyle(.secondary)
+                        .padding(.leading, 4)
                 }
             }
 
@@ -170,11 +218,23 @@ struct CommunityPostRowView: View {
                     }
                 }
                 .buttonStyle(.plain)
+                
+                Spacer()
+                
+                // Save Button
+                Button {
+                    guard let uid = currentUserId else { return }
+                    Task { await communityStore.toggleSave(postId: post.id, userId: uid) }
+                } label: {
+                    Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
+                        .font(.system(size: 18))
+                        .foregroundStyle(isSaved ? AppTheme.orange : Color(.secondaryLabel))
+                }
+                .buttonStyle(.plain)
             }
             .padding(.top, 4)
             
-            Divider()
-                .padding(.top, 8)
+
         }
         .padding(.vertical, 12)
         .padding(.horizontal, 16)
@@ -196,6 +256,14 @@ struct CommunityPostRowView: View {
         }
         .task {
             await communityStore.fetchLikes(postId: post.id)
+        }
+        .alert("Report Post", isPresented: $showReportAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Submit", role: .destructive) {
+                // TODO: Implement report submission
+            }
+        } message: {
+            Text("Are you sure you want to report this post? Our team will review it shortly.")
         }
     }
 }

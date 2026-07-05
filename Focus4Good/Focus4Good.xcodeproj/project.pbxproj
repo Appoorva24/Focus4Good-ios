@@ -275,7 +275,9 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "To scan your schedule and handwritten notes";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Used to search communities by voice";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "To scan schedule from photo";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Used to convert your speech to text for searching communities";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -311,7 +313,9 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "To scan your schedule and handwritten notes";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Used to search communities by voice";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "To scan schedule from photo";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Used to convert your speech to text for searching communities";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
