@@ -8,6 +8,15 @@ struct BreathingSession: Codable {
     var durationSeconds: Int
     var pointsEarned: Int
     var completedAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId = "user_id"
+        case cyclesCompleted = "cycles_completed"
+        case durationSeconds = "duration_seconds"
+        case pointsEarned = "points_earned"
+        case completedAt = "completed_at"
+    }
 }
 
 //JpmrSession
@@ -17,6 +26,14 @@ struct JpmrSession: Codable {
     var durationSeconds: Int
     var pointsEarned: Int
     var completedAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId = "user_id"
+        case durationSeconds = "duration_seconds"
+        case pointsEarned = "points_earned"
+        case completedAt = "completed_at"
+    }
 }
 
 //JpmrVideo
@@ -39,6 +56,15 @@ struct GuidedMeditationSession: Codable {
     var durationSeconds: Int
     var pointsEarned: Int
     var completedAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId = "user_id"
+        case meditationName = "meditation_name"
+        case durationSeconds = "duration_seconds"
+        case pointsEarned = "points_earned"
+        case completedAt = "completed_at"
+    }
 }
 
 //AsmrSound
@@ -58,6 +84,13 @@ struct UserFavouriteAsmrSound: Identifiable, Codable, Hashable {
     var userId: UUID
     var soundId: UUID
     var savedAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId = "user_id"
+        case soundId = "sound_id"
+        case savedAt = "saved_at"
+    }
 }
 
 //BrainDumpFolder
@@ -66,6 +99,13 @@ struct BrainDumpFolder: Identifiable, Codable, Hashable {
     var userId: UUID
     var name: String
     var entryCount: Int
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId = "user_id"
+        case name
+        case entryCount = "entry_count"
+    }
 }
 
 //BrainDumpEntry
@@ -78,6 +118,16 @@ struct BrainDumpEntry: Identifiable, Codable, Hashable {
     var drawingData: Data?
     var pointsEarned: Int
     var createdAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId = "user_id"
+        case folderId = "folder_id"
+        case title, content
+        case drawingData = "drawing_data"
+        case pointsEarned = "points_earned"
+        case createdAt = "created_at"
+    }
 }
 
 //ASMRPlaylist

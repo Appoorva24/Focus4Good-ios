@@ -4,7 +4,6 @@ struct SensorySootheView: View {
 
     @Environment(CalmCentreStore.self) private var store
 
-    @State private var showPlayer = false
     @State private var selectedSound: AsmrSound?
     @State private var favouriteNames: Set<String> = []
     
@@ -42,15 +41,6 @@ struct SensorySootheView: View {
         .onAppear { 
             loadFavourites()
             loadRecents()
-        }
-        .navigationDestination(isPresented: $showPlayer) {
-            if let sound = selectedSound {
-                ASMRPlayerView(
-                    sound: sound,
-                    isFavourite: favouriteNames.contains(sound.name),
-                    onToggleFavourite: { toggleFavourite(sound.name) }
-                )
-            }
         }
     }
 
@@ -219,7 +209,8 @@ struct SensorySootheView: View {
     private func soundRow(_ sound: AsmrSound) -> some View {
         Button {
             selectedSound = sound
-            showPlayer = true
+            store.activeAsmrSound = sound
+            store.showGlobalASMRPlayer = true
         } label: {
             HStack(spacing: 14) {
                 if !sound.imageUrl.isEmpty {

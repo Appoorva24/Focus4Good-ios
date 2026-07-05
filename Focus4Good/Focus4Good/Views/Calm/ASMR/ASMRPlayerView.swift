@@ -3,10 +3,9 @@ import SwiftUI
 struct ASMRPlayerView: View {
 
     let sound: AsmrSound
-    let isFavourite: Bool
-    let onToggleFavourite: () -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(UserStore.self) private var userStore
 
     @State private var isPlaying = false
     @State private var currentTime: TimeInterval = 0
@@ -60,7 +59,18 @@ struct ASMRPlayerView: View {
         }
         .background(AppTheme.appGradient.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "chevron.down")
+                        .foregroundColor(.primary)
+                }
+            }
+        }
         .onAppear {
+            store.isASMRPlayerPresented = true
             if audio.isLoaded(soundName: sound.name) {
                 // Same sound is already loaded (playing or paused) — resume from current position
                 isPlaying = audio.isPlaying
@@ -71,7 +81,10 @@ struct ASMRPlayerView: View {
                 startPlaying()
             }
         }
-        .onDisappear { stopTimer() }
+        .onDisappear { 
+            store.isASMRPlayerPresented = false
+            stopTimer() 
+        }
     }
 
     // MARK: - Subviews
@@ -85,7 +98,12 @@ struct ASMRPlayerView: View {
 
             Spacer()
 
-            Button { onToggleFavourite() } label: {
+            let isFavourite = store.favouriteAsmrSoundIds.contains(sound.id)
+            Button { 
+                if let userId = userStore.currentUser?.id {
+                    store.toggleAsmrFavourite(soundId: sound.id, userId: userId) 
+                }
+            } label: {
                 Image(systemName: isFavourite ? "heart.fill" : "heart")
                     .font(.title3)
                     .foregroundStyle(isFavourite ? Color.accentColor : .secondary)
@@ -239,10 +257,9 @@ struct ASMRPlayerView: View {
                 audioUrl: "",
                 imageUrl: "asmr_hero",
                 durationSeconds: 300
-            ),
-            isFavourite: false,
-            onToggleFavourite: {}
+            )
         )
         .environment(CalmCentreStore.shared)
+        .environment(UserStore())
     }
 }
