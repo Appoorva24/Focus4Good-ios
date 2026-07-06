@@ -5,7 +5,6 @@ struct ASMRPlaylistDetailView: View {
     let playlist: ASMRPlaylist
     @Environment(CalmCentreStore.self) private var store
     
-    @State private var showPlayer = false
     @State private var selectedSound: AsmrSound?
     @State private var favouriteNames: Set<String> = []
     
@@ -36,16 +35,7 @@ struct ASMRPlaylistDetailView: View {
             loadFavourites()
             saveAsRecentPlaylist()
         }
-        .navigationDestination(isPresented: $showPlayer) {
-            if let sound = selectedSound {
-                ASMRPlayerView(
-                    sound: sound,
-                    isFavourite: favouriteNames.contains(sound.name),
-                    onToggleFavourite: { toggleFavourite(sound.name) }
-                )
-            }
         }
-    }
     
     private var headerView: some View {
         VStack(spacing: 16) {
@@ -172,7 +162,8 @@ struct ASMRPlaylistDetailView: View {
     
     private func play(sound: AsmrSound) {
         selectedSound = sound
-        showPlayer = true
+        store.activeAsmrSound = sound
+        store.showGlobalASMRPlayer = true
         saveAsRecentSound(sound)
     }
     

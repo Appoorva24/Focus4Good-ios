@@ -2,19 +2,24 @@ import AVFoundation
 
 //Sound-to-File Mapping
 
-/// Maps display names to their actual bundle file names (without extension).
-private let soundFileMapping: [String: String] = [
-    "Soft Rain":       "soft_rain_asmr",
-    "Typing":          "keyboard_typing_asmr",
-    "Crinkling":       "crinkling",
-    "Tapping":         "tapping",
-    "White Noise":     "white_noise",
-    "Forest":          "forest",
-    "Nature & Calm":   "nature_and_calm",
-]
+private func getFileName(for soundName: String) -> String {
+    let lowerName = soundName.lowercased()
+    if lowerName.contains("rain") || lowerName.contains("water") || lowerName.contains("ocean") || lowerName.contains("stream") {
+        return "soft_rain_asmr"
+    } else if lowerName.contains("typing") || lowerName.contains("keyboard") || lowerName.contains("mechanical") {
+        return "keyboard_typing_asmr"
+    } else if lowerName.contains("noise") || lowerName.contains("hum") || lowerName.contains("fan") {
+        return "white_noise"
+    } else {
+        return "nature_and_calm"
+    }
+}
+
+import Observation
 
 // MARK: - ASMRAudioService
 
+@Observable
 class ASMRAudioService: @unchecked Sendable {
 
 
@@ -41,8 +46,8 @@ class ASMRAudioService: @unchecked Sendable {
         try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
         try? session.setActive(true)
 
-        // Look up the file name from the mapping
-        let fileName = soundFileMapping[soundName] ?? soundName
+        // Look up the file name using the dynamic matcher
+        let fileName = getFileName(for: soundName)
 
         // Try to find the audio file in the bundle
         guard let url = Bundle.main.url(forResource: fileName, withExtension: "mp3") else {

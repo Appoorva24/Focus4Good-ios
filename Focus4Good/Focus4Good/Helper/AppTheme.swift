@@ -45,6 +45,16 @@ enum AppTheme {
     static let textPrimary   = Color(.label)
     static let textSecondary = Color(.secondaryLabel)
 
+    
+    /// Standard app-wide gradient using the brand accent
+    static let appGradient = LinearGradient(
+        colors: [
+            Color(hex: "FFD5B3"), // Softer, lighter orange at the top
+            Color(hex: "FFF2E6")  // Very pale cream orange at the bottom
+            ],
+        startPoint: .top, endPoint: .bottom
+    )
+
     // ─── Layout ──────────────────────────────────────────────────
 
     static let cornerRadius: CGFloat = 20
@@ -58,13 +68,13 @@ enum AppTheme {
 
     /// Page background gradient (top → bottom)
     static let pageBgTop = Color(UIColor { tc in
-        tc.userInterfaceStyle == .dark ? UIColor(hex6: 0x1C1917) : UIColor(hex6: 0xFFFBEB)
+        tc.userInterfaceStyle == .dark ? UIColor(hex6: 0x1C1917) : UIColor(hex6: 0xFFD5B3)
     })
     static let pageBgMid = Color(UIColor { tc in
-        tc.userInterfaceStyle == .dark ? UIColor(hex6: 0x211F1B) : UIColor(hex6: 0xFFF7E0)
+        tc.userInterfaceStyle == .dark ? UIColor(hex6: 0x211F1B) : UIColor(hex6: 0xFFE4CF)
     })
     static let pageBgBot = Color(UIColor { tc in
-        tc.userInterfaceStyle == .dark ? UIColor(hex6: 0x292524) : UIColor(hex6: 0xFEF3C7)
+        tc.userInterfaceStyle == .dark ? UIColor(hex6: 0x292524) : UIColor(hex6: 0xFFF2E6)
     })
 
     /// Card gradient end tint
@@ -140,6 +150,7 @@ enum AppTheme {
         startPoint: .top,
         endPoint: .bottom
     )
+
 
     static let splashGradientDark = LinearGradient(
         colors: [

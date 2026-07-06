@@ -55,22 +55,15 @@ class JPMRAudioService: NSObject, AVSpeechSynthesizerDelegate {
         speakCalm(text)
     }
 
-    /// Instruct the user to tense a muscle group.
     func speakTense(muscleName: String, instruction: String) {
         configureAudioSession()
-        let text = "\(muscleName). "
-            + "Inhale, and tense now. "
-            + "\(instruction). "
-            + "Hold the tension firmly."
+        let text = "\(muscleName). \(instruction)."
         speakCalm(text)
     }
 
-    /// Instruct the user to release and rest.
     func speakRest(muscleName: String, releaseNote: String) {
         configureAudioSession()
-        let text = "Release. Let go completely. "
-            + "\(releaseNote). "
-            + "Notice the difference between tension and relaxation."
+        let text = "Release. \(releaseNote)."
         speakCalm(text)
     }
 
@@ -114,6 +107,14 @@ class JPMRAudioService: NSObject, AVSpeechSynthesizerDelegate {
         )
     }
 
+    func pauseAll() {
+        synthesizer.pauseSpeaking(at: .immediate)
+    }
+
+    func resumeAll() {
+        synthesizer.continueSpeaking()
+    }
+
     // MARK: - Private Helpers
 
     private func speakCalm(_ text: String) {
@@ -123,11 +124,11 @@ class JPMRAudioService: NSObject, AVSpeechSynthesizerDelegate {
 
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = selectedVoice
-        utterance.rate = 0.38
+        utterance.rate = 0.45
         utterance.pitchMultiplier = 1.05
         utterance.volume = 0.85
-        utterance.preUtteranceDelay = 0.3
-        utterance.postUtteranceDelay = 0.5
+        utterance.preUtteranceDelay = 0.1
+        utterance.postUtteranceDelay = 0.1
 
         synthesizer.speak(utterance)
     }

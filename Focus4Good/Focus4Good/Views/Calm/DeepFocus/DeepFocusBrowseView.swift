@@ -30,13 +30,12 @@ struct DeepFocusBrowseView: View {
             let artworkSize = max(0, geo.size.width - 56)
 
             ZStack {
-                Color(.systemBackground).ignoresSafeArea()
 
                 VStack(spacing: 0) {
                     Spacer()
 
                     // Artwork
-                    Image("deep_focus_meditation")
+                    Image("guided_meditation")
                         .resizable()
                         .aspectRatio(contentMode: .fill)
                         .frame(width: artworkSize, height: artworkSize)
