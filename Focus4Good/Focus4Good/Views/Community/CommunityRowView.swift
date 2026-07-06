@@ -6,6 +6,7 @@ struct CommunityRowView: View {
     @Environment(UserStore.self) private var userStore
     @State private var showUnfollowAlert = false
     @State private var showPosts = false
+    @State private var showCancelRequestAlert = false
 
     private var currentUserId: UUID {
         userStore.currentUser?.id ?? UUID()
@@ -41,7 +42,9 @@ struct CommunityRowView: View {
                 let isPending = communityStore.hasPendingRequest(communityId: community.id, userId: currentUserId)
                 
                 Button {
-                    if !isPending {
+                    if isPending {
+                        showCancelRequestAlert = true
+                    } else {
                         Task {
                             await communityStore.joinCommunity(community, userId: currentUserId)
                         }
@@ -55,7 +58,6 @@ struct CommunityRowView: View {
                         .foregroundStyle(.white)
                         .clipShape(Capsule())
                 }
-                .disabled(isPending)
             } else {
                 // Notification Badge for 'Your Communities' tab
                 let unreadCount = communityPosts.filter { $0.createdAt.timeIntervalSince1970 > lastVisited }.count
@@ -142,6 +144,16 @@ struct CommunityRowView: View {
         } message: {
             Text("Are you sure you want to unfollow \"\(community.name)\"? You will no longer see its posts in Your Communities.")
         }
+        .alert("Cancel Request", isPresented: $showCancelRequestAlert) {
+            Button("Keep Request", role: .cancel) { }
+            Button("Remove", role: .destructive) {
+                Task {
+                    await communityStore.removePendingRequest(communityId: community.id, userId: currentUserId)
+                }
+            }
+        } message: {
+            Text("Do you want to remove the request for joining this community?")
+        }
     }
 }
 
@@ -159,6 +171,7 @@ struct CommunityDetailView: View {
     @State private var showAddPost = false
     @State private var showMembersSheet = false
     @State private var showPostsSheet = false
+    @State private var showCancelRequestAlert = false
 
     private var posts: [Post] {
         communityStore.posts(in: community)
@@ -321,16 +334,21 @@ struct CommunityDetailView: View {
                                 .foregroundStyle(.secondary)
                                 .multilineTextAlignment(.center)
                             
+                            let isPending = communityStore.hasPendingRequest(communityId: community.id, userId: currentUserId)
                             Button {
-                                Task {
-                                    await communityStore.joinCommunity(community, userId: currentUserId)
+                                if isPending {
+                                    showCancelRequestAlert = true
+                                } else {
+                                    Task {
+                                        await communityStore.joinCommunity(community, userId: currentUserId)
+                                    }
                                 }
                             } label: {
-                                Text("Join")
+                                Text(isPending ? "Requested" : "Join")
                                     .fontWeight(.semibold)
                                     .padding(.horizontal, 24)
                                     .padding(.vertical, 8)
-                                    .background(AppTheme.orange.opacity(0.4))
+                                    .background(isPending ? Color.gray : AppTheme.orange.opacity(0.4))
                                     .foregroundStyle(.white)
                                     .clipShape(Capsule())
                             }
@@ -388,12 +406,21 @@ struct CommunityDetailView: View {
                                 .foregroundStyle(.red)
                         }
                     } else {
+                        let isPending = communityStore.hasPendingRequest(communityId: community.id, userId: currentUserId)
                         Button {
-                            Task {
-                                await communityStore.joinCommunity(community, userId: currentUserId)
+                            if isPending {
+                                showCancelRequestAlert = true
+                            } else {
+                                Task {
+                                    await communityStore.joinCommunity(community, userId: currentUserId)
+                                }
                             }
                         } label: {
-                            Image(systemName: "person.badge.plus")
+                            if isPending {
+                                Image(systemName: "person.badge.clock")
+                            } else {
+                                Image(systemName: "person.badge.plus")
+                            }
                         }
                     }
                 }
@@ -423,6 +450,16 @@ struct CommunityDetailView: View {
             }
         } message: {
             Text("You are the only member left. If you leave, this community will be dissolved. Are you sure you want to leave and dissolve \"\(community.name)\"?")
+        }
+        .alert("Cancel Request", isPresented: $showCancelRequestAlert) {
+            Button("Keep Request", role: .cancel) { }
+            Button("Remove", role: .destructive) {
+                Task {
+                    await communityStore.removePendingRequest(communityId: community.id, userId: currentUserId)
+                }
+            }
+        } message: {
+            Text("Do you want to remove the request for joining this community?")
         }
         .sheet(isPresented: $showTransferSheet) {
             TransferOwnershipSheet(community: community, otherMembers: otherMembers) {

@@ -245,3 +245,20 @@ struct SavedPost: Identifiable, Codable, Hashable {
         case postId = "post_id"
     }
 }
+
+// MARK: - AppNotification (Simulated Local Notifications)
+struct AppNotification: Identifiable, Codable, Hashable {
+    var id: UUID = UUID()
+    var userId: UUID
+    var message: String
+    var createdAt: Date = Date()
+    var isRead: Bool = false
+    
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId = "user_id"
+        case message
+        case createdAt = "created_at"
+        case isRead = "is_read"
+    }
+}
