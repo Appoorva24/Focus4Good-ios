@@ -176,6 +176,21 @@ struct MainTabView: View {
                 }
             }
             .tint(AppTheme.orange)
+            
+            let shouldShowMiniPlayer = audio.currentSoundName != nil && audio.isPlaying
+            
+            if shouldShowMiniPlayer {
+                ASMRMiniPlayerView()
+                    .padding(.bottom, 64) // Push above the tab bar
+            }
+        }
+        .animation(.easeInOut, value: audio.isPlaying)
+        .sheet(isPresented: $bindableStore.showGlobalASMRPlayer) {
+            if let activeSound = store.activeAsmrSound {
+                NavigationStack {
+                    ASMRPlayerView(sound: activeSound)
+                }
+            }
         }
         .onAppear { checkBadges() }
         .onChange(of: userStore.totalPointsDonated) { _, _ in checkBadges() }
@@ -209,19 +224,6 @@ struct MainTabView: View {
                     
                     // Show popup (if multiple unlock at once, it just shows the last one in the loop for now, which is fine)
                     newlyUnlockedBadge = badge
-            
-            let shouldShowMiniPlayer = audio.currentSoundName != nil && audio.isPlaying
-            
-            if shouldShowMiniPlayer {
-                ASMRMiniPlayerView()
-                    .padding(.bottom, 64) // Push above the tab bar
-            }
-        }
-        .animation(.easeInOut, value: audio.isPlaying)
-        .sheet(isPresented: $bindableStore.showGlobalASMRPlayer) {
-            if let activeSound = store.activeAsmrSound {
-                NavigationStack {
-                    ASMRPlayerView(sound: activeSound)
                 }
             }
         }

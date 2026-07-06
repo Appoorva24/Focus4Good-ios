@@ -115,14 +115,14 @@ enum AppTheme {
     )
 
     /// Standard app-wide gradient using the brand accent
-    static let appGradient = LinearGradient(
-        colors: [
-            Color(hex: "FDD2B1"), // Darker light orange at the top
-            Color(hex: "FFF4EC")  // Very light, soft orange at the bottom
-        ],
-        startPoint: .top,
-        endPoint: .bottom
-    )
+//    static let appGradient = LinearGradient(
+//        colors: [
+//            Color(hex: "FDD2B1"), // Darker light orange at the top
+//            Color(hex: "FFF4EC")  // Very light, soft orange at the bottom
+//        ],
+//        startPoint: .top,
+//        endPoint: .bottom
+//    )
 
     /// Warm page background gradient
     static let pageGradient = appGradient
