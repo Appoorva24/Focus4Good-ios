@@ -35,7 +35,7 @@ struct DeepFocusBrowseView: View {
                     Spacer()
 
                     // Artwork
-                    Image("deep_focus_meditation")
+                    Image("guided_meditation")
                         .resizable()
                         .aspectRatio(contentMode: .fill)
                         .frame(width: artworkSize, height: artworkSize)

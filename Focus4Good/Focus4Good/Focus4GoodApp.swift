@@ -134,10 +134,15 @@ enum AppTab: Hashable {
 
 struct MainTabView: View {
     @Environment(UserStore.self) private var userStore
+    @Environment(CalmCentreStore.self) private var store
     @State private var selectedTab: AppTab = .home
 
+    var audio = ASMRAudioService.shared
+
     var body: some View {
-        ZStack {
+        @Bindable var bindableStore = store
+        
+        ZStack(alignment: .bottom) {
             TabView(selection: $selectedTab) {
                 Tab("Home", systemImage: "house.fill", value: .home) {
                     HomeView()
@@ -153,7 +158,21 @@ struct MainTabView: View {
                 }
             }
             .tint(AppTheme.orange)
-
+            
+            let shouldShowMiniPlayer = audio.currentSoundName != nil && audio.isPlaying
+            
+            if shouldShowMiniPlayer {
+                ASMRMiniPlayerView()
+                    .padding(.bottom, 64) // Push above the tab bar
+            }
+        }
+        .animation(.easeInOut, value: audio.isPlaying)
+        .sheet(isPresented: $bindableStore.showGlobalASMRPlayer) {
+            if let activeSound = store.activeAsmrSound {
+                NavigationStack {
+                    ASMRPlayerView(sound: activeSound)
+                }
+            }
         }
     }
 }
