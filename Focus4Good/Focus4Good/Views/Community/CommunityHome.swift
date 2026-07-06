@@ -11,12 +11,39 @@ struct CommunityHome: View {
     @State private var showJoinOptions: Bool = false
     @State private var speechRecognizer = SpeechRecognizer()
     @State private var showMicError: Bool = false
+    @State private var showOnboarding: Bool = false
+    @State private var showNotificationsView: Bool = false
     
     @Environment(CommunityStore.self) private var communities
     @Environment(UserStore.self) private var userStore
     
     private var currentUserId: UUID {
         userStore.currentUser?.id ?? UUID()
+    }
+    
+    private var totalUnreadNotifications: Int {
+        let lastChecked = UserDefaults.standard.double(forKey: "last_checked_notifications_\(currentUserId.uuidString)")
+        
+        let unreadRecentPostsCount = visibleRecentPosts.filter { post in
+            if post.createdAt.timeIntervalSince1970 <= lastChecked { return false }
+            let key = "last_visited_\(post.communityId.uuidString)"
+            return post.createdAt.timeIntervalSince1970 > UserDefaults.standard.double(forKey: key)
+        }.count
+        
+        let pendingRequestsCount = communities.communityMembers.filter { member in
+            if member.role == "pending", member.joinedAt.timeIntervalSince1970 > lastChecked {
+                if let community = communities.communities.first(where: { $0.id == member.communityId }) {
+                    return community.creatorId == currentUserId
+                }
+            }
+            return false
+        }.count
+        
+        let alertsCount = communities.simulatedNotifications.filter { 
+            $0.userId == currentUserId && !$0.isRead && $0.createdAt.timeIntervalSince1970 > lastChecked 
+        }.count
+        
+        return unreadRecentPostsCount + pendingRequestsCount + alertsCount
     }
     
     private var createdCommunities: [Community] {
@@ -159,6 +186,29 @@ struct CommunityHome: View {
                     ToolbarItem(placement: .topBarTrailing) {
                         HStack(spacing: 16) {
                             Button {
+                                showNotificationsView = true
+                            } label: {
+                                ZStack(alignment: .topTrailing) {
+                                    Image(systemName: "bell")
+                                        .foregroundStyle(AppTheme.orange)
+                                        .padding(.trailing, 4)
+                                    
+                                    let totalUnread = totalUnreadNotifications
+                                    
+                                    if totalUnread > 0 {
+                                        Text(totalUnread > 9 ? "9+" : "\(totalUnread)")
+                                            .font(.system(size: 10, weight: .bold))
+                                            .foregroundStyle(.white)
+                                            .padding(.horizontal, 4)
+                                            .padding(.vertical, 2)
+                                            .background(Color.red)
+                                            .clipShape(Capsule())
+                                            .offset(x: 4, y: -4)
+                                    }
+                                }
+                            }
+                            
+                            Button {
                                 let now = Date().timeIntervalSince1970
                                 let joined = communities.communities.filter {
                                     $0.creatorId == currentUserId || communities.isMember(communityId: $0.id, userId: currentUserId)
@@ -168,27 +218,8 @@ struct CommunityHome: View {
                                 }
                                 showRecentPosts = true
                             } label: {
-                                ZStack(alignment: .topTrailing) {
-                                    Image(systemName: "bell")
-                                        .foregroundStyle(AppTheme.orange)
-                                        .padding(.trailing, 4) // Make space for the badge
-                                    
-                                    let unreadRecentPostsCount = visibleRecentPosts.filter { post in
-                                        let key = "last_visited_\(post.communityId.uuidString)"
-                                        return post.createdAt.timeIntervalSince1970 > UserDefaults.standard.double(forKey: key)
-                                    }.count
-                                    
-                                    if unreadRecentPostsCount > 0 {
-                                        Text(unreadRecentPostsCount > 9 ? "9+" : "\(unreadRecentPostsCount)")
-                                            .font(.system(size: 10, weight: .bold))
-                                            .foregroundStyle(.white)
-                                            .padding(.horizontal, 4)
-                                            .padding(.vertical, 2)
-                                            .background(AppTheme.orange)
-                                            .clipShape(Capsule())
-                                            .offset(x: 4, y: -4)
-                                    }
-                                }
+                                Image(systemName: "newspaper")
+                                    .foregroundStyle(AppTheme.orange)
                             }
                             
                             Button {
@@ -220,21 +251,24 @@ struct CommunityHome: View {
                 .sheet(isPresented: $addCommunity) {
                     AddCommunityView(addCommunity: $addCommunity)
                 }
+                .navigationDestination(isPresented: $showNotificationsView) {
+                    CommunityNotificationsView()
+                }
                 .navigationDestination(isPresented: $showRecentPosts) {
                     VStack(spacing: 0) {
-                        ScrollView {
-                            let filtered = selectedRecentPostCategory == nil ? visibleRecentPosts : visibleRecentPosts.filter { $0.hashtag == selectedRecentPostCategory }
-                            if filtered.isEmpty {
-                                VStack(spacing: 12) {
-                                    Image(systemName: "text.bubble")
-                                        .font(.system(size: 40))
-                                        .foregroundStyle(.gray.opacity(0.4))
-                                        .padding(.top, 40)
-                                    Text("No posts available")
-                                        .font(.headline)
-                                        .foregroundStyle(.secondary)
-                                }
-                            } else {
+                        let filtered = selectedRecentPostCategory == nil ? visibleRecentPosts : visibleRecentPosts.filter { $0.hashtag == selectedRecentPostCategory }
+                        if filtered.isEmpty {
+                            VStack(spacing: 12) {
+                                Image(systemName: "text.bubble")
+                                    .font(.system(size: 40))
+                                    .foregroundStyle(.gray.opacity(0.4))
+                                Text("No posts available")
+                                    .font(.headline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        } else {
+                            ScrollView {
                                 LazyVStack(spacing: 16) {
                                     ForEach(filtered) { post in
                                         CommunityPostRowView(post: post)
@@ -282,19 +316,19 @@ struct CommunityHome: View {
                 }
                 .navigationDestination(isPresented: $showSavedPosts) {
                     VStack(spacing: 0) {
-                        ScrollView {
-                            let filtered = selectedSavedPostCategory == nil ? savedPostsList : savedPostsList.filter { $0.hashtag == selectedSavedPostCategory }
-                            if filtered.isEmpty {
-                                VStack(spacing: 12) {
-                                    Image(systemName: "bookmark.slash")
-                                        .font(.system(size: 40))
-                                        .foregroundStyle(.gray.opacity(0.4))
-                                        .padding(.top, 40)
-                                    Text("No saved posts")
-                                        .font(.headline)
-                                        .foregroundStyle(.secondary)
-                                }
-                            } else {
+                        let filtered = selectedSavedPostCategory == nil ? savedPostsList : savedPostsList.filter { $0.hashtag == selectedSavedPostCategory }
+                        if filtered.isEmpty {
+                            VStack(spacing: 12) {
+                                Image(systemName: "bookmark.slash")
+                                    .font(.system(size: 40))
+                                    .foregroundStyle(.gray.opacity(0.4))
+                                Text("No saved posts")
+                                    .font(.headline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        } else {
+                            ScrollView {
                                 LazyVStack(spacing: 16) {
                                     ForEach(filtered) { post in
                                         CommunityPostRowView(post: post)
@@ -355,6 +389,16 @@ struct CommunityHome: View {
                 }
                 .onChange(of: communities.communityMembers) { _, _ in
                     updateSnapshot()
+                }
+                .onAppear {
+                    let key = "hasSeenCommunityOnboarding_\(currentUserId.uuidString)"
+                    if !UserDefaults.standard.bool(forKey: key) {
+                        showOnboarding = true
+                    }
+                }
+                .fullScreenCover(isPresented: $showOnboarding) {
+                    emptyStateView
+                        .background(Color(.systemGroupedBackground).ignoresSafeArea())
                 }
             }
         }
@@ -432,6 +476,19 @@ struct CommunityHome: View {
     private var emptyStateView: some View {
         ScrollView {
             VStack(spacing: 0) {
+                
+                if showOnboarding {
+                    HStack {
+                        Spacer()
+                        Button("Skip") {
+                            UserDefaults.standard.set(true, forKey: "hasSeenCommunityOnboarding_\(currentUserId.uuidString)")
+                            showOnboarding = false
+                        }
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .padding()
+                    }
+                }
                 
                 // ── Floating Illustration ──
                 ZStack {
@@ -526,7 +583,7 @@ struct CommunityHome: View {
                 
                 // ── Title & Description ──
                 VStack(spacing: 16) {
-                    Text("Join Your Community")
+                    Text("Create Your Community")
                         .font(.system(size: 28, weight: .bold))
                         .multilineTextAlignment(.center)
                     
@@ -598,6 +655,10 @@ struct CommunityHome: View {
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                             showJoinOptions = false
                         }
+                        if showOnboarding {
+                            UserDefaults.standard.set(true, forKey: "hasSeenCommunityOnboarding_\(currentUserId.uuidString)")
+                            showOnboarding = false
+                        }
                     }
                 
                 // Centered card
@@ -629,6 +690,10 @@ struct CommunityHome: View {
                     Button {
                         withAnimation {
                             showJoinOptions = false
+                        }
+                        if showOnboarding {
+                            UserDefaults.standard.set(true, forKey: "hasSeenCommunityOnboarding_\(currentUserId.uuidString)")
+                            showOnboarding = false
                         }
                         // TODO: Navigate to community browser / search
                     } label: {
@@ -667,7 +732,15 @@ struct CommunityHome: View {
                         withAnimation {
                             showJoinOptions = false
                         }
-                        addCommunity = true
+                        if showOnboarding {
+                            UserDefaults.standard.set(true, forKey: "hasSeenCommunityOnboarding_\(currentUserId.uuidString)")
+                            showOnboarding = false
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                addCommunity = true
+                            }
+                        } else {
+                            addCommunity = true
+                        }
                     } label: {
                         HStack(spacing: 16) {
                             ZStack {
@@ -702,6 +775,10 @@ struct CommunityHome: View {
                     Button {
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                             showJoinOptions = false
+                        }
+                        if showOnboarding {
+                            UserDefaults.standard.set(true, forKey: "hasSeenCommunityOnboarding_\(currentUserId.uuidString)")
+                            showOnboarding = false
                         }
                     } label: {
                         Text("Cancel")
@@ -752,3 +829,420 @@ struct CommunityHome: View {
             .environment(CommunityStore.shared)
             .environment(UserStore.shared)
     }
+
+// MARK: - CommunityNotificationsView
+struct CommunityNotificationsView: View {
+    @Environment(CommunityStore.self) private var communityStore
+    @Environment(UserStore.self) private var userStore
+    
+    // For navigating to a post when tapped
+    @State private var selectedPost: Post?
+    @State private var showPostDetail = false
+    
+    // User Profiles State
+    @State private var requesterNames: [UUID: String] = [:]
+    @State private var selectedUserIdForProfile: UUID?
+    
+    private var currentUserId: UUID {
+        userStore.currentUser?.id ?? UUID()
+    }
+    
+    private func timeAgo(from date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter.localizedString(for: date, relativeTo: Date())
+    }
+    
+    // Derived Notifications Data
+    
+    private var unreadPosts: [Post] {
+        let joined = communityStore.communities.filter { community in
+            community.creatorId == currentUserId || communityStore.isMember(communityId: community.id, userId: currentUserId)
+        }
+        let joinedIds = Set(joined.map { $0.id })
+        
+        let allPosts = communityStore.posts.filter { joinedIds.contains($0.communityId) }
+        
+        return allPosts.filter { post in
+            let key = "last_visited_\(post.communityId.uuidString)"
+            let lastVisited = UserDefaults.standard.double(forKey: key)
+            return post.createdAt.timeIntervalSince1970 > lastVisited
+        }.sorted { $0.createdAt > $1.createdAt }
+    }
+    
+    private var pendingRequests: [CommunityMember] {
+        let myCommunitiyIds = Set(communityStore.communities.filter { $0.creatorId == currentUserId }.map { $0.id })
+        
+        return communityStore.communityMembers.filter { member in
+            guard myCommunitiyIds.contains(member.communityId) else { return false }
+            
+            // Show pending requests
+            if member.role == "pending" { return true }
+            
+            // Show rejected requests (kept in memory for history)
+            if member.role == "rejected" { return true }
+            
+            // Show recently accepted requests (tracked via resolvedRequests)
+            let key = "\(member.userId.uuidString)_\(member.communityId.uuidString)"
+            if communityStore.resolvedRequests[key] == "accepted" { return true }
+            
+            return false
+        }.sorted { $0.joinedAt > $1.joinedAt }
+    }
+    
+    private var myNotifications: [AppNotification] {
+        communityStore.simulatedNotifications.filter { $0.userId == currentUserId && !$0.isRead }
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+    
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                AppTheme.appGradient.ignoresSafeArea()
+                
+                if unreadPosts.isEmpty && pendingRequests.isEmpty && myNotifications.isEmpty {
+                    VStack(spacing: 16) {
+                        Image(systemName: "bell.slash")
+                            .font(.system(size: 48))
+                            .foregroundStyle(.tertiary)
+                        Text("No new notifications")
+                            .font(.headline)
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    ScrollView {
+                        VStack(spacing: 24) {
+                            
+                            if !myNotifications.isEmpty {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Text("Alerts")
+                                        .font(.headline)
+                                        .padding(.horizontal)
+                                    
+                                    ForEach(myNotifications) { notif in
+                                        alertRow(for: notif)
+                                    }
+                                }
+                            }
+                            
+                            if !pendingRequests.isEmpty {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Text("Join Requests")
+                                        .font(.headline)
+                                        .padding(.horizontal)
+                                    
+                                    ForEach(pendingRequests) { member in
+                                        requestRow(for: member)
+                                    }
+                                }
+                            }
+                            
+                            if !unreadPosts.isEmpty {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Text("Unread Posts")
+                                        .font(.headline)
+                                        .padding(.horizontal)
+                                    
+                                    ForEach(unreadPosts) { post in
+                                        postRow(for: post)
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.vertical)
+                    }
+                    .task {
+                        let userIds = pendingRequests.map { $0.userId }
+                        guard !userIds.isEmpty else { return }
+                        let profiles = await communityStore.fetchProfiles(for: userIds)
+                        var names: [UUID: String] = [:]
+                        for profile in profiles {
+                            names[profile.id] = profile.fullName
+                        }
+                        requesterNames = names
+                    }
+                }
+            }
+            .navigationTitle("Notifications")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationDestination(isPresented: $showPostDetail) {
+                if let post = selectedPost {
+                    ScrollView {
+                        CommunityPostRowView(post: post)
+                            .padding()
+                    }
+                    .navigationTitle("Post")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .background(AppTheme.appGradient.ignoresSafeArea())
+                }
+            }
+            .sheet(isPresented: Binding(
+                get: { selectedUserIdForProfile != nil },
+                set: { if !$0 { selectedUserIdForProfile = nil } }
+            )) {
+                if let userId = selectedUserIdForProfile {
+                    OtherUserProfileView(userId: userId)
+                }
+            }
+            .onAppear {
+                UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "last_checked_notifications_\(currentUserId.uuidString)")
+            }
+            .alert("Error", isPresented: Binding(
+                get: { communityStore.errorMessage != nil },
+                set: { if !$0 { communityStore.errorMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                if let error = communityStore.errorMessage {
+                    Text(error)
+                }
+            }
+        }
+    }
+    
+    // MARK: - Subviews
+    
+    private func alertRow(for notif: AppNotification) -> some View {
+        HStack(spacing: 16) {
+            Circle()
+                .fill(AppTheme.orange.opacity(0.15))
+                .frame(width: 40, height: 40)
+                .overlay {
+                    Image(systemName: "info.circle.fill")
+                        .foregroundStyle(AppTheme.orange)
+                }
+            
+            Text(notif.message)
+                .font(.subheadline)
+                .foregroundStyle(.primary)
+            
+            Spacer()
+            
+            Button {
+                if let idx = communityStore.simulatedNotifications.firstIndex(where: { $0.id == notif.id }) {
+                    communityStore.simulatedNotifications[idx].isRead = true
+                }
+            } label: {
+                Image(systemName: "xmark")
+                    .foregroundStyle(.secondary)
+                    .padding(8)
+            }
+        }
+        .padding()
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal)
+    }
+    
+    private func requestRow(for member: CommunityMember) -> some View {
+        let communityName = communityStore.communities.first(where: { $0.id == member.communityId })?.name ?? "Unknown Community"
+        let key = "\(member.userId.uuidString)_\(member.communityId.uuidString)"
+        let requesterName = requesterNames[member.userId] ?? "Someone"
+        
+        // Determine resolved status from role or resolvedRequests
+        let resolvedStatus: String? = {
+            if member.role == "rejected" { return "rejected" }
+            if member.role == "member", communityStore.resolvedRequests[key] == "accepted" { return "accepted" }
+            if let status = communityStore.resolvedRequests[key] { return status }
+            return nil
+        }()
+        
+        return VStack(alignment: .leading, spacing: 12) {
+            Button {
+                selectedUserIdForProfile = member.userId
+            } label: {
+                HStack(alignment: .top, spacing: 12) {
+                    // Avatar with initials
+                    ZStack {
+                        Circle()
+                            .fill(AppTheme.orange.opacity(0.15))
+                            .frame(width: 40, height: 40)
+                        
+                        if let firstChar = requesterName.first, firstChar.isLetter {
+                            Text(String(firstChar).uppercased())
+                                .font(.system(.headline, design: .rounded))
+                                .fontWeight(.semibold)
+                                .foregroundStyle(AppTheme.orange)
+                        } else {
+                            Image(systemName: "person.fill")
+                                .foregroundStyle(AppTheme.orange)
+                        }
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("**\(requesterName)** wants to join")
+                            .font(.subheadline)
+                            .foregroundStyle(.primary)
+                            .multilineTextAlignment(.leading)
+                        Text(communityName)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    Text(timeAgo(from: member.joinedAt))
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .buttonStyle(.plain)
+            
+            if let resolvedStatus {
+                HStack(spacing: 6) {
+                    Image(systemName: resolvedStatus == "accepted" ? "checkmark.circle.fill" : "xmark.circle.fill")
+                    Text(resolvedStatus == "accepted" ? "Accepted" : "Rejected")
+                        .font(.subheadline.weight(.medium))
+                }
+                .foregroundStyle(resolvedStatus == "accepted" ? .green : .red)
+                .padding(.top, 2)
+            } else {
+                HStack(spacing: 12) {
+                    Button {
+                        Task { await communityStore.rejectJoinRequest(member) }
+                    } label: {
+                        Text("Reject")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.red)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                            .background(Color.red.opacity(0.1))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
+                    
+                    Button {
+                        Task { await communityStore.acceptJoinRequest(member) }
+                    } label: {
+                        Text("Accept")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                            .background(AppTheme.orange)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
+                }
+                .padding(.top, 4)
+            }
+        }
+        .padding()
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal)
+    }
+    
+    private func postRow(for post: Post) -> some View {
+        let communityName = communityStore.communities.first(where: { $0.id == post.communityId })?.name ?? "Unknown Community"
+        
+        return Button {
+            // Mark as read by updating last_visited for this specific community
+            let key = "last_visited_\(post.communityId.uuidString)"
+            UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: key)
+            
+            // Navigate to post
+            selectedPost = post
+            showPostDetail = true
+        } label: {
+            HStack(alignment: .top, spacing: 12) {
+                Circle()
+                    .fill(Color.blue.opacity(0.15))
+                    .frame(width: 40, height: 40)
+                    .overlay {
+                        Image(systemName: "text.bubble.fill")
+                            .foregroundStyle(Color.blue)
+                    }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("\(post.authorName ?? "Someone") posted in \(communityName)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    
+                    Text(post.content)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                }
+                
+                Spacer()
+                
+                Circle()
+                    .fill(AppTheme.orange)
+                    .frame(width: 8, height: 8)
+                    .padding(.top, 6)
+            }
+            .padding()
+            .background(Color(.secondarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .padding(.horizontal)
+        }
+    }
+}
+
+// MARK: - OtherUserProfileView
+struct OtherUserProfileView: View {
+    let userId: UUID
+    @Environment(CommunityStore.self) private var communityStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var profile: User?
+    
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                AppTheme.pageGradient.ignoresSafeArea()
+                
+                VStack(spacing: 24) {
+                    if let profile = profile {
+                        ZStack {
+                            Circle()
+                                .fill(LinearGradient(colors: [AppTheme.orange, AppTheme.orange.opacity(0.6)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                .frame(width: 100, height: 100)
+                                .shadow(color: AppTheme.orange.opacity(0.3), radius: 10, y: 5)
+                            
+                            if let firstChar = profile.fullName.first, firstChar.isLetter {
+                                Text(String(firstChar).uppercased())
+                                    .font(.system(size: 44, weight: .bold, design: .rounded))
+                                    .foregroundStyle(.white)
+                            } else {
+                                Image(systemName: "person.fill")
+                                    .font(.system(size: 44))
+                                    .foregroundStyle(.white)
+                            }
+                        }
+                        .padding(.top, 40)
+                        
+                        VStack(spacing: 8) {
+                            Text(profile.fullName)
+                                .font(.title.bold())
+                                .foregroundStyle(AppTheme.warmTextPrimary)
+                            
+                            Text(profile.email)
+                                .font(.subheadline)
+                                .foregroundStyle(AppTheme.warmTextSecondary)
+                        }
+                        
+                        Spacer()
+                    } else {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle("Profile")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Close") { dismiss() }
+                        .fontWeight(.semibold)
+                        .foregroundStyle(AppTheme.orange)
+                }
+            }
+            .task {
+                let profiles = await communityStore.fetchProfiles(for: [userId])
+                profile = profiles.first
+            }
+        }
+    }
+}
