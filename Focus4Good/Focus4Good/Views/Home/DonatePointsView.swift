@@ -11,6 +11,7 @@ struct DonatePointsView: View {
     @State private var showConfirm = false
     @State private var showSuccess = false
     @State private var animateCoins = false
+    @State private var showInsufficientPoints = false
 
     private var focusPoints: Int {
         userStore.currentUser?.focusPoints ?? 0
@@ -81,6 +82,11 @@ struct DonatePointsView: View {
             } message: { goal in
                 Text("Your focus just funded \(goal.title). Because of your dedication, \(goal.description.lowercased()). You're making a real difference in their education!")
             }
+            .alert("Not Enough Points", isPresented: $showInsufficientPoints) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("You don't have enough focus points. Complete daily tasks and earn points to donate.")
+            }
         }
     }
 
@@ -131,8 +137,12 @@ struct DonatePointsView: View {
         let canAfford = focusPoints >= goal.pointsCost
 
         return Button {
-            selectedGoal = goal
-            showConfirm = true
+            if canAfford {
+                selectedGoal = goal
+                showConfirm = true
+            } else {
+                showInsufficientPoints = true
+            }
         } label: {
             HStack(spacing: 16) {
                 // Icon
@@ -172,10 +182,8 @@ struct DonatePointsView: View {
             }
             .padding(16)
             .glassCard(cornerRadius: 16)
-            .opacity(canAfford ? 1.0 : 0.6)
         }
         .buttonStyle(.plain)
-        .disabled(!canAfford)
     }
 
     // MARK: - Donation History

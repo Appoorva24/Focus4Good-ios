@@ -208,30 +208,7 @@ struct NGOConnectDetailView: View {
                         }
                     }
                     
-                    // Level 4: Community Gallery
-                    LevelLockedSection(title: "Community Gallery", requiredLevel: 4, currentLevel: currentLevel, lockedIcon: "square.and.pencil", description: "Post your own experiences and photos from visits.") {
-                        VStack(alignment: .center, spacing: 16) {
-                            Text("Share your experience working with \(ngo.name)!")
-                                .font(.subheadline)
-                                .foregroundStyle(AppTheme.textSecondary)
-                                .multilineTextAlignment(.center)
-                            
-                            Button {
-                                // Add Post action
-                            } label: {
-                                HStack {
-                                    Image(systemName: "camera.fill")
-                                    Text("Post Photo")
-                                }
-                                .font(.headline)
-                                .foregroundStyle(AppTheme.orange)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
-                                .background(AppTheme.orange.opacity(0.1))
-                                .clipShape(Capsule())
-                            }
-                        }
-                    }
+
                     
                     Spacer().frame(height: 40)
                 }
