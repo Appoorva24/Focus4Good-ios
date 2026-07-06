@@ -21,12 +21,25 @@ struct NGOListView: View {
             if let ngo = ngo {
                 NGOConnectDetailView(ngo: ngo, currentLevel: currentLevel)
             } else {
-                ProgressView()
+                VStack(spacing: 16) {
+                    ProgressView()
+                    Text("Loading NGO data...")
+                        .font(.subheadline)
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
             }
         }
         .background(AppTheme.pageGradient)
         .navigationTitle("NGO Connect")
         .navigationBarTitleDisplayMode(.inline)
+        .task {
+            if volunteerStore.ngos.isEmpty {
+                await volunteerStore.fetchNGOs()
+            }
+            if volunteerStore.volunteerEvents.isEmpty {
+                await volunteerStore.fetchVolunteerEvents()
+            }
+        }
     }
 }
 

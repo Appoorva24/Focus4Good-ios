@@ -169,7 +169,7 @@ struct CommunityHome: View {
                                 showRecentPosts = true
                             } label: {
                                 ZStack(alignment: .topTrailing) {
-                                    Image(systemName: "newspaper")
+                                    Image(systemName: "bell")
                                         .foregroundStyle(AppTheme.orange)
                                         .padding(.trailing, 4) // Make space for the badge
                                     

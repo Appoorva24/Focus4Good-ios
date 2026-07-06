@@ -38,24 +38,19 @@ struct CommunityRowView: View {
 
             // Join button logic
             if !isJoined {
-                let isPending = communityStore.hasPendingRequest(communityId: community.id, userId: currentUserId)
-                
                 Button {
-                    if !isPending {
-                        Task {
-                            await communityStore.joinCommunity(community, userId: currentUserId)
-                        }
+                    Task {
+                        await communityStore.joinCommunity(community, userId: currentUserId)
                     }
                 } label: {
-                    Text(isPending ? "Requested" : (community.isPrivate ? "Request" : "Join"))
+                    Text("Join")
                         .fontWeight(.semibold)
                         .padding(.horizontal, 20)
                         .padding(.vertical, 6)
-                        .background(isPending ? Color.gray : AppTheme.orange)
+                        .background(AppTheme.orange)
                         .foregroundStyle(.white)
                         .clipShape(Capsule())
                 }
-                .disabled(isPending)
             } else {
                 // Notification Badge for 'Your Communities' tab
                 let unreadCount = communityPosts.filter { $0.createdAt.timeIntervalSince1970 > lastVisited }.count
