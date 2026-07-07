@@ -32,10 +32,14 @@ struct ASMRPlaylistDetailView: View {
         .background(AppTheme.appGradient.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
+            store.activeASMRViewsCount += 1
             loadFavourites()
             saveAsRecentPlaylist()
         }
+        .onDisappear {
+            store.activeASMRViewsCount -= 1
         }
+    }
     
     private var headerView: some View {
         VStack(spacing: 16) {
@@ -44,6 +48,7 @@ struct ASMRPlaylistDetailView: View {
                 Image(playlist.coverImageName)
                     .resizable()
                     .scaledToFill()
+                    .scaleEffect((playlist.coverImageName == "stress" || playlist.coverImageName == "anxiety") ? 1.15 : 1.0)
                     .frame(width: 240, height: 240)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .shadow(color: Color.black.opacity(0.1), radius: 20, x: 0, y: 10)
@@ -89,7 +94,7 @@ struct ASMRPlaylistDetailView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
                     .background(Color.accentColor)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .clipShape(Capsule())
                 }
                 
                 Button {
@@ -106,7 +111,7 @@ struct ASMRPlaylistDetailView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
                     .background(Color.accentColor.opacity(0.15))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .clipShape(Capsule())
                 }
             }
             .padding(.horizontal)

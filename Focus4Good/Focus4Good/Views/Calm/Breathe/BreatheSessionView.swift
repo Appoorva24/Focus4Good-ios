@@ -46,6 +46,7 @@ private let defaultCycles = 4
 struct BreatheSessionView: View {
 
     @Environment(CalmCentreStore.self) private var store
+    @Environment(UserStore.self) private var userStore
     @Environment(\.dismiss) private var dismiss
 
     @State private var selectedCycles = defaultCycles
@@ -59,7 +60,7 @@ struct BreatheSessionView: View {
     @State private var phaseStartTime: Date? = nil
     @State private var elapsedPauseTime: TimeInterval = 0.0
 
-    private let userId = UUID()
+    private var currentUserId: UUID { userStore.currentUser?.id ?? UUID() }
 
     var body: some View {
         ZStack {
@@ -326,7 +327,7 @@ struct BreatheSessionView: View {
         let totalSeconds = selectedCycles * (4 + 7 + 8)
         Task {
             await store.logBreathingSession(
-                userId: userId,
+                userId: currentUserId,
                 cyclesCompleted: selectedCycles,
                 durationSeconds: totalSeconds
             )

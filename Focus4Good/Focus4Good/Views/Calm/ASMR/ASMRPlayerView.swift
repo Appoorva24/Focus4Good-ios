@@ -60,11 +60,11 @@ struct ASMRPlayerView: View {
         .background(AppTheme.appGradient.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
+            ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     dismiss()
                 } label: {
-                    Image(systemName: "chevron.down")
+                    Image(systemName: "xmark")
                         .foregroundColor(.primary)
                 }
             }
@@ -102,6 +102,12 @@ struct ASMRPlayerView: View {
             Button { 
                 if let userId = userStore.currentUser?.id {
                     store.toggleAsmrFavourite(soundId: sound.id, userId: userId) 
+                } else {
+                    if store.favouriteAsmrSoundIds.contains(sound.id) {
+                        store.favouriteAsmrSoundIds.remove(sound.id)
+                    } else {
+                        store.favouriteAsmrSoundIds.insert(sound.id)
+                    }
                 }
             } label: {
                 Image(systemName: isFavourite ? "heart.fill" : "heart")

@@ -115,6 +115,7 @@ private let prepDuration  = 20
 struct JPMRSessionView: View {
 
     @Environment(CalmCentreStore.self) private var store
+    @Environment(UserStore.self) private var userStore
     @Environment(\.dismiss) private var dismiss
 
     @State private var selectedGroups: Set<Int> = [11, 9, 7, 6, 5, 1]
@@ -131,7 +132,7 @@ struct JPMRSessionView: View {
     @State private var phaseStartTime: Date? = nil
     @State private var elapsedPauseTime: TimeInterval = 0.0
 
-    private let userId = UUID()
+    private var currentUserId: UUID { userStore.currentUser?.id ?? UUID() }
 
     private var activeSteps: [MuscleStep] {
         activeGroupsSorted.compactMap { groupNum in
@@ -672,7 +673,7 @@ struct JPMRSessionView: View {
         // JPMRAudioService.shared.speakCompletion(groupCount: selectedGroups.count)
 
         Task {
-            await store.logJpmrSession(userId: userId, durationSeconds: elapsedSeconds)
+            await store.logJpmrSession(userId: currentUserId, durationSeconds: elapsedSeconds)
         }
 
         showCompletion = true

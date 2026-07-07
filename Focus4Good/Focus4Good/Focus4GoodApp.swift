@@ -64,10 +64,9 @@ struct Focus4GoodApp: App {
             // Watch for sign-out: when isAuthenticated flips to false while in the
             // app, send the user back to the auth screen immediately.
             .onChange(of: userStore.isAuthenticated) { _, isAuth in
-                // Bypassed for now
-                // if !isAuth && appState == .app {
-                //     appState = .auth
-                // }
+                if !isAuth && appState == .app {
+                    appState = .auth
+                }
             }
             .environment(userStore)
             .environment(taskStore)
@@ -121,7 +120,7 @@ struct Focus4GoodApp: App {
         if !hasSeenOnboarding {
             appState = .onboarding
         } else {
-            appState = .app
+            appState = userStore.isAuthenticated ? .app : .auth
         }
     }
 }
@@ -159,7 +158,7 @@ struct MainTabView: View {
             }
             .tint(AppTheme.orange)
             
-            let shouldShowMiniPlayer = audio.currentSoundName != nil && audio.isPlaying
+            let shouldShowMiniPlayer = audio.currentSoundName != nil && (audio.isPlaying || store.isInsideASMRSection)
             
             if shouldShowMiniPlayer {
                 ASMRMiniPlayerView()

@@ -29,6 +29,9 @@ class ASMRAudioService: @unchecked Sendable {
     private var audioPlayer: AVAudioPlayer?
     private(set) var isPlaying = false
     private(set) var currentSoundName: String?
+    
+    private var sessionStartTime: Date?
+    private var accumulatedSessionTime: TimeInterval = 0
 
     private init() {}
 
@@ -39,7 +42,7 @@ class ASMRAudioService: @unchecked Sendable {
     }
 
     func play(soundName: String) {
-        stop()
+        stop() // This will log any previous session
 
         // Configure audio session
         let session = AVAudioSession.sharedInstance()
@@ -65,6 +68,7 @@ class ASMRAudioService: @unchecked Sendable {
             audioPlayer?.play()
             currentSoundName = soundName
             isPlaying = true
+            sessionStartTime = Date()
         } catch {
             print("ASMRAudioService: failed to play — \(error)")
         }
@@ -73,11 +77,16 @@ class ASMRAudioService: @unchecked Sendable {
     func pause() {
         audioPlayer?.pause()
         isPlaying = false
+        if let start = sessionStartTime {
+            accumulatedSessionTime += Date().timeIntervalSince(start)
+            sessionStartTime = nil
+        }
     }
 
     func resume() {
         audioPlayer?.play()
         isPlaying = true
+        sessionStartTime = Date()
     }
 
     func stop() {
@@ -85,7 +94,25 @@ class ASMRAudioService: @unchecked Sendable {
         audioPlayer = nil
         currentSoundName = nil
         isPlaying = false
+        if let start = sessionStartTime {
+            accumulatedSessionTime += Date().timeIntervalSince(start)
+            sessionStartTime = nil
+        }
+        logCurrentSession()
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+    
+    private func logCurrentSession() {
+        if accumulatedSessionTime > 0 {
+            let duration = Int(accumulatedSessionTime)
+            // Use Task for async logging
+            Task { @MainActor in
+                if let userId = UserStore.shared.currentUser?.id {
+                    await CalmCentreStore.shared.logAsmrSessionTime(durationSeconds: duration, userId: userId)
+                }
+            }
+        }
+        accumulatedSessionTime = 0
     }
 
     //Duration & Current Time

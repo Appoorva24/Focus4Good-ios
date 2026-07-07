@@ -39,8 +39,12 @@ struct SensorySootheView: View {
         .navigationTitle("ASMR Sounds")
         .navigationBarTitleDisplayMode(.large)
         .onAppear { 
+            store.activeASMRViewsCount += 1
             loadFavourites()
             loadRecents()
+        }
+        .onDisappear {
+            store.activeASMRViewsCount -= 1
         }
     }
 
@@ -103,6 +107,7 @@ struct SensorySootheView: View {
                 Image(playlist.coverImageName)
                     .resizable()
                     .scaledToFill()
+                    .scaleEffect((playlist.coverImageName == "stress" || playlist.coverImageName == "anxiety") ? 1.15 : 1.0)
                     .frame(width: 280, height: 280)
                     .clipped()
             } else {
@@ -153,6 +158,7 @@ struct SensorySootheView: View {
                             Image(playlist.coverImageName)
                                 .resizable()
                                 .scaledToFill()
+                                .scaleEffect((playlist.coverImageName == "stress" || playlist.coverImageName == "anxiety") ? 1.15 : 1.0)
                                 .frame(width: 80, height: 80)
                                 .clipped()
                                 .cornerRadius(12)

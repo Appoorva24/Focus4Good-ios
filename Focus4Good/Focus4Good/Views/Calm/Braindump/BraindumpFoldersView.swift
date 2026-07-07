@@ -3,12 +3,13 @@ import SwiftUI
 struct BraindumpFoldersView: View {
 
     @Environment(CalmCentreStore.self) private var store
+    @Environment(UserStore.self) private var userStore
 
     @State private var isEditing = false
     @State private var showNewFolderAlert = false
     @State private var newFolderName = ""
 
-    private let userId = UUID()
+    private var currentUserId: UUID { userStore.currentUser?.id ?? UUID() }
 
     var body: some View {
         List {
@@ -71,7 +72,7 @@ struct BraindumpFoldersView: View {
             Button("Cancel", role: .cancel) {}
             Button("Create") {
                 guard !newFolderName.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-                store.addBrainDumpFolder(name: newFolderName, userId: userId)
+                store.addBrainDumpFolder(name: newFolderName, userId: currentUserId)
             }
         } message: {
             Text("Enter a name for the new folder.")

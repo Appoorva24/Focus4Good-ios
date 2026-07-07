@@ -10,7 +10,8 @@ struct BraindumpEditorView: View {
     @State private var showWellDonePopup = false
 
     @Environment(CalmCentreStore.self) private var store
-    private let userId = UUID()
+    @Environment(UserStore.self) private var userStore
+    private var currentUserId: UUID { userStore.currentUser?.id ?? UUID() }
 
     var body: some View {
         ZStack {
@@ -81,7 +82,7 @@ struct BraindumpEditorView: View {
         guard !trimmed.isEmpty else { return }
         isEditorFocused = false
         Task {
-            await store.addBrainDumpEntry(content: trimmed, userId: userId, folderId: folder.id)
+            await store.addBrainDumpEntry(content: trimmed, userId: currentUserId, folderId: folder.id)
         }
         showWellDonePopup = true
     }

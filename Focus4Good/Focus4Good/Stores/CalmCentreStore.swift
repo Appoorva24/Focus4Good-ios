@@ -15,6 +15,8 @@ class CalmCentreStore {
     var activeAsmrSound: AsmrSound?
     var isASMRPlayerPresented = false
     var showGlobalASMRPlayer = false
+    var activeASMRViewsCount = 0
+    var isInsideASMRSection: Bool { activeASMRViewsCount > 0 }
     var jpmrVideoUrl: String?
     var isLoadingVideo = false
     var videoErrorMessage: String?
@@ -158,7 +160,8 @@ class CalmCentreStore {
             try await SupabaseManager.shared.client.from("breathing_sessions").insert(session).execute()
         } catch { print("Insert error: \(error)") }
         await UserStore.shared.updateFocusPoints(by: points)
-        await ProgressStore.shared.addCalmCentreTime(minutes: durationSeconds / 60, userId: userId)
+        let minutes = max(1, Int(ceil(Double(durationSeconds) / 60.0)))
+        await ProgressStore.shared.addCalmCentreTime(minutes: minutes, userId: userId)
         await ProgressStore.shared.addPointsEarned(points: points, userId: userId)
     }
 
@@ -170,7 +173,8 @@ class CalmCentreStore {
             try await SupabaseManager.shared.client.from("jpmr_sessions").insert(session).execute()
         } catch { print("Insert error: \(error)") }
         await UserStore.shared.updateFocusPoints(by: points)
-        await ProgressStore.shared.addCalmCentreTime(minutes: durationSeconds / 60, userId: userId)
+        let minutes = max(1, Int(ceil(Double(durationSeconds) / 60.0)))
+        await ProgressStore.shared.addCalmCentreTime(minutes: minutes, userId: userId)
         await ProgressStore.shared.addPointsEarned(points: points, userId: userId)
     }
 
@@ -182,11 +186,22 @@ class CalmCentreStore {
             try await SupabaseManager.shared.client.from("guided_meditation_sessions").insert(session).execute()
         } catch { print("Insert error: \(error)") }
         await UserStore.shared.updateFocusPoints(by: points)
-        await ProgressStore.shared.addCalmCentreTime(minutes: durationSeconds / 60, userId: userId)
+        let minutes = max(1, Int(ceil(Double(durationSeconds) / 60.0)))
+        await ProgressStore.shared.addCalmCentreTime(minutes: minutes, userId: userId)
         await ProgressStore.shared.addPointsEarned(points: points, userId: userId)
     }
 
     // MARK: - ASMR
+    func logAsmrSessionTime(durationSeconds: Int, userId: UUID) async {
+        guard durationSeconds > 0 else { return }
+        let minutes = max(1, Int(ceil(Double(durationSeconds) / 60.0)))
+        await ProgressStore.shared.addCalmCentreTime(minutes: minutes, userId: userId)
+        // Optionally add points for ASMR? Let's say 1 point per minute
+        let points = minutes * 1
+        await UserStore.shared.updateFocusPoints(by: points)
+        await ProgressStore.shared.addPointsEarned(points: points, userId: userId)
+    }
+
     func playAsmrSound(_ sound: AsmrSound) { activeAsmrSound = sound }
     func stopAsmrSound() { activeAsmrSound = nil }
 

@@ -1,17 +1,20 @@
 import SwiftUI
-
-private let totalSessionSeconds = 300
+import AVFoundation
 
 // MARK: - DeepFocusBrowseView
 
 struct DeepFocusBrowseView: View {
 
     @Environment(CalmCentreStore.self) private var store
+    @Environment(UserStore.self) private var userStore
     @Environment(\.dismiss) private var dismiss
 
+    @State private var audioPlayer: AVAudioPlayer?
     @State private var isPlaying = false
     @State private var hasStarted = false
     @State private var elapsed: TimeInterval = 0
+    @State private var duration: TimeInterval = 0
+    @State private var isSeeking = false
     @State private var timer: Timer?
     @State private var volume: Double = 0.5
     @State private var isMuted = false
@@ -19,10 +22,10 @@ struct DeepFocusBrowseView: View {
     @State private var showCompletion = false
 
     private static let favouriteKey = "deep_focus_favourite"
-    private let userId = UUID()
+    private var currentUserId: UUID { userStore.currentUser?.id ?? UUID() }
 
     private var remaining: TimeInterval {
-        max(0, Double(totalSessionSeconds) - elapsed)
+        max(0, duration - elapsed)
     }
 
     var body: some View {
@@ -76,7 +79,10 @@ struct DeepFocusBrowseView: View {
         .background(AppTheme.appGradient.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { loadFavourite() }
-        .onDisappear { stopTimer() }
+        .onDisappear { 
+            stopTimer() 
+            logCurrentSessionIfNeeded()
+        }
     }
 
     // MARK: - Subviews
@@ -102,11 +108,19 @@ struct DeepFocusBrowseView: View {
     private var progressSection: some View {
         VStack(spacing: 6) {
             Slider(
-                value: Binding(get: { elapsed }, set: { _ in }),
-                in: 0...Double(totalSessionSeconds)
-            )
+                value: Binding(
+                    get: { elapsed },
+                    set: { newValue in
+                        elapsed = newValue
+                        audioPlayer?.currentTime = newValue
+                    }
+                ),
+                in: 0...max(duration, 1)
+            ) { editing in
+                isSeeking = editing
+                if !editing { audioPlayer?.currentTime = elapsed }
+            }
             .tint(Color(.systemGray))
-            .disabled(true)
 
             HStack {
                 Text(formatTime(elapsed))
@@ -128,6 +142,7 @@ struct DeepFocusBrowseView: View {
         HStack(spacing: 44) {
             Button {
                 isMuted.toggle()
+                audioPlayer?.volume = isMuted ? 0 : Float(volume)
             } label: {
                 Image(systemName: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
                     .font(.title2)
@@ -166,6 +181,9 @@ struct DeepFocusBrowseView: View {
 
             Slider(value: $volume, in: 0...1)
                 .tint(Color(.systemGray))
+                .onChange(of: volume) { _, newValue in
+                    audioPlayer?.volume = Float(newValue)
+                }
 
             Image(systemName: "speaker.wave.3.fill")
                 .font(.caption)
@@ -243,37 +261,81 @@ struct DeepFocusBrowseView: View {
         UserDefaults.standard.set(isFavourite, forKey: Self.favouriteKey)
     }
 
+    // MARK: - Audio Player Logic
+
+    private func setupAudio() {
+        guard let url = Bundle.main.url(forResource: "guided_meditation", withExtension: "mp4") else {
+            print("Could not find guided_meditation.mp4 in bundle")
+            return
+        }
+        do {
+            let session = AVAudioSession.sharedInstance()
+            try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+            try? session.setActive(true)
+
+            audioPlayer = try AVAudioPlayer(contentsOf: url)
+            audioPlayer?.prepareToPlay()
+            audioPlayer?.volume = Float(volume)
+            duration = audioPlayer?.duration ?? 0
+        } catch {
+            print("Failed to load guided_meditation.mp4: \(error)")
+        }
+    }
+
     // MARK: - Session Logic
 
     private func startSession() {
+        if audioPlayer == nil { setupAudio() }
         elapsed = 0
         hasStarted = true
         isPlaying = true
+        audioPlayer?.currentTime = 0
+        audioPlayer?.play()
         startTimer()
     }
 
     private func pauseSession() {
         isPlaying = false
+        audioPlayer?.pause()
         stopTimer()
     }
 
     private func resumeSession() {
         isPlaying = true
+        audioPlayer?.play()
         startTimer()
     }
 
     private func resetSession() {
         stopTimer()
+        logCurrentSessionIfNeeded()
         elapsed = 0
         hasStarted = false
         isPlaying = false
+        audioPlayer?.stop()
+        audioPlayer?.currentTime = 0
+    }
+    
+    private func logCurrentSessionIfNeeded() {
+        if hasStarted && elapsed > 0 {
+            let loggedDuration = Int(elapsed)
+            Task {
+                await store.logGuidedMeditationSession(
+                    userId: currentUserId,
+                    meditationName: "Guided Meditation",
+                    durationSeconds: loggedDuration
+                )
+            }
+            hasStarted = false // Prevent duplicate logging
+        }
     }
 
     private func startTimer() {
         stopTimer()
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
-            elapsed += 1
-            if Int(elapsed) >= totalSessionSeconds { completeSession() }
+        timer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { _ in
+            guard !isSeeking else { return }
+            elapsed = audioPlayer?.currentTime ?? 0
+            if elapsed >= duration && duration > 0 { completeSession() }
         }
     }
 
@@ -286,12 +348,13 @@ struct DeepFocusBrowseView: View {
         stopTimer()
         isPlaying = false
         hasStarted = false
+        audioPlayer?.stop()
 
         Task {
             await store.logGuidedMeditationSession(
-                userId: userId,
+                userId: currentUserId,
                 meditationName: "Guided Meditation",
-                durationSeconds: totalSessionSeconds
+                durationSeconds: Int(duration)
             )
         }
 
