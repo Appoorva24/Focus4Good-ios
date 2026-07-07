@@ -26,7 +26,7 @@ struct HomeView: View {
     }
 
     private var focusPoints: Int {
-        userStore.currentUser?.focusPoints ?? 120
+        userStore.currentUser?.focusPoints ?? 0
     }
 
     private var greetingEmoji: String {
@@ -87,6 +87,14 @@ struct HomeView: View {
                 }
             }
             .onAppear {
+                if !UserDefaults.standard.bool(forKey: "didResetPoints") {
+                    Task {
+                        if let pts = userStore.currentUser?.focusPoints, pts > 0 {
+                            await userStore.updateFocusPoints(by: -pts)
+                        }
+                        UserDefaults.standard.set(true, forKey: "didResetPoints")
+                    }
+                }
                 withAnimation(.easeOut(duration: 0.5).delay(0.1)) {
                     appeared = true
                 }
@@ -259,6 +267,8 @@ struct HomeView: View {
                         .font(.system(size: 22, weight: .bold, design: .rounded))
                         .foregroundStyle(AppTheme.warmTextPrimary)
                         .contentTransition(.numericText())
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
                     Text("pts")
                         .font(.system(size: 9, weight: .medium))
                         .foregroundStyle(AppTheme.warmTextSecondary)
@@ -275,13 +285,7 @@ struct HomeView: View {
         }
         .frame(maxWidth: .infinity)
         .frame(height: height)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color(.systemBackground))
-                .shadow(color: Color.black.opacity(0.06), radius: 12, x: 0, y: 4)
-                .shadow(color: AppTheme.orange.opacity(0.08), radius: 2, x: 0, y: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .glassCard(cornerRadius: 18)
     }
 
     // MARK: Today's Goal
@@ -330,6 +334,8 @@ struct HomeView: View {
                         .font(.system(size: 22, weight: .bold, design: .rounded))
                         .foregroundStyle(AppTheme.warmTextPrimary)
                         .contentTransition(.numericText())
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
                     Text("%")
                         .font(.system(size: 9, weight: .medium))
                         .foregroundStyle(AppTheme.warmTextSecondary)
@@ -346,13 +352,7 @@ struct HomeView: View {
         }
         .frame(maxWidth: .infinity)
         .frame(height: height)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color(.systemBackground))
-                .shadow(color: Color.black.opacity(0.06), radius: 12, x: 0, y: 4)
-                .shadow(color: AppTheme.sage.opacity(0.08), radius: 2, x: 0, y: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .glassCard(cornerRadius: 18)
     }
 
     // ─────────────────────────────────────────────────────────────────

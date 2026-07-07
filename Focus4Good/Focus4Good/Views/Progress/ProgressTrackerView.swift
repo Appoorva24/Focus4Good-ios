@@ -340,6 +340,8 @@ private struct CircularProgressRing: View {
                 Text("\(completed)")
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundStyle(AppTheme.warmTextPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
                 Text("/ \(goal)")
                     .font(.caption2)
                     .foregroundStyle(AppTheme.warmTextSecondary)

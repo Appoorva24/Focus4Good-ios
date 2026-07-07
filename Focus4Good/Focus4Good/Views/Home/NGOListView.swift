@@ -21,12 +21,25 @@ struct NGOListView: View {
             if let ngo = ngo {
                 NGOConnectDetailView(ngo: ngo, currentLevel: currentLevel)
             } else {
-                ProgressView()
+                VStack(spacing: 16) {
+                    ProgressView()
+                    Text("Loading NGO data...")
+                        .font(.subheadline)
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
             }
         }
         .background(AppTheme.pageGradient)
         .navigationTitle("NGO Connect")
         .navigationBarTitleDisplayMode(.inline)
+        .task {
+            if volunteerStore.ngos.isEmpty {
+                await volunteerStore.fetchNGOs()
+            }
+            if volunteerStore.volunteerEvents.isEmpty {
+                await volunteerStore.fetchVolunteerEvents()
+            }
+        }
     }
 }
 
@@ -36,7 +49,9 @@ struct NGOConnectDetailView: View {
     let ngo: NGO
     let currentLevel: Int
     @Environment(VolunteerStore.self) private var volunteerStore
+    @Environment(UserStore.self) private var userStore
     @State private var showingRegistration = false
+    @State private var showingDonation = false
     
     private var events: [VolunteerEvent] {
         volunteerStore.events(for: ngo)
@@ -96,6 +111,72 @@ struct NGOConnectDetailView: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     
+                    // Donate Points Section (always visible — core feature)
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            Text("Donate Your Focus")
+                                .font(.title3.bold())
+                            Spacer()
+                            HStack(spacing: 4) {
+                                Image(systemName: "star.fill")
+                                    .font(.caption)
+                                Text("\(userStore.currentUser?.focusPoints ?? 0) pts")
+                                    .font(.caption.bold())
+                            }
+                            .foregroundStyle(AppTheme.orange)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(AppTheme.orange.opacity(0.1))
+                            .clipShape(Capsule())
+                        }
+                        
+                        Text("Convert your Focus Points into real educational resources for underprivileged children.")
+                            .font(.subheadline)
+                            .foregroundStyle(AppTheme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        
+                        // Quick preview of top 3 goals
+                        HStack(spacing: 12) {
+                            ForEach(ImpactGoal.allGoals.prefix(3)) { goal in
+                                VStack(spacing: 8) {
+                                    Image(systemName: goal.icon)
+                                        .font(.system(size: 22))
+                                        .foregroundStyle(AppTheme.orange)
+                                        .frame(width: 48, height: 48)
+                                        .background(AppTheme.orange.opacity(0.1))
+                                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                                    Text(goal.title)
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(AppTheme.warmTextPrimary)
+                                        .lineLimit(1)
+                                    Text("\(goal.pointsCost) pts")
+                                        .font(.caption2.weight(.medium))
+                                        .foregroundStyle(AppTheme.warmTextSecondary)
+                                }
+                                .frame(maxWidth: .infinity)
+                            }
+                        }
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 8)
+                        .background(AppTheme.cardBg)
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+
+                        Button {
+                            showingDonation = true
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "heart.fill")
+                                Text("Donate Points")
+                            }
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(AppTheme.orange)
+                            .clipShape(Capsule())
+                        }
+                    }
+                    
                     // Level 2: Gallery
                     LevelLockedSection(title: "Highlights", requiredLevel: 2, currentLevel: currentLevel, lockedIcon: "photo.on.rectangle.angled", description: "View the gallery of past events and impact.") {
                         NGOGalleryView(images: ngo.galleryImages ?? ["ngo"])
@@ -127,30 +208,7 @@ struct NGOConnectDetailView: View {
                         }
                     }
                     
-                    // Level 4: Community Gallery
-                    LevelLockedSection(title: "Community Gallery", requiredLevel: 4, currentLevel: currentLevel, lockedIcon: "square.and.pencil", description: "Post your own experiences and photos from visits.") {
-                        VStack(alignment: .center, spacing: 16) {
-                            Text("Share your experience working with \(ngo.name)!")
-                                .font(.subheadline)
-                                .foregroundStyle(AppTheme.textSecondary)
-                                .multilineTextAlignment(.center)
-                            
-                            Button {
-                                // Add Post action
-                            } label: {
-                                HStack {
-                                    Image(systemName: "camera.fill")
-                                    Text("Post Photo")
-                                }
-                                .font(.headline)
-                                .foregroundStyle(AppTheme.orange)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
-                                .background(AppTheme.orange.opacity(0.1))
-                                .clipShape(Capsule())
-                            }
-                        }
-                    }
+
                     
                     Spacer().frame(height: 40)
                 }
@@ -161,6 +219,11 @@ struct NGOConnectDetailView: View {
         .background(AppTheme.pageGradient)
         .navigationDestination(isPresented: $showingRegistration) {
             VolunteerRegistrationView(ngo: ngo)
+        }
+        .sheet(isPresented: $showingDonation) {
+            DonatePointsView(ngoName: ngo.name)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
         }
     }
 }

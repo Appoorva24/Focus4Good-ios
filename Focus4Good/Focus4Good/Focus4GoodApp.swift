@@ -133,8 +133,26 @@ enum AppTab: Hashable {
 
 struct MainTabView: View {
     @Environment(UserStore.self) private var userStore
+    @Environment(VolunteerStore.self) private var volunteerStore
     @Environment(CalmCentreStore.self) private var store
     @State private var selectedTab: AppTab = .home
+    
+    @AppStorage("unlockedBadgeIds") private var unlockedBadgeIdsRaw: String = "[]"
+    @State private var newlyUnlockedBadge: ImpactBadge? = nil
+    
+    private var unlockedIds: Set<String> {
+        get {
+            guard let data = unlockedBadgeIdsRaw.data(using: .utf8),
+                  let ids = try? JSONDecoder().decode(Set<String>.self, from: data) else { return [] }
+            return ids
+        }
+        nonmutating set {
+            if let data = try? JSONEncoder().encode(newValue),
+               let str = String(data: data, encoding: .utf8) {
+                unlockedBadgeIdsRaw = str
+            }
+        }
+    }
 
     var audio = ASMRAudioService.shared
 
@@ -170,6 +188,41 @@ struct MainTabView: View {
             if let activeSound = store.activeAsmrSound {
                 NavigationStack {
                     ASMRPlayerView(sound: activeSound)
+                }
+            }
+        }
+        .onAppear { checkBadges() }
+        .onChange(of: userStore.totalPointsDonated) { _, _ in checkBadges() }
+        .onChange(of: userStore.donationHistory.count) { _, _ in checkBadges() }
+        .onChange(of: userStore.currentUser?.bestStreak) { _, _ in checkBadges() }
+        .onChange(of: volunteerStore.volunteerRegistrations.count) { _, _ in checkBadges() }
+        .alert("Badge Unlocked! 🏅", isPresented: .init(
+            get: { newlyUnlockedBadge != nil },
+            set: { if !$0 { newlyUnlockedBadge = nil } }
+        ), presenting: newlyUnlockedBadge) { _ in
+            Button("Awesome", role: .cancel) { }
+        } message: { badge in
+            Text("You just earned the '\(badge.title)' badge!\n\(badge.description)")
+        }
+    }
+    
+    private func checkBadges() {
+        var currentUnlocked = unlockedIds
+        
+        let totalDonated = userStore.totalPointsDonated
+        let donationCount = userStore.donationHistory.count
+        let bestStreak = userStore.currentUser?.bestStreak ?? 0
+        let eventsRegistered = volunteerStore.volunteerRegistrations.count
+        
+        for badge in ImpactBadge.allBadges {
+            if !currentUnlocked.contains(badge.id) {
+                if badge.isUnlocked(totalDonated: totalDonated, donationCount: donationCount, bestStreak: bestStreak, eventsRegistered: eventsRegistered) {
+                    // New badge unlocked!
+                    currentUnlocked.insert(badge.id)
+                    unlockedIds = currentUnlocked
+                    
+                    // Show popup (if multiple unlock at once, it just shows the last one in the loop for now, which is fine)
+                    newlyUnlockedBadge = badge
                 }
             }
         }
