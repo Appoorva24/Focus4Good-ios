@@ -64,10 +64,9 @@ struct Focus4GoodApp: App {
             // Watch for sign-out: when isAuthenticated flips to false while in the
             // app, send the user back to the auth screen immediately.
             .onChange(of: userStore.isAuthenticated) { _, isAuth in
-                // Bypassed for now
-                // if !isAuth && appState == .app {
-                //     appState = .auth
-                // }
+                if !isAuth && appState == .app {
+                    appState = .auth
+                }
             }
             .environment(userStore)
             .environment(taskStore)
@@ -120,8 +119,10 @@ struct Focus4GoodApp: App {
         
         if !hasSeenOnboarding {
             appState = .onboarding
-        } else {
+        } else if userStore.isAuthenticated {
             appState = .app
+        } else {
+            appState = .auth
         }
     }
 }

@@ -179,12 +179,15 @@ class UserStore {
     }
     
     func signOut() {
-        Task {
-            try? await client.auth.signOut()
-        }
+        // Sign out from Supabase (fire-and-forget is fine — we clear local state immediately)
+        Task { try? await client.auth.signOut() }
+        // Clear auth state
         currentUser = nil
         userSettings = nil
         isAuthenticated = false
+        isLoading = false
+        errorMessage = nil
+        isMfaRequired = false
         // Clear ALL cached store data
         TaskStore.shared.tasks = []
         TaskStore.shared.categories = []

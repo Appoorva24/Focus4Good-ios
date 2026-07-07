@@ -1,5 +1,4 @@
 import SwiftUI
-import AuthenticationServices
 
 // MARK: - AuthView
 
@@ -34,27 +33,18 @@ struct AuthView: View {
             if userStore.isMfaRequired {
                 TwoFactorVerifyView(email: email)
             } else {
-                ScrollView {
-                    VStack(spacing: 28) {
-                    Spacer().frame(height: 32)
+                VStack(spacing: 0) {
+                    Spacer(minLength: 16)
 
                     // ── Logo / Header ─────────────────────────────
-                    VStack(spacing: 16) {
-                        // Logo with subtle glow
-                        ZStack {
-                            Circle()
-                                .fill(AppTheme.orange.opacity(0.12))
-                                .frame(width: 120, height: 120)
-                                .blur(radius: 10)
-
-                            Image("AppLogo")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 100, height: 100)
-                        }
+                    VStack(spacing: 12) {
+                        Image("AppLogo")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 100, height: 100)
 
                         Text("Focus4Good")
-                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                            .font(.system(size: 30, weight: .bold, design: .rounded))
                             .foregroundStyle(
                                 LinearGradient(
                                     colors: [AppTheme.orange, AppTheme.orangeDeep],
@@ -68,14 +58,17 @@ struct AuthView: View {
                             .foregroundStyle(AppTheme.warmTextSecondary)
                     }
 
-                    // ── Form Fields (glass card) ─────────────────
-                    VStack(spacing: 16) {
+                    Spacer(minLength: 20)
+
+                    // ── Form Fields (native style) ───────────────
+                    VStack(spacing: 0) {
                         if isSignUp {
                             AuthTextField(
                                 icon: "person",
                                 placeholder: "Full Name",
                                 text: $fullName
                             )
+                            Divider().padding(.leading, 48)
                         }
 
                         AuthTextField(
@@ -86,6 +79,8 @@ struct AuthView: View {
                             autocapitalization: .never
                         )
 
+                        Divider().padding(.leading, 48)
+
                         AuthPasswordField(
                             placeholder: "Password",
                             text: $password,
@@ -93,6 +88,7 @@ struct AuthView: View {
                         )
 
                         if isSignUp {
+                            Divider().padding(.leading, 48)
                             AuthPasswordField(
                                 placeholder: "Confirm Password",
                                 text: $confirmPassword,
@@ -100,11 +96,14 @@ struct AuthView: View {
                             )
                         }
                     }
-                    .padding(20)
-                    .glassCard()
-                    .padding(.horizontal, 20)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color(.secondarySystemGroupedBackground))
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .padding(.horizontal, 24)
 
-                    // ── Forgot Password Button ─────────────────────────────
+                    // ── Forgot Password Button ───────────────────
                     if !isSignUp {
                         HStack {
                             Spacer()
@@ -114,7 +113,8 @@ struct AuthView: View {
                             .font(.subheadline.weight(.medium))
                             .foregroundStyle(AppTheme.orange)
                         }
-                        .padding(.horizontal, 24)
+                        .padding(.horizontal, 28)
+                        .padding(.top, 8)
                     }
 
                     // ── Error Message ─────────────────────────────
@@ -124,7 +124,10 @@ struct AuthView: View {
                             .foregroundStyle(AppTheme.destructive)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 24)
+                            .padding(.top, 8)
                     }
+
+                    Spacer(minLength: 16)
 
                     // ── Submit Button (gradient) ─────────────────
                     Button {
@@ -146,7 +149,7 @@ struct AuthView: View {
                         .font(.headline)
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 56)
+                        .frame(height: 52)
                         .background(
                             Capsule().fill(
                                 isFormValid
@@ -154,7 +157,7 @@ struct AuthView: View {
                                     : AnyShapeStyle(AppTheme.orange.opacity(0.3))
                             )
                         )
-                        .shadow(color: isFormValid ? AppTheme.orange.opacity(0.3) : .clear, radius: 12, y: 6)
+                        .shadow(color: isFormValid ? AppTheme.orange.opacity(0.3) : .clear, radius: 10, y: 4)
                     }
                     .disabled(!isFormValid || userStore.isLoading)
                     .padding(.horizontal, 24)
@@ -174,63 +177,36 @@ struct AuthView: View {
                             .frame(height: 1)
                     }
                     .padding(.horizontal, 24)
+                    .padding(.vertical, 12)
 
-                    // ── Social Sign-In ────────────────────────────
-                    VStack(spacing: 12) {
-                        // Sign in with Apple
-                        SignInWithAppleButton(.signIn) { request in
-                            let hashedNonce = userStore.prepareAppleSignIn()
-                            request.requestedScopes = [.fullName, .email]
-                            request.nonce = hashedNonce
-                        } onCompletion: { result in
-                            switch result {
-                            case .success(let authorization):
-                                if let credential = authorization.credential as? ASAuthorizationAppleIDCredential {
-                                    Task {
-                                        await userStore.handleAppleSignIn(credential: credential)
-                                    }
-                                }
-                            case .failure(let error):
-                                if (error as NSError).code != 1001 {
-                                    userStore.errorMessage = error.localizedDescription
-                                }
-                            }
+                    // ── Google Sign-In ────────────────────────────
+                    Button {
+                        Task {
+                            await userStore.signInWithGoogle()
                         }
-                        .signInWithAppleButtonStyle(.black)
-                        .frame(height: 56)
-                        .clipShape(Capsule())
-
-                        // Sign in with Google
-                        Button {
-                            Task {
-                                await userStore.signInWithGoogle()
-                            }
-                        } label: {
-                            HStack(spacing: 10) {
-                                ZStack {
-                                    Circle()
-                                        .fill(Color(hex: "4285F4"))
-                                        .frame(width: 24, height: 24)
-                                    Text("G")
-                                        .font(.system(size: 14, weight: .bold))
-                                        .foregroundStyle(.white)
-                                }
-                                Text("Sign in with Google")
-                                    .font(.headline)
-                            }
-                            .foregroundStyle(AppTheme.textPrimary)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 56)
-                            .background(.ultraThinMaterial)
-                            .clipShape(Capsule())
-                            .overlay(
-                                Capsule()
-                                    .stroke(Color.white.opacity(0.15), lineWidth: 0.5)
-                            )
+                    } label: {
+                        HStack(spacing: 10) {
+                            GoogleGIcon()
+                                .frame(width: 20, height: 20)
+                            Text("Sign in with Google")
+                                .font(.system(size: 16, weight: .semibold))
                         }
-                        .disabled(userStore.isLoading)
+                        .foregroundStyle(AppTheme.textPrimary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 52)
+                        .background(
+                            Capsule()
+                                .fill(Color(.systemBackground))
+                        )
+                        .overlay(
+                            Capsule()
+                                .stroke(Color(.separator), lineWidth: 1)
+                        )
                     }
+                    .disabled(userStore.isLoading)
                     .padding(.horizontal, 24)
+
+                    Spacer(minLength: 12)
 
                     // ── Toggle Sign In / Sign Up ──────────────────
                     Button {
@@ -252,10 +228,8 @@ struct AuthView: View {
                         }
                         .font(.subheadline)
                     }
-
-                    Spacer()
+                    .padding(.bottom, 16)
                 }
-            }
             }
         }
         .sheet(isPresented: $showForgotPassword) {
@@ -283,29 +257,19 @@ private struct AuthTextField: View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .foregroundStyle(isFocused ? AppTheme.orange : AppTheme.warmTextSecondary)
-                .frame(width: 20)
+                .font(.system(size: 16))
+                .frame(width: 24)
                 .animation(.easeInOut(duration: 0.2), value: isFocused)
 
             TextField(placeholder, text: $text)
-                .font(.subheadline)
+                .font(.body)
                 .keyboardType(keyboardType)
                 .textInputAutocapitalization(autocapitalization)
                 .autocorrectionDisabled()
                 .focused($isFocused)
         }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color(.secondarySystemBackground).opacity(0.6))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(
-                    isFocused ? AppTheme.orange.opacity(0.6) : Color.white.opacity(0.1),
-                    lineWidth: isFocused ? 1.5 : 0.5
-                )
-                .animation(.easeInOut(duration: 0.2), value: isFocused)
-        )
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
     }
 }
 
@@ -322,7 +286,8 @@ private struct AuthPasswordField: View {
         HStack(spacing: 12) {
             Image(systemName: "lock")
                 .foregroundStyle(isFocused ? AppTheme.orange : AppTheme.warmTextSecondary)
-                .frame(width: 20)
+                .font(.system(size: 16))
+                .frame(width: 24)
                 .animation(.easeInOut(duration: 0.2), value: isFocused)
 
             Group {
@@ -332,7 +297,7 @@ private struct AuthPasswordField: View {
                     SecureField(placeholder, text: $text)
                 }
             }
-            .font(.subheadline)
+            .font(.body)
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
             .focused($isFocused)
@@ -342,21 +307,62 @@ private struct AuthPasswordField: View {
             } label: {
                 Image(systemName: showPassword ? "eye.slash" : "eye")
                     .foregroundStyle(AppTheme.warmTextSecondary)
-                    .font(.caption)
+                    .font(.body)
             }
         }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color(.secondarySystemBackground).opacity(0.6))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(
-                    isFocused ? AppTheme.orange.opacity(0.6) : Color.white.opacity(0.1),
-                    lineWidth: isFocused ? 1.5 : 0.5
-                )
-                .animation(.easeInOut(duration: 0.2), value: isFocused)
-        )
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+    }
+}
+
+// MARK: - Google G Icon
+
+private struct GoogleGIcon: View {
+    var body: some View {
+        Canvas { context, size in
+            let w = size.width
+            let h = size.height
+            let center = CGPoint(x: w / 2, y: h / 2)
+            let radius = min(w, h) / 2
+            let innerRadius = radius * 0.55
+            let thickness = radius - innerRadius
+
+            // Blue arc (right + top-right)
+            var bluePath = Path()
+            bluePath.addArc(center: center, radius: radius, startAngle: .degrees(-45), endAngle: .degrees(10), clockwise: false)
+            bluePath.addArc(center: center, radius: innerRadius, startAngle: .degrees(10), endAngle: .degrees(-45), clockwise: true)
+            bluePath.closeSubpath()
+            context.fill(bluePath, with: .color(Color(hex: "4285F4")))
+
+            // Green arc (bottom-right)
+            var greenPath = Path()
+            greenPath.addArc(center: center, radius: radius, startAngle: .degrees(10), endAngle: .degrees(100), clockwise: false)
+            greenPath.addArc(center: center, radius: innerRadius, startAngle: .degrees(100), endAngle: .degrees(10), clockwise: true)
+            greenPath.closeSubpath()
+            context.fill(greenPath, with: .color(Color(hex: "34A853")))
+
+            // Yellow arc (bottom-left)
+            var yellowPath = Path()
+            yellowPath.addArc(center: center, radius: radius, startAngle: .degrees(100), endAngle: .degrees(190), clockwise: false)
+            yellowPath.addArc(center: center, radius: innerRadius, startAngle: .degrees(190), endAngle: .degrees(100), clockwise: true)
+            yellowPath.closeSubpath()
+            context.fill(yellowPath, with: .color(Color(hex: "FBBC05")))
+
+            // Red arc (top-left + left)
+            var redPath = Path()
+            redPath.addArc(center: center, radius: radius, startAngle: .degrees(190), endAngle: .degrees(315), clockwise: false)
+            redPath.addArc(center: center, radius: innerRadius, startAngle: .degrees(315), endAngle: .degrees(190), clockwise: true)
+            redPath.closeSubpath()
+            context.fill(redPath, with: .color(Color(hex: "EA4335")))
+
+            // Horizontal bar (the crossbar of the G) — blue
+            let barRect = CGRect(
+                x: center.x - thickness * 0.1,
+                y: center.y - thickness / 2,
+                width: radius + thickness * 0.1,
+                height: thickness
+            )
+            context.fill(Path(barRect), with: .color(Color(hex: "4285F4")))
+        }
     }
 }
