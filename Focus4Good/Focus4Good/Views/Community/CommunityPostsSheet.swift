@@ -27,7 +27,7 @@ struct CommunityPostsSheet: View {
             VStack {
                 if filteredPosts.isEmpty {
                     VStack(spacing: 12) {
-                        Image(systemName: "doc.text.magnifyingglass")
+                        Image(systemName: "photo.on.rectangle.angled")
                             .font(.system(size: 40))
                             .foregroundStyle(.gray.opacity(0.4))
                         Text(posts.isEmpty ? "No posts yet" : "No matching posts found")

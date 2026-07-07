@@ -1,8 +1,9 @@
 import SwiftUI
 import PhotosUI
 
-struct AddCommunityView: View {
-    @Binding var addCommunity: Bool
+struct EditCommunityView: View {
+    let community: Community
+    @Binding var showEdit: Bool
     @Environment(CommunityStore.self) private var communityStore
     @Environment(UserStore.self) private var userStore
 
@@ -41,11 +42,18 @@ struct AddCommunityView: View {
                             ZStack {
                                 if let coverImage {
                                     coverImage.resizable().scaledToFill().frame(height: 160).frame(maxWidth: .infinity).clipShape(RoundedRectangle(cornerRadius: 16)).overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.black.opacity(0.1), lineWidth: 1))
+                                } else if let url = community.coverImageUrl, let imageUrl = URL(string: url) {
+                                    AsyncImage(url: imageUrl) { image in
+                                        image.resizable().scaledToFill().frame(height: 160).frame(maxWidth: .infinity).clipShape(RoundedRectangle(cornerRadius: 16))
+                                    } placeholder: {
+                                        RoundedRectangle(cornerRadius: 16).fill(AppTheme.orange.opacity(0.08)).frame(height: 160).frame(maxWidth: .infinity)
+                                        ProgressView()
+                                    }
                                 } else {
                                     RoundedRectangle(cornerRadius: 16).fill(AppTheme.orange.opacity(0.08)).frame(height: 160).frame(maxWidth: .infinity).overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [8])).foregroundColor(AppTheme.orange.opacity(0.5)))
                                     VStack(spacing: 12) {
                                         Image(systemName: "photo.badge.plus").font(.system(size: 40)).foregroundStyle(AppTheme.orange)
-                                        Text(coverImage == nil ? "Add Cover Photo" : "Change Photo").font(.headline).foregroundStyle(AppTheme.orange)
+                                        Text("Change Cover Photo").font(.headline).foregroundStyle(AppTheme.orange)
                                     }
                                 }
                             }
@@ -59,6 +67,12 @@ struct AddCommunityView: View {
                                 Circle().fill(Color(UIColor.secondarySystemGroupedBackground)).frame(width: 80, height: 80).shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
                                 if let profileImage {
                                     profileImage.resizable().scaledToFill().frame(width: 72, height: 72).clipShape(Circle())
+                                } else if let url = community.profileImageUrl, let imageUrl = URL(string: url) {
+                                    AsyncImage(url: imageUrl) { image in
+                                        image.resizable().scaledToFill().frame(width: 72, height: 72).clipShape(Circle())
+                                    } placeholder: {
+                                        ProgressView()
+                                    }
                                 } else {
                                     Image(systemName: "camera.circle.fill").resizable().foregroundStyle(AppTheme.orange, AppTheme.orange.opacity(0.2)).frame(width: 72, height: 72)
                                 }
@@ -100,7 +114,7 @@ struct AddCommunityView: View {
                             isSubmitting = true
                             
                             // Upload cover image to Supabase Storage if present
-                            var uploadedCoverUrl: String?
+                            var uploadedCoverUrl = community.coverImageUrl
                             if let imageData = coverImageData {
                                 let path = "communities/\(userId.uuidString)/\(UUID().uuidString).jpg"
                                 do {
@@ -112,27 +126,28 @@ struct AddCommunityView: View {
                                     return
                                 }
                             }
-                            var uploadedProfileUrl: String?
+                            var uploadedProfileUrl = community.profileImageUrl
                             if let profileData = profileImageData {
                                 let path = "communities/\(userId.uuidString)/profile_\(UUID().uuidString).jpg"
                                 uploadedProfileUrl = try? await communityStore.uploadImage(data: profileData, path: path)
                             }
                             
                             do {
-                                try await communityStore.createCommunity(
-                                    name: nameOfCommunity,
-                                    description: description.isEmpty ? "A community about \(category.isEmpty ? "various topics" : category)." : description,
-                                    categoryId: nil,
-                                    isPrivate: isPrivate,
-                                    userId: userId,
-                                    coverImageUrl: uploadedCoverUrl,
-                                    profileImageUrl: uploadedProfileUrl
-                                )
+                                var updatedCommunity = community
+                                updatedCommunity.name = nameOfCommunity
+                                updatedCommunity.description = description
+                                // updatedCommunity.categoryId // Wait, category is string here, let's just keep it simple or not update category if it's not fully supported
+                                updatedCommunity.isPrivate = isPrivate
+                                updatedCommunity.coverImageUrl = uploadedCoverUrl
+                                updatedCommunity.profileImageUrl = uploadedProfileUrl
+
+                                try await communityStore.updateCommunity(updatedCommunity)
+                                
                                 isSubmitting = false
-                                addCommunity = false
+                                showEdit = false
                             } catch {
                                 isSubmitting = false
-                                errorMessage = "Failed to create community: \(error.localizedDescription)"
+                                errorMessage = "Failed to update community: \(error.localizedDescription)"
                                 showErrorAlert = true
                             }
                         }
@@ -143,7 +158,7 @@ struct AddCommunityView: View {
                                     .tint(.white)
                                     .padding(.trailing, 8)
                             }
-                            Text(isSubmitting ? "Creating..." : "Create Community")
+                            Text(isSubmitting ? "Saving..." : "Save Changes")
                                 .font(.headline)
                         }
                         .frame(maxWidth: .infinity, alignment: .center)
@@ -153,16 +168,21 @@ struct AddCommunityView: View {
                 .listRowBackground(nameOfCommunity.isEmpty || isSubmitting ? AppTheme.orange.opacity(0.4) : AppTheme.orange)
                 .foregroundStyle(.white)
             }
-            .navigationTitle("Add Community")
+            .navigationTitle("Edit Community")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
-                        addCommunity = false
+                        showEdit = false
                     } label: {
                         Text("Cancel")
                     }
                 }
+            }
+            .onAppear {
+                nameOfCommunity = community.name
+                description = community.description
+                isPrivate = community.isPrivate
             }
             .fullScreenCover(isPresented: $showCamera) {
                 CameraPickerView(image: $coverImage, imageData: $coverImageData).ignoresSafeArea()
@@ -193,50 +213,7 @@ struct AddCommunityView: View {
             } message: {
                 Text(errorMessage ?? "An unknown error occurred.")
             }
-            }
-        }
-    }
-
-
-// MARK: - Camera Picker (minimal bridge for camera hardware)
-
-struct CameraPickerView: UIViewControllerRepresentable {
-    @Binding var image: Image?
-    @Binding var imageData: Data?
-    @Environment(\.dismiss) private var dismiss
-
-    func makeUIViewController(context: Context) -> UIImagePickerController {
-        let picker = UIImagePickerController()
-        picker.sourceType = .camera
-        picker.delegate = context.coordinator
-        return picker
-    }
-
-    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
-
-    func makeCoordinator() -> Coordinator { Coordinator(self) }
-
-    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-        let parent: CameraPickerView
-        init(_ parent: CameraPickerView) { self.parent = parent }
-
-        func imagePickerController(_ picker: UIImagePickerController,
-                                   didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
-            if let uiImage = info[.originalImage] as? UIImage {
-                parent.imageData = uiImage.jpegData(compressionQuality: 0.8)
-                parent.image = Image(uiImage: uiImage)
-            }
-            parent.dismiss()
-        }
-
-        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            parent.dismiss()
         }
     }
 }
 
-#Preview {
-    AddCommunityView(addCommunity: .constant(true))
-        .environment(CommunityStore.shared)
-        .environment(UserStore.shared)
-}

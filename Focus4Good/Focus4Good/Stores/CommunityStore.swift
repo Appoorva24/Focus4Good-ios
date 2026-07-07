@@ -62,7 +62,18 @@ class CommunityStore {
                 .order("created_at", ascending: false)
                 .execute()
                 .value
-            communities = fetched
+            
+            // Preserve local profileImageUrl since backend doesn't have it yet
+            let currentCommunities = self.communities
+            var merged = fetched
+            for i in 0..<merged.count {
+                if let existing = currentCommunities.first(where: { $0.id == merged[i].id }),
+                   let profileImg = existing.profileImageUrl {
+                    merged[i].profileImageUrl = profileImg
+                }
+            }
+            
+            communities = merged
         } catch {
             if error is CancellationError { return }
             errorMessage = "Failed to load communities: \(error.localizedDescription)"
@@ -212,10 +223,13 @@ class CommunityStore {
             profileImageUrl: profileImageUrl,
             isPrivate: isPrivate, memberCount: 1, createdAt: Date()
         )
-        let inserted: Community = try await client
+        var inserted: Community = try await client
             .from("communities")
             .insert(community)
             .select().single().execute().value
+            
+        // Keep the profile image URL locally even though it wasn't saved to DB
+        inserted.profileImageUrl = profileImageUrl
         communities.insert(inserted, at: 0)
 
         // Auto-join as admin
@@ -225,6 +239,27 @@ class CommunityStore {
             .insert(member)
             .select().single().execute().value
         communityMembers.append(insertedMember)
+    }
+
+    func updateCommunity(_ community: Community) async throws {
+        var updatedCommunity = community
+        let originalProfileUrl = updatedCommunity.profileImageUrl
+        
+        // Supabase schema doesn't have profile_image_url yet, so don't send it to the backend.
+        // It's ignored in `encode` in Community.swift, but we explicitly keep it locally after update.
+        
+        let updated: Community = try await client
+            .from("communities")
+            .update(updatedCommunity)
+            .eq("id", value: updatedCommunity.id.uuidString)
+            .select().single().execute().value
+            
+        var finalUpdated = updated
+        finalUpdated.profileImageUrl = originalProfileUrl
+        
+        if let index = communities.firstIndex(where: { $0.id == updatedCommunity.id }) {
+            communities[index] = finalUpdated
+        }
     }
 
     func joinCommunity(_ community: Community, userId: UUID) async {
@@ -245,12 +280,23 @@ class CommunityStore {
                 await syncMemberCount(for: community.id)
             } else if targetRole == "pending" {
                 // TODO: Trigger a notification to the community owner (community.creatorId)
-                // This requires a backend push notification setup or an in-app notifications table
                 print("Notification would be sent to owner \(community.creatorId) for pending request.")
             }
         } catch {
             if error is CancellationError { return }
-            errorMessage = "Failed to join community: \(error.localizedDescription)"
+            
+            // If backend says they are already a member, gracefully sync local state
+            let errStr = error.localizedDescription
+            if errStr.contains("duplicate key") || errStr.contains("community_members_user_id_community_id_key") {
+                if !communityMembers.contains(where: { $0.userId == userId && $0.communityId == community.id }) {
+                    communityMembers.append(member)
+                }
+                if targetRole == "member" {
+                    await syncMemberCount(for: community.id)
+                }
+            } else {
+                errorMessage = "Failed to join community: \(errStr)"
+            }
         }
     }
     

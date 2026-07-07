@@ -76,8 +76,12 @@ struct CommunityMembersSheet: View {
                                     if let index = indexSet.first {
                                         let row = activeRows[index]
                                         if row.userId != community.creatorId {
-                                            memberToRemove = row
-                                            showRemoveAlert = true
+                                            if let member = communityStore.communityMembers.first(where: { $0.id == row.memberId }) {
+                                                Task {
+                                                    await communityStore.removeMember(member)
+                                                    await fetchAndBuildMembers()
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -98,22 +102,6 @@ struct CommunityMembersSheet: View {
                     ToolbarItem(placement: .topBarTrailing) {
                         EditButton()
                     }
-                }
-            }
-            .alert("Remove Member", isPresented: $showRemoveAlert) {
-                Button("Remove", role: .destructive) {
-                    if let row = memberToRemove,
-                       let member = communityStore.communityMembers.first(where: { $0.id == row.memberId }) {
-                        Task {
-                            await communityStore.removeMember(member)
-                            await fetchAndBuildMembers()
-                        }
-                    }
-                }
-                Button("Cancel", role: .cancel) { }
-            } message: {
-                if let row = memberToRemove {
-                    Text("Are you sure you want to remove \(row.name) from this community?")
                 }
             }
             .alert("Error", isPresented: Binding(

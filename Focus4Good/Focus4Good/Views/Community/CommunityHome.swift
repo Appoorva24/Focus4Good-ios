@@ -111,23 +111,21 @@ struct CommunityHome: View {
                 // ── Community List ──
                 ScrollView {
                     // Custom Native-style Search Bar
-                    HStack(spacing: 8) {
+                    HStack(spacing: 6) {
                         Image(systemName: "magnifyingglass")
-                            .foregroundStyle(Color(.secondaryLabel))
-                            .font(.system(size: 17))
+                            .foregroundStyle(Color.secondary)
+                            .font(.body)
                         
                         TextField("Search", text: $searchText)
-                            .font(.system(size: 17))
+                            .font(.body)
                             .textFieldStyle(.plain)
-                            .foregroundStyle(Color(.label))
                         
                         if !searchText.isEmpty {
                             Button {
                                 searchText = ""
                             } label: {
                                 Image(systemName: "xmark.circle.fill")
-                                    .foregroundStyle(Color(UIColor.tertiaryLabel))
-                                    .font(.system(size: 17))
+                                    .foregroundStyle(Color.secondary)
                             }
                         } else {
                             // Mic button — tappable, animates when active
@@ -140,8 +138,8 @@ struct CommunityHome: View {
                                 }
                             } label: {
                                 Image(systemName: speechRecognizer.isListening ? "waveform" : "mic.fill")
-                                    .foregroundStyle(speechRecognizer.isListening ? AppTheme.orange : Color(.secondaryLabel))
-                                    .font(.system(size: 17))
+                                    .foregroundStyle(speechRecognizer.isListening ? AppTheme.orange : Color.secondary)
+                                    .font(.body)
                                     .symbolEffect(.pulse, isActive: speechRecognizer.isListening)
                             }
                             .buttonStyle(.plain)
@@ -149,11 +147,10 @@ struct CommunityHome: View {
                     }
                     .padding(.horizontal, 8)
                     .frame(height: 36)
-                    .background(Color(UIColor.tertiarySystemFill))
+                    .background(Color.black.opacity(0.08))
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .padding(.horizontal, 16)
-                    .padding(.top, 8)
-                    .padding(.bottom, 8)
+                    .padding(.vertical, 8)
                     .onChange(of: speechRecognizer.transcript) { _, newValue in
                         if !newValue.isEmpty {
                             searchText = newValue
@@ -221,13 +218,6 @@ struct CommunityHome: View {
                                 Image(systemName: "newspaper")
                                     .foregroundStyle(AppTheme.orange)
                             }
-                            
-                            Button {
-                                showSavedPosts = true
-                            } label: {
-                                Image(systemName: "bookmark")
-                                    .foregroundStyle(AppTheme.orange)
-                            }
                         }
                     }
                 }
@@ -283,33 +273,42 @@ struct CommunityHome: View {
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .topBarTrailing) {
-                            Menu {
-                                Button {
-                                    selectedRecentPostCategory = nil
-                                } label: {
-                                    HStack {
-                                        Text("All")
-                                        if selectedRecentPostCategory == nil {
-                                            Image(systemName: "checkmark")
-                                        }
-                                    }
-                                }
-                                
-                                ForEach(recentPostCategories, id: \.self) { category in
+                            HStack(spacing: 16) {
+                                Menu {
                                     Button {
-                                        selectedRecentPostCategory = category
+                                        selectedRecentPostCategory = nil
                                     } label: {
                                         HStack {
-                                            Text(category)
-                                            if selectedRecentPostCategory == category {
+                                            Text("All")
+                                            if selectedRecentPostCategory == nil {
                                                 Image(systemName: "checkmark")
                                             }
                                         }
                                     }
+                                    
+                                    ForEach(recentPostCategories, id: \.self) { category in
+                                        Button {
+                                            selectedRecentPostCategory = category
+                                        } label: {
+                                            HStack {
+                                                Text(category)
+                                                if selectedRecentPostCategory == category {
+                                                    Image(systemName: "checkmark")
+                                                }
+                                            }
+                                        }
+                                    }
+                                } label: {
+                                    Image(systemName: "line.3.horizontal.decrease.circle")
+                                        .foregroundStyle(AppTheme.orange)
                                 }
-                            } label: {
-                                Image(systemName: "line.3.horizontal.decrease.circle")
-                                    .foregroundStyle(AppTheme.orange)
+                                
+                                Button {
+                                    showSavedPosts = true
+                                } label: {
+                                    Image(systemName: "bookmark")
+                                        .foregroundStyle(AppTheme.orange)
+                                }
                             }
                         }
                     }
@@ -910,47 +909,33 @@ struct CommunityNotificationsView: View {
                             .foregroundStyle(.secondary)
                     }
                 } else {
-                    ScrollView {
-                        VStack(spacing: 24) {
-                            
-                            if !myNotifications.isEmpty {
-                                VStack(alignment: .leading, spacing: 12) {
-                                    Text("Alerts")
-                                        .font(.headline)
-                                        .padding(.horizontal)
-                                    
-                                    ForEach(myNotifications) { notif in
-                                        alertRow(for: notif)
-                                    }
-                                }
-                            }
-                            
-                            if !pendingRequests.isEmpty {
-                                VStack(alignment: .leading, spacing: 12) {
-                                    Text("Join Requests")
-                                        .font(.headline)
-                                        .padding(.horizontal)
-                                    
-                                    ForEach(pendingRequests) { member in
-                                        requestRow(for: member)
-                                    }
-                                }
-                            }
-                            
-                            if !unreadPosts.isEmpty {
-                                VStack(alignment: .leading, spacing: 12) {
-                                    Text("Unread Posts")
-                                        .font(.headline)
-                                        .padding(.horizontal)
-                                    
-                                    ForEach(unreadPosts) { post in
-                                        postRow(for: post)
-                                    }
+                    List {
+                        if !myNotifications.isEmpty {
+                            Section("Alerts") {
+                                ForEach(myNotifications) { notif in
+                                    alertRow(for: notif)
                                 }
                             }
                         }
-                        .padding(.vertical)
+                        
+                        if !pendingRequests.isEmpty {
+                            Section("Join Requests") {
+                                ForEach(pendingRequests) { member in
+                                    requestRow(for: member)
+                                }
+                            }
+                        }
+                        
+                        if !unreadPosts.isEmpty {
+                            Section("Unread Posts") {
+                                ForEach(unreadPosts) { post in
+                                    postRow(for: post)
+                                }
+                            }
+                        }
                     }
+                    .listStyle(.insetGrouped)
+                    .scrollContentBackground(.hidden)
                     .task {
                         let userIds = pendingRequests.map { $0.userId }
                         guard !userIds.isEmpty else { return }
@@ -1028,10 +1013,7 @@ struct CommunityNotificationsView: View {
                     .padding(8)
             }
         }
-        .padding()
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .padding(.horizontal)
+        .padding(.vertical, 4)
     }
     
     private func requestRow(for member: CommunityMember) -> some View {
@@ -1125,10 +1107,7 @@ struct CommunityNotificationsView: View {
                 .padding(.top, 4)
             }
         }
-        .padding()
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .padding(.horizontal)
+        .padding(.vertical, 4)
     }
     
     private func postRow(for post: Post) -> some View {
@@ -1171,10 +1150,7 @@ struct CommunityNotificationsView: View {
                     .frame(width: 8, height: 8)
                     .padding(.top, 6)
             }
-            .padding()
-            .background(Color(.secondarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .padding(.horizontal)
+            .padding(.vertical, 4)
         }
     }
 }

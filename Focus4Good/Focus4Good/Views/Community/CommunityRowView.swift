@@ -16,9 +16,12 @@ struct CommunityRowView: View {
         community.creatorId == currentUserId || communityStore.isMember(communityId: community.id, userId: currentUserId)
     }
 
-    /// Posts belonging to this community
     private var communityPosts: [Post] {
         communityStore.posts(in: community)
+    }
+
+    private var currentMemberCount: Int {
+        communityStore.communities.first(where: { $0.id == community.id })?.memberCount ?? community.memberCount
     }
 
     // MARK: - Card Content
@@ -52,7 +55,7 @@ struct CommunityRowView: View {
                 } label: {
                     Text(isPending ? "Requested" : (community.isPrivate ? "Request" : "Join"))
                         .fontWeight(.semibold)
-                        .padding(.horizontal, 20)
+                        .frame(width: 100)
                         .padding(.vertical, 6)
                         .background(isPending ? Color.gray : AppTheme.orange)
                         .foregroundStyle(.white)
@@ -83,37 +86,55 @@ struct CommunityRowView: View {
     // MARK: - Community Info (icon + name + description)
 
     private var communityInfo: some View {
-        HStack {
+        HStack(alignment: .center, spacing: 14) {
             Group {
-                if let urlStr = community.coverImageUrl {
+                if let urlStr = community.profileImageUrl ?? community.coverImageUrl {
                     if urlStr.hasPrefix("asset://") {
                         Image(urlStr.replacingOccurrences(of: "asset://", with: ""))
                             .resizable().scaledToFill()
                     } else if let url = URL(string: urlStr) {
                         AsyncImage(url: url) { phase in
                             if let img = phase.image { img.resizable().scaledToFill() }
-                            else { Image(systemName: "person.3.fill").font(.callout).foregroundStyle(.secondary) }
+                            else { Image(systemName: "person.3.fill").font(.title3).foregroundStyle(.secondary) }
                         }
                     } else {
-                        Image(systemName: "person.3.fill").font(.callout).foregroundStyle(.secondary)
+                        Image(systemName: "person.3.fill").font(.title3).foregroundStyle(.secondary)
                     }
                 } else {
-                    Image(systemName: "person.3.fill").font(.callout).foregroundStyle(.secondary)
+                    Image(systemName: "person.3.fill").font(.title3).foregroundStyle(.secondary)
                 }
             }
-            .frame(width: 40, height: 40)
+            .frame(width: 52, height: 52)
             .clipShape(Circle())
-            .background(Circle().fill(Color(.systemGray5)))
+            .background(Circle().fill(Color(.systemGray6)))
 
-            VStack(alignment: .leading) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(community.name)
-                    .font(.title3.bold())
+                    .font(.headline)
                     .foregroundStyle(.primary)
 
                 Text(community.description)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                    .lineLimit(2)
+                    .lineLimit(1)
+                
+                HStack(spacing: 12) {
+                    HStack(spacing: 4) {
+                        Image(systemName: community.isPrivate ? "lock.fill" : "globe")
+                        Text(community.isPrivate ? "Private" : "Public")
+                    }
+                    HStack(spacing: 4) {
+                        Image(systemName: "person.2.fill")
+                        Text("\(currentMemberCount)")
+                    }
+                    HStack(spacing: 4) {
+                        Image(systemName: "text.bubble.fill")
+                        Text("\(communityPosts.count)")
+                    }
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .imageScale(.small)
             }
         }
     }
@@ -172,9 +193,14 @@ struct CommunityDetailView: View {
     @State private var showMembersSheet = false
     @State private var showPostsSheet = false
     @State private var showCancelRequestAlert = false
+    @State private var showEditCommunity = false
 
     private var posts: [Post] {
         communityStore.posts(in: community)
+    }
+    
+    private var currentMemberCount: Int {
+        communityStore.communities.first(where: { $0.id == community.id })?.memberCount ?? community.memberCount
     }
 
     private var currentUserId: UUID {
@@ -198,26 +224,32 @@ struct CommunityDetailView: View {
                     // Cover Banner & Avatar
                     ZStack(alignment: .bottomLeading) {
                         // Cover Banner
-                        Group {
-                            if let urlStr = community.coverImageUrl {
-                                if urlStr.hasPrefix("asset://") {
-                                    Image(urlStr.replacingOccurrences(of: "asset://", with: ""))
-                                        .resizable().scaledToFill()
-                                } else if let url = URL(string: urlStr) {
-                                    AsyncImage(url: url) { phase in
-                                        if let img = phase.image { img.resizable().scaledToFill() }
-                                        else { Rectangle().fill(AppTheme.orange.opacity(0.1)) }
+                        GeometryReader { proxy in
+                            let minY = proxy.frame(in: .named("scroll")).minY
+                            let isStretching = minY > 0
+                            
+                            Group {
+                                if let urlStr = community.coverImageUrl {
+                                    if urlStr.hasPrefix("asset://") {
+                                        Image(urlStr.replacingOccurrences(of: "asset://", with: ""))
+                                            .resizable().scaledToFill()
+                                    } else if let url = URL(string: urlStr) {
+                                        AsyncImage(url: url) { phase in
+                                            if let img = phase.image { img.resizable().scaledToFill() }
+                                            else { Rectangle().fill(AppTheme.orange.opacity(0.1)) }
+                                        }
+                                    } else {
+                                        Rectangle().fill(AppTheme.orange.opacity(0.1))
                                     }
                                 } else {
                                     Rectangle().fill(AppTheme.orange.opacity(0.1))
                                 }
-                            } else {
-                                Rectangle().fill(AppTheme.orange.opacity(0.1))
                             }
+                            .frame(width: proxy.size.width, height: isStretching ? 200 + minY : 200)
+                            .clipped()
+                            .offset(y: isStretching ? -minY : 0)
                         }
                         .frame(height: 200)
-                        .frame(maxWidth: .infinity)
-                        .clipped()
 
                         // Avatar
                         Group {
@@ -265,7 +297,7 @@ struct CommunityDetailView: View {
                             showMembersSheet = true
                         } label: {
                             HStack(spacing: 4) {
-                                Text("\(community.memberCount)")
+                                Text("\(currentMemberCount)")
                                     .font(.subheadline.weight(.semibold))
                                     .foregroundStyle(.primary)
                                 Text("Members")
@@ -346,7 +378,7 @@ struct CommunityDetailView: View {
                             } label: {
                                 Text(isPending ? "Requested" : "Join")
                                     .fontWeight(.semibold)
-                                    .padding(.horizontal, 24)
+                                    .frame(width: 120)
                                     .padding(.vertical, 8)
                                     .background(isPending ? Color.gray : AppTheme.orange.opacity(0.4))
                                     .foregroundStyle(.white)
@@ -358,7 +390,7 @@ struct CommunityDetailView: View {
                         .padding(.vertical, 40)
                     } else if posts.isEmpty {
                         VStack(spacing: 12) {
-                            Image(systemName: "text.bubble")
+                            Image(systemName: "photo.on.rectangle.angled")
                                 .font(.system(size: 36))
                                 .foregroundStyle(.tertiary)
                             Text("No posts yet")
@@ -378,49 +410,66 @@ struct CommunityDetailView: View {
                 .padding(.bottom, 24)
             }
         }
+        .coordinateSpace(name: "scroll")
         .ignoresSafeArea(edges: .top)
         .background(AppTheme.appGradient.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                HStack(spacing: 18) {
-                    if isJoined {
-                        Button {
-                            showAddPost = true
-                        } label: {
-                            Image(systemName: "plus")
-                        }
-                        
-                        Button {
-                            if community.creatorId == currentUserId {
-                                if otherMembers.isEmpty {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                if isJoined {
+                    Button {
+                        showAddPost = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    
+                    if community.creatorId == currentUserId {
+                        Menu {
+                            Button {
+                                showEditCommunity = true
+                            } label: {
+                                Label("Edit Community", systemImage: "pencil")
+                            }
+                            
+                            if otherMembers.isEmpty {
+                                Button(role: .destructive) {
                                     showDissolveAlert = true
-                                } else {
-                                    showTransferSheet = true
+                                } label: {
+                                    Label("Dissolve Community", systemImage: "trash")
                                 }
                             } else {
-                                showLeaveAlert = true
+                                Button {
+                                    showTransferSheet = true
+                                } label: {
+                                    Label("Transfer Ownership", systemImage: "person.2.badge.gearshape")
+                                }
                             }
+                        } label: {
+                            Image(systemName: "ellipsis.circle")
+                        }
+                    } else {
+                        Button {
+                            showLeaveAlert = true
                         } label: {
                             Image(systemName: "rectangle.portrait.and.arrow.right")
                                 .foregroundStyle(.red)
                         }
-                    } else {
-                        let isPending = communityStore.hasPendingRequest(communityId: community.id, userId: currentUserId)
-                        Button {
-                            if isPending {
-                                showCancelRequestAlert = true
-                            } else {
-                                Task {
-                                    await communityStore.joinCommunity(community, userId: currentUserId)
-                                }
+                    }
+                } else {
+                    let isPending = communityStore.hasPendingRequest(communityId: community.id, userId: currentUserId)
+                    Button {
+                        if isPending {
+                            showCancelRequestAlert = true
+                        } else {
+                            Task {
+                                await communityStore.joinCommunity(community, userId: currentUserId)
                             }
-                        } label: {
-                            if isPending {
-                                Image(systemName: "person.badge.clock")
-                            } else {
-                                Image(systemName: "person.badge.plus")
-                            }
+                        }
+                    } label: {
+                        if isPending {
+                            Image(systemName: "person.badge.clock")
+                        } else {
+                            Image(systemName: "person.badge.plus")
                         }
                     }
                 }
@@ -474,6 +523,9 @@ struct CommunityDetailView: View {
         }
         .sheet(isPresented: $showPostsSheet) {
             CommunityPostsSheet(community: community)
+        }
+        .sheet(isPresented: $showEditCommunity) {
+            EditCommunityView(community: community, showEdit: $showEditCommunity)
         }
     }
 }

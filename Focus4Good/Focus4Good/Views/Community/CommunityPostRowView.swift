@@ -159,7 +159,7 @@ struct CommunityPostRowView: View {
                                 .fill(Color(.systemGray5))
                                 .frame(height: 220)
                                 .overlay {
-                                    Image(systemName: "photo")
+                                    Image(systemName: "photo.on.rectangle.angled")
                                         .foregroundStyle(.secondary)
                                 }
                         default:

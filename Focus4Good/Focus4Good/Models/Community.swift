@@ -55,7 +55,8 @@ extension Community: Codable {
         try c.encode(name, forKey: .name)
         try c.encode(description, forKey: .description)
         try c.encodeIfPresent(coverImageUrl, forKey: .coverImageUrl)
-        try c.encodeIfPresent(profileImageUrl, forKey: .profileImageUrl)
+        // Temporarily omit profileImageUrl from backend insertion since the column doesn't exist yet
+        // try c.encodeIfPresent(profileImageUrl, forKey: .profileImageUrl)
         try c.encode(isPrivate, forKey: .isPrivate)
         try c.encode(memberCount, forKey: .memberCount)
         try c.encode(SupabaseDateCoding.encodeTimestamp(createdAt), forKey: .createdAt)
