@@ -14,7 +14,6 @@ struct AddTaskSheet: View {
     @State private var selectedTime = Date()
     @State private var repeatType: UserTask.RepeatType = .never
     @State private var estimatedDuration = 25
-    @State private var showRepeatPicker = false
 
     var body: some View {
         NavigationStack {
@@ -67,8 +66,17 @@ struct AddTaskSheet: View {
                 .listRowBackground(AppTheme.cardBg)
 
                 Section {
-                    pickerRow(icon: "arrow.2.circlepath", label: "Repeat", value: repeatType.displayName) {
-                        showRepeatPicker = true
+                    Menu {
+                        ForEach(UserTask.RepeatType.allCases, id: \.self) { type in
+                            Button(type.displayName) { repeatType = type }
+                        }
+                    } label: {
+                        HStack {
+                            Label("Repeat", systemImage: "arrow.2.circlepath").foregroundStyle(AppTheme.warmTextPrimary)
+                            Spacer()
+                            Text(repeatType.displayName).foregroundStyle(AppTheme.warmTextPrimary)
+                            Image(systemName: "chevron.up.chevron.down").font(.caption).foregroundStyle(AppTheme.warmTextSecondary)
+                        }
                     }
                 } header: { Text("Repeat").foregroundStyle(AppTheme.warmTextPrimary).textCase(nil) }
                 .listRowBackground(AppTheme.cardBg)
@@ -78,7 +86,7 @@ struct AddTaskSheet: View {
                         Label("Duration", systemImage: "timer")
                             .foregroundStyle(AppTheme.warmTextPrimary)
                         Spacer()
-                        Stepper("\(estimatedDuration) min", value: $estimatedDuration, in: 25...125, step: 25)
+                        Stepper("\(estimatedDuration) min", value: $estimatedDuration, in: 5...240, step: 5)
                             .fixedSize()
                     }
                 } header: { Text("More Options").foregroundStyle(AppTheme.warmTextPrimary).textCase(nil) }
@@ -90,31 +98,21 @@ struct AddTaskSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { dismiss() }
-                        .font(.subheadline.bold())
-                        .foregroundStyle(AppTheme.orange)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Capsule().fill(.white))
-                        .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark")
+                            .fontWeight(.semibold)
+                            .foregroundStyle(AppTheme.orange)
+                    }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Save") { saveTask() }
-                        .font(.subheadline.bold())
-                        .foregroundStyle(title.isEmpty ? AppTheme.warmTextSecondary : AppTheme.orange)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Capsule().fill(.white))
-                        .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
-                        .disabled(title.isEmpty)
+                    Button { saveTask() } label: {
+                        Image(systemName: "checkmark")
+                            .fontWeight(.semibold)
+                            .foregroundStyle(title.isEmpty ? AppTheme.warmTextSecondary : AppTheme.orange)
+                    }
+                    .disabled(title.isEmpty)
                 }
             }
-            }
-            .confirmationDialog("Repeat", isPresented: $showRepeatPicker, titleVisibility: .visible) {
-                ForEach(UserTask.RepeatType.allCases, id: \.self) { type in
-                    Button(type.displayName) { repeatType = type }
-                }
-                Button("Cancel", role: .cancel) {}
             }
         }
         .presentationDetents([.large])

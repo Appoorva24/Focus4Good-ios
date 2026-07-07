@@ -2,11 +2,11 @@ import SwiftUI
 
 struct CommunityRowView: View {
     var community: Community
-    @Binding var selectedTab: CommunityTab
     @Environment(CommunityStore.self) private var communityStore
     @Environment(UserStore.self) private var userStore
     @State private var showUnfollowAlert = false
     @State private var showPosts = false
+    @State private var showCancelRequestAlert = false
 
     private var currentUserId: UUID {
         userStore.currentUser?.id ?? UUID()
@@ -28,6 +28,7 @@ struct CommunityRowView: View {
         HStack {
             // Tappable area: navigates to detail view unconditionally
             Button {
+                updateLastVisited()
                 showPosts = true
             } label: {
                 communityInfo
@@ -38,34 +39,45 @@ struct CommunityRowView: View {
 
             // Join button logic
             if !isJoined {
+                let isPending = communityStore.hasPendingRequest(communityId: community.id, userId: currentUserId)
+                
                 Button {
-                    Task {
-                        await communityStore.joinCommunity(community, userId: currentUserId)
+                    if isPending {
+                        showCancelRequestAlert = true
+                    } else {
+                        Task {
+                            await communityStore.joinCommunity(community, userId: currentUserId)
+                        }
                     }
                 } label: {
-                    Text("Join")
+                    Text(isPending ? "Requested" : (community.isPrivate ? "Request" : "Join"))
                         .fontWeight(.semibold)
                         .padding(.horizontal, 20)
                         .padding(.vertical, 6)
-                        .background(AppTheme.orange)
+                        .background(isPending ? Color.gray : AppTheme.orange)
                         .foregroundStyle(.white)
                         .clipShape(Capsule())
                 }
-            } else if selectedTab == .forYou {
-                // Show a disabled 'Joined' state if they just joined while in the For You tab
-                Text("Joined")
-                    .fontWeight(.semibold)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 6)
-                    .background(AppTheme.orange.opacity(0.15))
-                    .foregroundStyle(AppTheme.orange)
-                    .clipShape(Capsule())
-                    .overlay(
-                        Capsule()
-                            .stroke(AppTheme.orange, lineWidth: 1.5)
-                    )
+            } else {
+                // Notification Badge for 'Your Communities' tab
+                let unreadCount = communityPosts.filter { $0.createdAt.timeIntervalSince1970 > lastVisited }.count
+                if unreadCount > 0 {
+                    Text(unreadCount > 4 ? "4+" : "\(unreadCount)")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(AppTheme.orange)
+                        .clipShape(Capsule())
+                }
             }
         }
+    }
+
+    private var lastVisitedKey: String { "last_visited_\(community.id.uuidString)" }
+    private var lastVisited: Double { UserDefaults.standard.double(forKey: lastVisitedKey) }
+    private func updateLastVisited() {
+        UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: lastVisitedKey)
     }
 
     // MARK: - Community Info (icon + name + description)
@@ -120,18 +132,27 @@ struct CommunityRowView: View {
             .shadow(color: AppTheme.orange.opacity(0.10), radius: 10, y: 3)
             .padding(.horizontal, 10)
             .navigationDestination(isPresented: $showPosts) {
-                CommunityDetailView(community: community, selectedTab: $selectedTab)
+                CommunityDetailView(community: community)
             }
         .alert("Unfollow Community", isPresented: $showUnfollowAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Confirm", role: .destructive) {
                 Task {
                     await communityStore.leaveCommunity(community, userId: currentUserId)
-                    selectedTab = .forYou
                 }
             }
         } message: {
             Text("Are you sure you want to unfollow \"\(community.name)\"? You will no longer see its posts in Your Communities.")
+        }
+        .alert("Cancel Request", isPresented: $showCancelRequestAlert) {
+            Button("Keep Request", role: .cancel) { }
+            Button("Remove", role: .destructive) {
+                Task {
+                    await communityStore.removePendingRequest(communityId: community.id, userId: currentUserId)
+                }
+            }
+        } message: {
+            Text("Do you want to remove the request for joining this community?")
         }
     }
 }
@@ -140,7 +161,6 @@ struct CommunityRowView: View {
 
 struct CommunityDetailView: View {
     var community: Community
-    @Binding var selectedTab: CommunityTab
     
     @Environment(CommunityStore.self) private var communityStore
     @Environment(UserStore.self) private var userStore
@@ -151,6 +171,7 @@ struct CommunityDetailView: View {
     @State private var showAddPost = false
     @State private var showMembersSheet = false
     @State private var showPostsSheet = false
+    @State private var showCancelRequestAlert = false
 
     private var posts: [Post] {
         communityStore.posts(in: community)
@@ -173,51 +194,82 @@ struct CommunityDetailView: View {
             VStack(spacing: 24) {
 
                 // MARK: - Native Profile Header
-                VStack(spacing: 12) {
-                    // Avatar
-                    Group {
-                        if let urlStr = community.coverImageUrl {
-                            if urlStr.hasPrefix("asset://") {
-                                Image(urlStr.replacingOccurrences(of: "asset://", with: ""))
-                                    .resizable().scaledToFill()
-                            } else if let url = URL(string: urlStr) {
-                                AsyncImage(url: url) { phase in
-                                    if let img = phase.image { img.resizable().scaledToFill() }
-                                    else { Image(systemName: "person.3.fill").font(.largeTitle).foregroundStyle(.secondary) }
+                VStack(alignment: .leading, spacing: 0) {
+                    // Cover Banner & Avatar
+                    ZStack(alignment: .bottomLeading) {
+                        // Cover Banner
+                        Group {
+                            if let urlStr = community.coverImageUrl {
+                                if urlStr.hasPrefix("asset://") {
+                                    Image(urlStr.replacingOccurrences(of: "asset://", with: ""))
+                                        .resizable().scaledToFill()
+                                } else if let url = URL(string: urlStr) {
+                                    AsyncImage(url: url) { phase in
+                                        if let img = phase.image { img.resizable().scaledToFill() }
+                                        else { Rectangle().fill(AppTheme.orange.opacity(0.1)) }
+                                    }
+                                } else {
+                                    Rectangle().fill(AppTheme.orange.opacity(0.1))
+                                }
+                            } else {
+                                Rectangle().fill(AppTheme.orange.opacity(0.1))
+                            }
+                        }
+                        .frame(height: 200)
+                        .frame(maxWidth: .infinity)
+                        .clipped()
+
+                        // Avatar
+                        Group {
+                            if let urlStr = community.profileImageUrl {
+                                if urlStr.hasPrefix("asset://") {
+                                    Image(urlStr.replacingOccurrences(of: "asset://", with: ""))
+                                        .resizable().scaledToFill()
+                                } else if let url = URL(string: urlStr) {
+                                    AsyncImage(url: url) { phase in
+                                        if let img = phase.image { img.resizable().scaledToFill() }
+                                        else { Image(systemName: "person.3.fill").font(.largeTitle).foregroundStyle(.secondary) }
+                                    }
+                                } else {
+                                    Image(systemName: "person.3.fill").font(.largeTitle).foregroundStyle(.secondary)
                                 }
                             } else {
                                 Image(systemName: "person.3.fill").font(.largeTitle).foregroundStyle(.secondary)
                             }
-                        } else {
-                            Image(systemName: "person.3.fill").font(.largeTitle).foregroundStyle(.secondary)
                         }
+                        .frame(width: 80, height: 80)
+                        .clipShape(Circle())
+                        .background(Circle().fill(Color(.systemGray6)))
+                        .overlay(Circle().stroke(Color(UIColor.systemBackground), lineWidth: 4))
+                        .offset(y: 40) // Overlap bottom edge
+                        .padding(.leading, 16)
                     }
-                    .frame(width: 100, height: 100)
-                    .clipShape(Circle())
-                    .background(Circle().fill(Color(.systemGray5)))
-                    .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
+                    .padding(.bottom, 40) // Space for overlapping avatar
 
                     // Name & Subtitle
-                    VStack(spacing: 4) {
+                    VStack(alignment: .leading, spacing: 4) {
                         Text(community.name)
                             .font(.title2.weight(.bold))
-                            .multilineTextAlignment(.center)
-
+                            .multilineTextAlignment(.leading)
+                        
                         Text(community.isPrivate ? "Private Community" : "Public Community")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
-
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    
                     // Native-style Stats Row
-                    HStack(spacing: 40) {
+                    HStack(spacing: 16) {
                         Button {
                             showMembersSheet = true
                         } label: {
-                            VStack(spacing: 4) {
+                            HStack(spacing: 4) {
                                 Text("\(community.memberCount)")
-                                    .font(.headline)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.primary)
                                 Text("Members")
-                                    .font(.caption)
+                                    .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
                         }
@@ -226,21 +278,24 @@ struct CommunityDetailView: View {
                         Button {
                             showPostsSheet = true
                         } label: {
-                            VStack(spacing: 4) {
+                            HStack(spacing: 4) {
                                 Text(community.isPrivate && !isJoined ? "—" : "\(posts.count)")
-                                    .font(.headline)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.primary)
                                 Text("Posts")
-                                    .font(.caption)
+                                    .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
                         }
                         .buttonStyle(.plain)
                         .disabled(community.isPrivate && !isJoined)
+                        
+                        Spacer() // Align stats to leading edge
                     }
-                    .padding(.top, 8)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.top, 24)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
                 // MARK: - About Section
                 VStack(alignment: .leading, spacing: 6) {
@@ -279,16 +334,21 @@ struct CommunityDetailView: View {
                                 .foregroundStyle(.secondary)
                                 .multilineTextAlignment(.center)
                             
+                            let isPending = communityStore.hasPendingRequest(communityId: community.id, userId: currentUserId)
                             Button {
-                                Task {
-                                    await communityStore.joinCommunity(community, userId: currentUserId)
+                                if isPending {
+                                    showCancelRequestAlert = true
+                                } else {
+                                    Task {
+                                        await communityStore.joinCommunity(community, userId: currentUserId)
+                                    }
                                 }
                             } label: {
-                                Text("Join")
+                                Text(isPending ? "Requested" : "Join")
                                     .fontWeight(.semibold)
                                     .padding(.horizontal, 24)
                                     .padding(.vertical, 8)
-                                    .background(AppTheme.orange.opacity(0.4))
+                                    .background(isPending ? Color.gray : AppTheme.orange.opacity(0.4))
                                     .foregroundStyle(.white)
                                     .clipShape(Capsule())
                             }
@@ -318,7 +378,8 @@ struct CommunityDetailView: View {
                 .padding(.bottom, 24)
             }
         }
-        .background(Color(.systemGroupedBackground))
+        .ignoresSafeArea(edges: .top)
+        .background(AppTheme.appGradient.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -345,12 +406,21 @@ struct CommunityDetailView: View {
                                 .foregroundStyle(.red)
                         }
                     } else {
+                        let isPending = communityStore.hasPendingRequest(communityId: community.id, userId: currentUserId)
                         Button {
-                            Task {
-                                await communityStore.joinCommunity(community, userId: currentUserId)
+                            if isPending {
+                                showCancelRequestAlert = true
+                            } else {
+                                Task {
+                                    await communityStore.joinCommunity(community, userId: currentUserId)
+                                }
                             }
                         } label: {
-                            Image(systemName: "person.badge.plus")
+                            if isPending {
+                                Image(systemName: "person.badge.clock")
+                            } else {
+                                Image(systemName: "person.badge.plus")
+                            }
                         }
                     }
                 }
@@ -364,7 +434,6 @@ struct CommunityDetailView: View {
             Button("Leave", role: .destructive) {
                 Task {
                     await communityStore.leaveCommunity(community, userId: currentUserId)
-                    selectedTab = .forYou
                     dismiss()
                 }
             }
@@ -376,16 +445,24 @@ struct CommunityDetailView: View {
             Button("Leave & Dissolve", role: .destructive) {
                 Task {
                     await communityStore.dissolveCommunity(community)
-                    selectedTab = .forYou
                     dismiss()
                 }
             }
         } message: {
             Text("You are the only member left. If you leave, this community will be dissolved. Are you sure you want to leave and dissolve \"\(community.name)\"?")
         }
+        .alert("Cancel Request", isPresented: $showCancelRequestAlert) {
+            Button("Keep Request", role: .cancel) { }
+            Button("Remove", role: .destructive) {
+                Task {
+                    await communityStore.removePendingRequest(communityId: community.id, userId: currentUserId)
+                }
+            }
+        } message: {
+            Text("Do you want to remove the request for joining this community?")
+        }
         .sheet(isPresented: $showTransferSheet) {
             TransferOwnershipSheet(community: community, otherMembers: otherMembers) {
-                selectedTab = .forYou
                 dismiss()
             }
         }
@@ -404,7 +481,7 @@ struct CommunityDetailView: View {
 #Preview {
     NavigationStack {
         let communityObject = Community(categoryId: nil, creatorId: UUID(), name: "ADHD Community", description: "This community is for person who having adhd", isPrivate: false, memberCount: 59, createdAt: Date())
-        CommunityRowView(community: communityObject, selectedTab: .constant(.forYou))
+        CommunityRowView(community: communityObject)
             .environment(CommunityStore.shared)
             .environment(UserStore.shared)
     }

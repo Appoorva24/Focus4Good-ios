@@ -13,6 +13,7 @@ struct Community: Identifiable, Hashable {
     var name: String
     var description: String
     var coverImageUrl: String?
+    var profileImageUrl: String?
     var isPrivate: Bool
     var memberCount: Int
     var createdAt: Date
@@ -24,6 +25,7 @@ struct Community: Identifiable, Hashable {
         case name
         case description
         case coverImageUrl = "cover_image_url"
+        case profileImageUrl = "profile_image_url"
         case isPrivate = "is_private"
         case memberCount = "member_count"
         case createdAt = "created_at"
@@ -39,6 +41,7 @@ extension Community: Codable {
         name          = try c.decode(String.self, forKey: .name)
         description   = try c.decode(String.self, forKey: .description)
         coverImageUrl = try c.decodeIfPresent(String.self, forKey: .coverImageUrl)
+        profileImageUrl = try c.decodeIfPresent(String.self, forKey: .profileImageUrl)
         isPrivate     = try c.decode(Bool.self, forKey: .isPrivate)
         memberCount   = try c.decode(Int.self, forKey: .memberCount)
         createdAt     = SupabaseDateCoding.flexDecode(from: c, key: .createdAt) ?? Date()
@@ -52,6 +55,7 @@ extension Community: Codable {
         try c.encode(name, forKey: .name)
         try c.encode(description, forKey: .description)
         try c.encodeIfPresent(coverImageUrl, forKey: .coverImageUrl)
+        try c.encodeIfPresent(profileImageUrl, forKey: .profileImageUrl)
         try c.encode(isPrivate, forKey: .isPrivate)
         try c.encode(memberCount, forKey: .memberCount)
         try c.encode(SupabaseDateCoding.encodeTimestamp(createdAt), forKey: .createdAt)
@@ -239,5 +243,22 @@ struct SavedPost: Identifiable, Codable, Hashable {
         case id
         case userId = "user_id"
         case postId = "post_id"
+    }
+}
+
+// MARK: - AppNotification (Simulated Local Notifications)
+struct AppNotification: Identifiable, Codable, Hashable {
+    var id: UUID = UUID()
+    var userId: UUID
+    var message: String
+    var createdAt: Date = Date()
+    var isRead: Bool = false
+    
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId = "user_id"
+        case message
+        case createdAt = "created_at"
+        case isRead = "is_read"
     }
 }

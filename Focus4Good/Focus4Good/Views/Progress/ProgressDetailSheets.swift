@@ -118,14 +118,9 @@ struct StreakDetailSheet: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { dismiss() } label: {
-                        ZStack {
-                            Circle().fill(.white)
-                                .frame(width: 28, height: 28)
-                                .shadow(color: .black.opacity(0.05), radius: 2)
-                            Image(systemName: "xmark")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundStyle(AppTheme.warmTextPrimary)
-                        }
+                        Image(systemName: "xmark")
+                            .fontWeight(.semibold)
+                            .foregroundStyle(AppTheme.orange)
                     }
                 }
             }
@@ -370,14 +365,9 @@ struct TasksCompletedDetailSheet: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { dismiss() } label: {
-                        ZStack {
-                            Circle().fill(.white)
-                                .frame(width: 28, height: 28)
-                                .shadow(color: .black.opacity(0.05), radius: 2)
-                            Image(systemName: "xmark")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundStyle(AppTheme.warmTextPrimary)
-                        }
+                        Image(systemName: "xmark")
+                            .fontWeight(.semibold)
+                            .foregroundStyle(AppTheme.orange)
                     }
                 }
             }
@@ -595,14 +585,9 @@ struct TimeSpentDetailSheet: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { dismiss() } label: {
-                        ZStack {
-                            Circle().fill(.white)
-                                .frame(width: 28, height: 28)
-                                .shadow(color: .black.opacity(0.05), radius: 2)
-                            Image(systemName: "xmark")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundStyle(AppTheme.warmTextPrimary)
-                        }
+                        Image(systemName: "xmark")
+                            .fontWeight(.semibold)
+                            .foregroundStyle(AppTheme.orange)
                     }
                 }
             }
@@ -808,14 +793,9 @@ struct FocusPointsDetailSheet: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { dismiss() } label: {
-                        ZStack {
-                            Circle().fill(.white)
-                                .frame(width: 28, height: 28)
-                                .shadow(color: .black.opacity(0.05), radius: 2)
-                            Image(systemName: "xmark")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundStyle(AppTheme.warmTextPrimary)
-                        }
+                        Image(systemName: "xmark")
+                            .fontWeight(.semibold)
+                            .foregroundStyle(AppTheme.orange)
                     }
                 }
             }

@@ -130,16 +130,7 @@ struct ProgressTrackerView: View {
 
     private var progressBackground: some View {
         ZStack {
-            LinearGradient(
-                colors: [
-                    AppTheme.pageBgTop,
-                    AppTheme.pageBgMid,
-                    AppTheme.pageBgBot
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
+            AppTheme.appGradient.ignoresSafeArea()
         }
     }
 

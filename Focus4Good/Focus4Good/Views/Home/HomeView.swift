@@ -136,17 +136,7 @@ struct HomeView: View {
             ZStack {
                 // Warm gradient background
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color(hex: "FFF7ED"),
-                                Color(hex: "FFEDD5"),
-                                Color(hex: "FED7AA")
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+                    .fill(Color(hex: "FFF7ED"))
 
                 // Decorative blob
                 Circle()
@@ -182,7 +172,7 @@ struct HomeView: View {
                         .padding(.vertical, 10)
                         .background(
                             Capsule()
-                                .fill(AppTheme.buttonGradient)
+                                .fill(AppTheme.orange)
                                 .shadow(color: AppTheme.orange.opacity(0.3), radius: 8, y: 4)
                         )
                     }

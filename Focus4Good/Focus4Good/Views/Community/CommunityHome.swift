@@ -1,302 +1,1248 @@
 import SwiftUI
 
-enum CommunityTab: String, CaseIterable {
-    case forYou = "For You"
-    case yourCommunities = "Your Communities"
-}
-
 struct CommunityHome: View {
     @State private var addCommunity: Bool = false
     @State private var showRecentPosts: Bool = false
-    @State private var selectedTab: CommunityTab = .forYou
-
+    @State private var showSavedPosts: Bool = false
+    @State private var searchText: String = ""
+    @State private var showSearch: Bool = false
+    @State private var selectedSavedPostCategory: String? = nil
+    @State private var selectedRecentPostCategory: String? = nil
+    @State private var showJoinOptions: Bool = false
+    @State private var speechRecognizer = SpeechRecognizer()
+    @State private var showMicError: Bool = false
+    @State private var showOnboarding: Bool = false
+    @State private var showNotificationsView: Bool = false
+    
     @Environment(CommunityStore.self) private var communities
     @Environment(UserStore.self) private var userStore
-
+    
     private var currentUserId: UUID {
         userStore.currentUser?.id ?? UUID()
     }
-
+    
+    private var totalUnreadNotifications: Int {
+        let lastChecked = UserDefaults.standard.double(forKey: "last_checked_notifications_\(currentUserId.uuidString)")
+        
+        let unreadRecentPostsCount = visibleRecentPosts.filter { post in
+            if post.createdAt.timeIntervalSince1970 <= lastChecked { return false }
+            let key = "last_visited_\(post.communityId.uuidString)"
+            return post.createdAt.timeIntervalSince1970 > UserDefaults.standard.double(forKey: key)
+        }.count
+        
+        let pendingRequestsCount = communities.communityMembers.filter { member in
+            if member.role == "pending", member.joinedAt.timeIntervalSince1970 > lastChecked {
+                if let community = communities.communities.first(where: { $0.id == member.communityId }) {
+                    return community.creatorId == currentUserId
+                }
+            }
+            return false
+        }.count
+        
+        let alertsCount = communities.simulatedNotifications.filter { 
+            $0.userId == currentUserId && !$0.isRead && $0.createdAt.timeIntervalSince1970 > lastChecked 
+        }.count
+        
+        return unreadRecentPostsCount + pendingRequestsCount + alertsCount
+    }
+    
     private var createdCommunities: [Community] {
         communities.communities.filter { $0.creatorId == currentUserId }
     }
-
+    
+    private var visibleRecentPosts: [Post] {
+        communities.posts.filter { post in
+            guard let community = communities.communities.first(where: { $0.id == post.communityId }) else {
+                return false
+            }
+            return community.creatorId == currentUserId || communities.isMember(communityId: community.id, userId: currentUserId)
+        }
+    }
+    
+    private var recentPostCategories: [String] {
+        let tags = visibleRecentPosts.compactMap { $0.hashtag }.filter { !$0.isEmpty }
+        return Array(Set(tags)).sorted()
+    }
+    
+    private var savedPostsList: [Post] {
+        communities.posts.filter { communities.isSaved(postId: $0.id, userId: currentUserId) }
+    }
+    
+    private var savedPostCategories: [String] {
+        let tags = savedPostsList.compactMap { $0.hashtag }.filter { !$0.isEmpty }
+        return Array(Set(tags)).sorted()
+    }
+    
     private var joinedCommunities: [Community] {
-        communities.communities.filter { 
+        communities.communities.filter {
             $0.creatorId != currentUserId && communities.isMember(communityId: $0.id, userId: currentUserId)
         }
     }
-
+    
     @State private var joinedIdsSnapshot: Set<UUID> = []
     @State private var hasInitializedSnapshot = false
-
+    
     private func updateSnapshot() {
-        joinedIdsSnapshot = Set(communities.communities.filter { 
+        joinedIdsSnapshot = Set(communities.communities.filter {
             communities.isMember(communityId: $0.id, userId: currentUserId) || $0.creatorId == currentUserId
         }.map { $0.id })
     }
-
+    
     private var forYouCommunities: [Community] {
-        communities.communities.filter { 
+        communities.communities.filter {
             !joinedIdsSnapshot.contains($0.id)
         }
     }
-
+    
+    private var filteredCommunities: [Community] {
+        if searchText.isEmpty {
+            return []
+        } else {
+            return communities.communities.filter {
+                $0.name.localizedCaseInsensitiveContains(searchText) ||
+                $0.description.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+    }
+    
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // ── Segmented Control ──
-                Picker("Tab", selection: $selectedTab) {
-                    ForEach(CommunityTab.allCases, id: \.self) { tab in
-                        Text(tab.rawValue).tag(tab)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-                .padding(.bottom, 12)
-
                 // ── Community List ──
                 ScrollView {
-                    LazyVStack(spacing: 16) {
-                        if selectedTab == .forYou {
-                            if forYouCommunities.isEmpty {
-                                forYouEmptyState
-                            } else {
-                                ForEach(forYouCommunities) { community in
-                                    CommunityRowView(community: community, selectedTab: $selectedTab)
-                                }
+                    // Custom Native-style Search Bar
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundStyle(Color(.secondaryLabel))
+                            .font(.system(size: 17))
+                        
+                        TextField("Search", text: $searchText)
+                            .font(.system(size: 17))
+                            .textFieldStyle(.plain)
+                            .foregroundStyle(Color(.label))
+                        
+                        if !searchText.isEmpty {
+                            Button {
+                                searchText = ""
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(Color(UIColor.tertiaryLabel))
+                                    .font(.system(size: 17))
                             }
                         } else {
-                            // "Your Communities" Tab
-                            if createdCommunities.isEmpty && joinedCommunities.isEmpty {
-                                emptyStateView
-                            } else {
-                                if !createdCommunities.isEmpty {
-                                    VStack(alignment: .leading, spacing: 12) {
-                                        Text("Created by You")
-                                            .font(.headline.weight(.semibold))
-                                            .foregroundStyle(.primary)
-                                            .padding(.horizontal, 16)
-                                        
-                                        ForEach(createdCommunities) { community in
-                                            CommunityRowView(community: community, selectedTab: $selectedTab)
-                                        }
-                                    }
+                            // Mic button — tappable, animates when active
+                            Button {
+                                if speechRecognizer.isListening {
+                                    speechRecognizer.stopListening()
+                                } else {
+                                    speechRecognizer.transcript = ""
+                                    speechRecognizer.startListening()
                                 }
-                                
-                                if !joinedCommunities.isEmpty {
-                                    VStack(alignment: .leading, spacing: 12) {
-                                        Text("Joined Communities")
-                                            .font(.headline.weight(.semibold))
-                                            .foregroundStyle(.primary)
-                                            .padding(.horizontal, 16)
-                                            .padding(.top, createdCommunities.isEmpty ? 0 : 8)
-                                        
-                                        ForEach(joinedCommunities) { community in
-                                            CommunityRowView(community: community, selectedTab: $selectedTab)
-                                        }
-                                    }
-                                }
+                            } label: {
+                                Image(systemName: speechRecognizer.isListening ? "waveform" : "mic.fill")
+                                    .foregroundStyle(speechRecognizer.isListening ? AppTheme.orange : Color(.secondaryLabel))
+                                    .font(.system(size: 17))
+                                    .symbolEffect(.pulse, isActive: speechRecognizer.isListening)
                             }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 8)
+                    .frame(height: 36)
+                    .background(Color(UIColor.tertiarySystemFill))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    .padding(.bottom, 8)
+                    .onChange(of: speechRecognizer.transcript) { _, newValue in
+                        if !newValue.isEmpty {
+                            searchText = newValue
+                        }
+                    }
+                    .onChange(of: speechRecognizer.errorMessage) { _, error in
+                        if error != nil { showMicError = true }
+                    }
+                    .alert("Microphone Error", isPresented: $showMicError) {
+                        Button("OK", role: .cancel) { speechRecognizer.errorMessage = nil }
+                    } message: {
+                        Text(speechRecognizer.errorMessage ?? "")
+                    }
+                    
+                    LazyVStack(spacing: 16) {
+                        if !searchText.isEmpty {
+                            searchResultsView
+                        } else {
+                            yourCommunitiesTab
                         }
                     }
                     .padding(.bottom, 80) // space for FAB
                     .animation(.default, value: forYouCommunities)
                     .animation(.default, value: joinedCommunities)
-                    .animation(.default, value: selectedTab)
+                    .scrollContentBackground(.hidden) // Make scroll view transparent
                 }
-                .scrollContentBackground(.hidden) // Make scroll view transparent
-            }
-            .background(progressBackground)
-            .navigationTitle("Community")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showRecentPosts = true
-                    } label: {
-                        Image(systemName: "photo.on.rectangle.angled")
-                            .font(.title2)
+                .background(progressBackground)
+                .navigationTitle("Community")
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        HStack(spacing: 16) {
+                            Button {
+                                showNotificationsView = true
+                            } label: {
+                                ZStack(alignment: .topTrailing) {
+                                    Image(systemName: "bell")
+                                        .foregroundStyle(AppTheme.orange)
+                                        .padding(.trailing, 4)
+                                    
+                                    let totalUnread = totalUnreadNotifications
+                                    
+                                    if totalUnread > 0 {
+                                        Text(totalUnread > 9 ? "9+" : "\(totalUnread)")
+                                            .font(.system(size: 10, weight: .bold))
+                                            .foregroundStyle(.white)
+                                            .padding(.horizontal, 4)
+                                            .padding(.vertical, 2)
+                                            .background(Color.red)
+                                            .clipShape(Capsule())
+                                            .offset(x: 4, y: -4)
+                                    }
+                                }
+                            }
+                            
+                            Button {
+                                let now = Date().timeIntervalSince1970
+                                let joined = communities.communities.filter {
+                                    $0.creatorId == currentUserId || communities.isMember(communityId: $0.id, userId: currentUserId)
+                                }
+                                for community in joined {
+                                    UserDefaults.standard.set(now, forKey: "last_visited_\(community.id.uuidString)")
+                                }
+                                showRecentPosts = true
+                            } label: {
+                                Image(systemName: "newspaper")
+                                    .foregroundStyle(AppTheme.orange)
+                            }
+                            
+                            Button {
+                                showSavedPosts = true
+                            } label: {
+                                Image(systemName: "bookmark")
+                                    .foregroundStyle(AppTheme.orange)
+                            }
+                        }
                     }
                 }
-            }
-            .overlay(alignment: .bottomTrailing) {
-                Button {
-                    addCommunity = true
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.title2)
-                        .foregroundStyle(.white)
-                        .frame(width: 56, height: 56)
-                        .background(
-                            Circle()
-                                .fill(AppTheme.buttonGradient)
-                                .shadow(color: AppTheme.orange.opacity(0.4), radius: 12, y: 6)
-                        )
+                .overlay(alignment: .bottomTrailing) {
+                    Button {
+                        addCommunity = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.title2)
+                            .foregroundStyle(.white)
+                            .frame(width: 56, height: 56)
+                            .background(
+                                Circle()
+                                    .fill(AppTheme.buttonGradient)
+                                    .shadow(color: AppTheme.orange.opacity(0.4), radius: 12, y: 6)
+                            )
+                    }
+                    .padding(.trailing, 24)
+                    .padding(.bottom, 10)
                 }
-                .padding(.trailing, 24)
-                .padding(.bottom, 10)
-            }
-            .sheet(isPresented: $addCommunity) {
-                AddCommunityView(addCommunity: $addCommunity)
-            }
-            .navigationDestination(isPresented: $showRecentPosts) {
-                VStack(spacing: 0) {
-                    ScrollView {
-                        if communities.posts.isEmpty {
+                .sheet(isPresented: $addCommunity) {
+                    AddCommunityView(addCommunity: $addCommunity)
+                }
+                .navigationDestination(isPresented: $showNotificationsView) {
+                    CommunityNotificationsView()
+                }
+                .navigationDestination(isPresented: $showRecentPosts) {
+                    VStack(spacing: 0) {
+                        let filtered = selectedRecentPostCategory == nil ? visibleRecentPosts : visibleRecentPosts.filter { $0.hashtag == selectedRecentPostCategory }
+                        if filtered.isEmpty {
                             VStack(spacing: 12) {
                                 Image(systemName: "text.bubble")
                                     .font(.system(size: 40))
                                     .foregroundStyle(.gray.opacity(0.4))
-                                    .padding(.top, 40)
                                 Text("No posts available")
                                     .font(.headline)
                                     .foregroundStyle(.secondary)
                             }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                         } else {
-                            LazyVStack(spacing: 16) {
-                                ForEach(communities.posts) { post in
-                                    CommunityPostRowView(post: post)
+                            ScrollView {
+                                LazyVStack(spacing: 16) {
+                                    ForEach(filtered) { post in
+                                        CommunityPostRowView(post: post)
+                                    }
                                 }
+                                .padding(.vertical)
                             }
-                            .padding(.vertical)
+                        }
+                    }
+                    .background(progressBackground)
+                    .navigationTitle("Posts")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Menu {
+                                Button {
+                                    selectedRecentPostCategory = nil
+                                } label: {
+                                    HStack {
+                                        Text("All")
+                                        if selectedRecentPostCategory == nil {
+                                            Image(systemName: "checkmark")
+                                        }
+                                    }
+                                }
+                                
+                                ForEach(recentPostCategories, id: \.self) { category in
+                                    Button {
+                                        selectedRecentPostCategory = category
+                                    } label: {
+                                        HStack {
+                                            Text(category)
+                                            if selectedRecentPostCategory == category {
+                                                Image(systemName: "checkmark")
+                                            }
+                                        }
+                                    }
+                                }
+                            } label: {
+                                Image(systemName: "line.3.horizontal.decrease.circle")
+                                    .foregroundStyle(AppTheme.orange)
+                            }
                         }
                     }
                 }
-                .navigationTitle("Recent Posts")
-                .navigationBarTitleDisplayMode(.inline)
-            }
-            .task {
-                await communities.fetchCommunities()
-                await communities.fetchAllMembers()
-                await communities.fetchSavedPosts(userId: currentUserId)
-                for community in communities.communities {
-                    await communities.fetchPosts(communityId: community.id)
+                .navigationDestination(isPresented: $showSavedPosts) {
+                    VStack(spacing: 0) {
+                        let filtered = selectedSavedPostCategory == nil ? savedPostsList : savedPostsList.filter { $0.hashtag == selectedSavedPostCategory }
+                        if filtered.isEmpty {
+                            VStack(spacing: 12) {
+                                Image(systemName: "bookmark.slash")
+                                    .font(.system(size: 40))
+                                    .foregroundStyle(.gray.opacity(0.4))
+                                Text("No saved posts")
+                                    .font(.headline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        } else {
+                            ScrollView {
+                                LazyVStack(spacing: 16) {
+                                    ForEach(filtered) { post in
+                                        CommunityPostRowView(post: post)
+                                    }
+                                }
+                                .padding(.vertical)
+                            }
+                        }
+                    }
+                    .background(progressBackground)
+                    .navigationTitle("Saved Posts")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Menu {
+                                Button {
+                                    selectedSavedPostCategory = nil
+                                } label: {
+                                    HStack {
+                                        Text("All")
+                                        if selectedSavedPostCategory == nil {
+                                            Image(systemName: "checkmark")
+                                        }
+                                    }
+                                }
+                                
+                                ForEach(savedPostCategories, id: \.self) { category in
+                                    Button {
+                                        selectedSavedPostCategory = category
+                                    } label: {
+                                        HStack {
+                                            Text(category)
+                                            if selectedSavedPostCategory == category {
+                                                Image(systemName: "checkmark")
+                                            }
+                                        }
+                                    }
+                                }
+                            } label: {
+                                Image(systemName: "line.3.horizontal.decrease.circle")
+                                    .foregroundStyle(AppTheme.orange)
+                            }
+                        }
+                    }
                 }
-                updateSnapshot()
+                .task {
+                    await communities.fetchCommunities()
+                    await communities.fetchAllMembers()
+                    await communities.fetchSavedPosts(userId: currentUserId)
+                    for community in communities.communities {
+                        await communities.fetchPosts(communityId: community.id)
+                    }
+                    updateSnapshot()
+                }
+
+                .onChange(of: communities.communities) { _, _ in
+                    updateSnapshot()
+                }
+                .onChange(of: communities.communityMembers) { _, _ in
+                    updateSnapshot()
+                }
+                .onAppear {
+                    let key = "hasSeenCommunityOnboarding_\(currentUserId.uuidString)"
+                    if !UserDefaults.standard.bool(forKey: key) {
+                        showOnboarding = true
+                    }
+                }
+                .fullScreenCover(isPresented: $showOnboarding) {
+                    emptyStateView
+                        .background(Color(.systemGroupedBackground).ignoresSafeArea())
+                }
             }
-            .onChange(of: selectedTab) { _, _ in
-                updateSnapshot()
+        }
+    }
+
+    private var searchResultsView: some View {
+        Group {
+            if filteredCommunities.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 40))
+                        .foregroundStyle(.gray.opacity(0.4))
+                        .padding(.top, 40)
+                    Text("No results found")
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                ForEach(filteredCommunities) { community in
+                    CommunityRowView(community: community)
+                }
             }
-            .onChange(of: communities.communities) { _, _ in
-                updateSnapshot()
-            }
-            .onChange(of: communities.communityMembers) { _, _ in
-                updateSnapshot()
+        }
+    }
+
+    private var yourCommunitiesTab: some View {
+        Group {
+            if createdCommunities.isEmpty && joinedCommunities.isEmpty && forYouCommunities.isEmpty {
+                emptyStateView
+            } else {
+                if !createdCommunities.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Created by You")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                            .padding(.horizontal, 16)
+                        
+                        ForEach(createdCommunities) { community in
+                            CommunityRowView(community: community)
+                        }
+                    }
+                }
+                
+                if !joinedCommunities.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Joined Communities")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                            .padding(.horizontal, 16)
+                            .padding(.top, createdCommunities.isEmpty ? 0 : 8)
+                        
+                        ForEach(joinedCommunities) { community in
+                            CommunityRowView(community: community)
+                        }
+                    }
+                }
+                
+                if !forYouCommunities.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Recommended for you")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                            .padding(.horizontal, 16)
+                            .padding(.top, (createdCommunities.isEmpty && joinedCommunities.isEmpty) ? 0 : 8)
+                        
+                        ForEach(forYouCommunities) { community in
+                            CommunityRowView(community: community)
+                        }
+                    }
+                }
             }
         }
     }
 
     private var emptyStateView: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "person.3.fill")
-                .font(.system(size: 40))
-                .foregroundStyle(.gray.opacity(0.4))
-            Text("No communities yet")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-            Text("Join communities from the \"For You\" tab to see them here.")
-                .font(.subheadline)
-                .foregroundStyle(.tertiary)
-                .multilineTextAlignment(.center)
-        }
-        .padding(.top, 60)
-        .padding(.horizontal, 32)
-    }
-
-    // MARK: - For You Empty State (shows recent posts feed)
-    private var forYouEmptyState: some View {
-        VStack(spacing: 20) {
-            // Recent Activity Header
-            VStack(spacing: 8) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 36))
-                    .foregroundStyle(AppTheme.orange)
-
-                Text("Your Community Feed")
-                    .font(.title3.bold())
-                    .foregroundStyle(AppTheme.warmTextPrimary)
-
-                Text("Here's what's happening in your communities")
-                    .font(.subheadline)
-                    .foregroundStyle(AppTheme.warmTextSecondary)
-                    .multilineTextAlignment(.center)
+        ScrollView {
+            VStack(spacing: 0) {
+                
+                if showOnboarding {
+                    HStack {
+                        Spacer()
+                        Button("Skip") {
+                            UserDefaults.standard.set(true, forKey: "hasSeenCommunityOnboarding_\(currentUserId.uuidString)")
+                            showOnboarding = false
+                        }
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .padding()
+                    }
+                }
+                
+                // ── Floating Illustration ──
+                ZStack {
+                    // Background glow
+                    Circle()
+                        .fill(AppTheme.orange.opacity(0.15))
+                        .frame(width: 200, height: 200)
+                        .blur(radius: 30)
+                    
+                    // Central large icon
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [AppTheme.orange, AppTheme.orange.opacity(0.7)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 120, height: 120)
+                            .shadow(color: AppTheme.orange.opacity(0.4), radius: 20, y: 8)
+                        
+                        Image(systemName: "person.3.fill")
+                            .font(.system(size: 44))
+                            .foregroundStyle(.white)
+                    }
+                    
+                    // Top-left floating badge
+                    ZStack {
+                        Circle()
+                            .fill(Color(.systemBackground))
+                            .frame(width: 64, height: 64)
+                            .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
+                        Image(systemName: "bubble.left.and.bubble.right.fill")
+                            .font(.system(size: 24))
+                            .foregroundStyle(AppTheme.orange)
+                    }
+                    .offset(x: -85, y: -55)
+                    
+                    // Top-right floating badge
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color.purple.opacity(0.8), Color.indigo],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 60, height: 60)
+                            .shadow(color: Color.indigo.opacity(0.3), radius: 8, y: 4)
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 24))
+                            .foregroundStyle(.white)
+                    }
+                    .offset(x: 90, y: -60)
+                    
+                    // Bottom-left floating badge
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color.green.opacity(0.85), Color.teal],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
+                            .frame(width: 52, height: 52)
+                            .shadow(color: Color.green.opacity(0.3), radius: 8, y: 4)
+                        Image(systemName: "figure.walk")
+                            .font(.system(size: 22))
+                            .foregroundStyle(.white)
+                    }
+                    .offset(x: -100, y: 50)
+                    
+                    // Bottom-right concentric rings (like Activity rings)
+                    ZStack {
+                        Circle()
+                            .stroke(AppTheme.orange.opacity(0.3), lineWidth: 6)
+                            .frame(width: 56, height: 56)
+                        Circle()
+                            .stroke(Color.pink.opacity(0.5), lineWidth: 6)
+                            .frame(width: 42, height: 42)
+                        Circle()
+                            .stroke(Color.blue.opacity(0.5), lineWidth: 6)
+                            .frame(width: 28, height: 28)
+                    }
+                    .offset(x: 92, y: 55)
+                }
+                .frame(height: 260)
+                .padding(.top, 40)
+                
+                // ── Title & Description ──
+                VStack(spacing: 16) {
+                    Text("Create Your Community")
+                        .font(.system(size: 28, weight: .bold))
+                        .multilineTextAlignment(.center)
+                    
+                    Text("Connect with others on the same journey. Share progress, find motivation, and grow together — all in one place.")
+                        .font(.system(size: 16))
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(4)
+                }
+                .padding(.top, 32)
+                .padding(.horizontal, 32)
+                
+                // ── Privacy Note ──
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "person.2.shield.fill")
+                        .font(.system(size: 22))
+                        .foregroundStyle(AppTheme.orange)
+                        .padding(.top, 2)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Safe & Supportive Space")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.primary)
+                        Text("Communities are moderated and designed to be welcoming. You control what you share and who sees it.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .lineSpacing(2)
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 16)
+                .background(Color(.secondarySystemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .padding(.horizontal, 24)
+                .padding(.top, 32)
+                
+                // ── CTA Button ──
+                Button {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+                        showJoinOptions = true
+                    }
+                } label: {
+                    Text("Get Started")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 56)
+                        .background(
+                            LinearGradient(
+                                colors: [AppTheme.orange, AppTheme.orange.opacity(0.8)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .clipShape(Capsule())
+                        .shadow(color: AppTheme.orange.opacity(0.4), radius: 12, y: 6)
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 32)
+                .padding(.bottom, 40)
             }
-            .padding(.top, 20)
+        }
+        .overlay {
+            if showJoinOptions {
+                // Dimmed background
+                Color.black.opacity(0.4)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            showJoinOptions = false
+                        }
+                        if showOnboarding {
+                            UserDefaults.standard.set(true, forKey: "hasSeenCommunityOnboarding_\(currentUserId.uuidString)")
+                            showOnboarding = false
+                        }
+                    }
+                
+                // Centered card
+                VStack(spacing: 0) {
+                    // Header
+                    VStack(spacing: 10) {
+                        ZStack {
+                            Circle()
+                                .fill(AppTheme.orange.opacity(0.15))
+                                .frame(width: 64, height: 64)
+                            Image(systemName: "person.badge.plus")
+                                .font(.system(size: 28))
+                                .foregroundStyle(AppTheme.orange)
+                        }
+                        Text("Join or Create")
+                            .font(.title2.weight(.bold))
+                        Text("How would you like to get started?")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(.top, 28)
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 20)
+                    
+                    Divider()
+                    
+                    // Join an existing community
+                    Button {
+                        withAnimation {
+                            showJoinOptions = false
+                        }
+                        if showOnboarding {
+                            UserDefaults.standard.set(true, forKey: "hasSeenCommunityOnboarding_\(currentUserId.uuidString)")
+                            showOnboarding = false
+                        }
+                        // TODO: Navigate to community browser / search
+                    } label: {
+                        HStack(spacing: 16) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.blue.opacity(0.12))
+                                    .frame(width: 44, height: 44)
+                                Image(systemName: "magnifyingglass")
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundStyle(Color.blue)
+                            }
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Join a Community")
+                                    .font(.headline)
+                                    .foregroundStyle(.primary)
+                                Text("Browse and join existing groups")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(Color(.tertiaryLabel))
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 14)
+                    }
+                    .buttonStyle(.plain)
+                    
+                    Divider()
+                        .padding(.leading, 80)
+                    
+                    // Create a new community
+                    Button {
+                        withAnimation {
+                            showJoinOptions = false
+                        }
+                        if showOnboarding {
+                            UserDefaults.standard.set(true, forKey: "hasSeenCommunityOnboarding_\(currentUserId.uuidString)")
+                            showOnboarding = false
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                addCommunity = true
+                            }
+                        } else {
+                            addCommunity = true
+                        }
+                    } label: {
+                        HStack(spacing: 16) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(AppTheme.orange.opacity(0.12))
+                                    .frame(width: 44, height: 44)
+                                Image(systemName: "plus.circle.fill")
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundStyle(AppTheme.orange)
+                            }
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Create a Community")
+                                    .font(.headline)
+                                    .foregroundStyle(.primary)
+                                Text("Start your own group from scratch")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(Color(.tertiaryLabel))
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 14)
+                    }
+                    .buttonStyle(.plain)
+                    
+                    Divider()
+                    
+                    // Cancel
+                    Button {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            showJoinOptions = false
+                        }
+                        if showOnboarding {
+                            UserDefaults.standard.set(true, forKey: "hasSeenCommunityOnboarding_\(currentUserId.uuidString)")
+                            showOnboarding = false
+                        }
+                    } label: {
+                        Text("Cancel")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .background(Color(.systemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 20))
+                .shadow(color: .black.opacity(0.2), radius: 30, y: 10)
+                .padding(.horizontal, 28)
+                .transition(.scale(scale: 0.85).combined(with: .opacity))
+            }
+        }
+    }
+        
+        // MARK: - For You Empty State (shows recent posts feed)
+        private var forYouEmptyState: some View {
+            VStack(spacing: 20) {
 
-            // Recent posts from joined communities
-            if !communities.posts.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Recent Posts")
-                        .font(.headline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                        .padding(.horizontal, 16)
-
-                    ForEach(communities.posts.prefix(5)) { post in
-                        CommunityPostRowView(post: post)
+                // Recent posts from joined communities
+                if !visibleRecentPosts.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Posts")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                            .padding(.horizontal, 16)
+                        
+                        ForEach(visibleRecentPosts.prefix(5)) { post in
+                            CommunityPostRowView(post: post)
+                        }
                     }
                 }
             }
-
-            // Create Community Card
-            VStack(spacing: 12) {
-                Image(systemName: "plus.circle.fill")
-                    .font(.system(size: 32))
-                    .foregroundStyle(AppTheme.orange)
-
-                Text("Start Your Own Community")
-                    .font(.subheadline.bold())
-                    .foregroundStyle(AppTheme.warmTextPrimary)
-
-                Text("Create a space for people to connect and share.")
-                    .font(.caption)
-                    .foregroundStyle(AppTheme.warmTextSecondary)
-                    .multilineTextAlignment(.center)
-
-                Button {
-                    addCommunity = true
-                } label: {
-                    Text("Create Community")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 10)
-                        .background(AppTheme.orange)
-                        .clipShape(Capsule())
-                }
-            }
-            .padding(20)
-            .frame(maxWidth: .infinity)
-            .background(
-                LinearGradient(
-                    colors: [Color(.systemBackground), AppTheme.cardGradientEnd],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
-            .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
-            .shadow(color: AppTheme.orange.opacity(0.10), radius: 10, y: 3)
-            .padding(.horizontal, 10)
+        }
+        
+        // MARK: - Background
+        private var progressBackground: some View {
+            AppTheme.appGradient.ignoresSafeArea()
         }
     }
+    
+    #Preview {
+        CommunityHome()
+            .environment(CommunityStore.shared)
+            .environment(UserStore.shared)
+    }
 
-    // MARK: - Background
-    private var progressBackground: some View {
-        LinearGradient(
-            colors: [
-                AppTheme.pageBgTop,
-                AppTheme.pageBgMid,
-                AppTheme.pageBgBot
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-        .ignoresSafeArea()
+// MARK: - CommunityNotificationsView
+struct CommunityNotificationsView: View {
+    @Environment(CommunityStore.self) private var communityStore
+    @Environment(UserStore.self) private var userStore
+    
+    // For navigating to a post when tapped
+    @State private var selectedPost: Post?
+    @State private var showPostDetail = false
+    
+    // User Profiles State
+    @State private var requesterNames: [UUID: String] = [:]
+    @State private var selectedUserIdForProfile: UUID?
+    
+    private var currentUserId: UUID {
+        userStore.currentUser?.id ?? UUID()
+    }
+    
+    private func timeAgo(from date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter.localizedString(for: date, relativeTo: Date())
+    }
+    
+    // Derived Notifications Data
+    
+    private var unreadPosts: [Post] {
+        let joined = communityStore.communities.filter { community in
+            community.creatorId == currentUserId || communityStore.isMember(communityId: community.id, userId: currentUserId)
+        }
+        let joinedIds = Set(joined.map { $0.id })
+        
+        let allPosts = communityStore.posts.filter { joinedIds.contains($0.communityId) }
+        
+        return allPosts.filter { post in
+            let key = "last_visited_\(post.communityId.uuidString)"
+            let lastVisited = UserDefaults.standard.double(forKey: key)
+            return post.createdAt.timeIntervalSince1970 > lastVisited
+        }.sorted { $0.createdAt > $1.createdAt }
+    }
+    
+    private var pendingRequests: [CommunityMember] {
+        let myCommunitiyIds = Set(communityStore.communities.filter { $0.creatorId == currentUserId }.map { $0.id })
+        
+        return communityStore.communityMembers.filter { member in
+            guard myCommunitiyIds.contains(member.communityId) else { return false }
+            
+            // Show pending requests
+            if member.role == "pending" { return true }
+            
+            // Show rejected requests (kept in memory for history)
+            if member.role == "rejected" { return true }
+            
+            // Show recently accepted requests (tracked via resolvedRequests)
+            let key = "\(member.userId.uuidString)_\(member.communityId.uuidString)"
+            if communityStore.resolvedRequests[key] == "accepted" { return true }
+            
+            return false
+        }.sorted { $0.joinedAt > $1.joinedAt }
+    }
+    
+    private var myNotifications: [AppNotification] {
+        communityStore.simulatedNotifications.filter { $0.userId == currentUserId && !$0.isRead }
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+    
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                AppTheme.appGradient.ignoresSafeArea()
+                
+                if unreadPosts.isEmpty && pendingRequests.isEmpty && myNotifications.isEmpty {
+                    VStack(spacing: 16) {
+                        Image(systemName: "bell.slash")
+                            .font(.system(size: 48))
+                            .foregroundStyle(.tertiary)
+                        Text("No new notifications")
+                            .font(.headline)
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    ScrollView {
+                        VStack(spacing: 24) {
+                            
+                            if !myNotifications.isEmpty {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Text("Alerts")
+                                        .font(.headline)
+                                        .padding(.horizontal)
+                                    
+                                    ForEach(myNotifications) { notif in
+                                        alertRow(for: notif)
+                                    }
+                                }
+                            }
+                            
+                            if !pendingRequests.isEmpty {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Text("Join Requests")
+                                        .font(.headline)
+                                        .padding(.horizontal)
+                                    
+                                    ForEach(pendingRequests) { member in
+                                        requestRow(for: member)
+                                    }
+                                }
+                            }
+                            
+                            if !unreadPosts.isEmpty {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Text("Unread Posts")
+                                        .font(.headline)
+                                        .padding(.horizontal)
+                                    
+                                    ForEach(unreadPosts) { post in
+                                        postRow(for: post)
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.vertical)
+                    }
+                    .task {
+                        let userIds = pendingRequests.map { $0.userId }
+                        guard !userIds.isEmpty else { return }
+                        let profiles = await communityStore.fetchProfiles(for: userIds)
+                        var names: [UUID: String] = [:]
+                        for profile in profiles {
+                            names[profile.id] = profile.fullName
+                        }
+                        requesterNames = names
+                    }
+                }
+            }
+            .navigationTitle("Notifications")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationDestination(isPresented: $showPostDetail) {
+                if let post = selectedPost {
+                    ScrollView {
+                        CommunityPostRowView(post: post)
+                            .padding()
+                    }
+                    .navigationTitle("Post")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .background(AppTheme.appGradient.ignoresSafeArea())
+                }
+            }
+            .sheet(isPresented: Binding(
+                get: { selectedUserIdForProfile != nil },
+                set: { if !$0 { selectedUserIdForProfile = nil } }
+            )) {
+                if let userId = selectedUserIdForProfile {
+                    OtherUserProfileView(userId: userId)
+                }
+            }
+            .onAppear {
+                UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "last_checked_notifications_\(currentUserId.uuidString)")
+            }
+            .alert("Error", isPresented: Binding(
+                get: { communityStore.errorMessage != nil },
+                set: { if !$0 { communityStore.errorMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                if let error = communityStore.errorMessage {
+                    Text(error)
+                }
+            }
+        }
+    }
+    
+    // MARK: - Subviews
+    
+    private func alertRow(for notif: AppNotification) -> some View {
+        HStack(spacing: 16) {
+            Circle()
+                .fill(AppTheme.orange.opacity(0.15))
+                .frame(width: 40, height: 40)
+                .overlay {
+                    Image(systemName: "info.circle.fill")
+                        .foregroundStyle(AppTheme.orange)
+                }
+            
+            Text(notif.message)
+                .font(.subheadline)
+                .foregroundStyle(.primary)
+            
+            Spacer()
+            
+            Button {
+                if let idx = communityStore.simulatedNotifications.firstIndex(where: { $0.id == notif.id }) {
+                    communityStore.simulatedNotifications[idx].isRead = true
+                }
+            } label: {
+                Image(systemName: "xmark")
+                    .foregroundStyle(.secondary)
+                    .padding(8)
+            }
+        }
+        .padding()
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal)
+    }
+    
+    private func requestRow(for member: CommunityMember) -> some View {
+        let communityName = communityStore.communities.first(where: { $0.id == member.communityId })?.name ?? "Unknown Community"
+        let key = "\(member.userId.uuidString)_\(member.communityId.uuidString)"
+        let requesterName = requesterNames[member.userId] ?? "Someone"
+        
+        // Determine resolved status from role or resolvedRequests
+        let resolvedStatus: String? = {
+            if member.role == "rejected" { return "rejected" }
+            if member.role == "member", communityStore.resolvedRequests[key] == "accepted" { return "accepted" }
+            if let status = communityStore.resolvedRequests[key] { return status }
+            return nil
+        }()
+        
+        return VStack(alignment: .leading, spacing: 12) {
+            Button {
+                selectedUserIdForProfile = member.userId
+            } label: {
+                HStack(alignment: .top, spacing: 12) {
+                    // Avatar with initials
+                    ZStack {
+                        Circle()
+                            .fill(AppTheme.orange.opacity(0.15))
+                            .frame(width: 40, height: 40)
+                        
+                        if let firstChar = requesterName.first, firstChar.isLetter {
+                            Text(String(firstChar).uppercased())
+                                .font(.system(.headline, design: .rounded))
+                                .fontWeight(.semibold)
+                                .foregroundStyle(AppTheme.orange)
+                        } else {
+                            Image(systemName: "person.fill")
+                                .foregroundStyle(AppTheme.orange)
+                        }
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("**\(requesterName)** wants to join")
+                            .font(.subheadline)
+                            .foregroundStyle(.primary)
+                            .multilineTextAlignment(.leading)
+                        Text(communityName)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    Text(timeAgo(from: member.joinedAt))
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .buttonStyle(.plain)
+            
+            if let resolvedStatus {
+                HStack(spacing: 6) {
+                    Image(systemName: resolvedStatus == "accepted" ? "checkmark.circle.fill" : "xmark.circle.fill")
+                    Text(resolvedStatus == "accepted" ? "Accepted" : "Rejected")
+                        .font(.subheadline.weight(.medium))
+                }
+                .foregroundStyle(resolvedStatus == "accepted" ? .green : .red)
+                .padding(.top, 2)
+            } else {
+                HStack(spacing: 12) {
+                    Button {
+                        Task { await communityStore.rejectJoinRequest(member) }
+                    } label: {
+                        Text("Reject")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.red)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                            .background(Color.red.opacity(0.1))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
+                    
+                    Button {
+                        Task { await communityStore.acceptJoinRequest(member) }
+                    } label: {
+                        Text("Accept")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                            .background(AppTheme.orange)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
+                }
+                .padding(.top, 4)
+            }
+        }
+        .padding()
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal)
+    }
+    
+    private func postRow(for post: Post) -> some View {
+        let communityName = communityStore.communities.first(where: { $0.id == post.communityId })?.name ?? "Unknown Community"
+        
+        return Button {
+            // Mark as read by updating last_visited for this specific community
+            let key = "last_visited_\(post.communityId.uuidString)"
+            UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: key)
+            
+            // Navigate to post
+            selectedPost = post
+            showPostDetail = true
+        } label: {
+            HStack(alignment: .top, spacing: 12) {
+                Circle()
+                    .fill(Color.blue.opacity(0.15))
+                    .frame(width: 40, height: 40)
+                    .overlay {
+                        Image(systemName: "text.bubble.fill")
+                            .foregroundStyle(Color.blue)
+                    }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("\(post.authorName ?? "Someone") posted in \(communityName)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    
+                    Text(post.content)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                }
+                
+                Spacer()
+                
+                Circle()
+                    .fill(AppTheme.orange)
+                    .frame(width: 8, height: 8)
+                    .padding(.top, 6)
+            }
+            .padding()
+            .background(Color(.secondarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .padding(.horizontal)
+        }
     }
 }
 
-#Preview {
-    CommunityHome()
-        .environment(CommunityStore.shared)
-        .environment(UserStore.shared)
+// MARK: - OtherUserProfileView
+struct OtherUserProfileView: View {
+    let userId: UUID
+    @Environment(CommunityStore.self) private var communityStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var profile: User?
+    
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                AppTheme.pageGradient.ignoresSafeArea()
+                
+                VStack(spacing: 24) {
+                    if let profile = profile {
+                        ZStack {
+                            Circle()
+                                .fill(LinearGradient(colors: [AppTheme.orange, AppTheme.orange.opacity(0.6)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                .frame(width: 100, height: 100)
+                                .shadow(color: AppTheme.orange.opacity(0.3), radius: 10, y: 5)
+                            
+                            if let firstChar = profile.fullName.first, firstChar.isLetter {
+                                Text(String(firstChar).uppercased())
+                                    .font(.system(size: 44, weight: .bold, design: .rounded))
+                                    .foregroundStyle(.white)
+                            } else {
+                                Image(systemName: "person.fill")
+                                    .font(.system(size: 44))
+                                    .foregroundStyle(.white)
+                            }
+                        }
+                        .padding(.top, 40)
+                        
+                        VStack(spacing: 8) {
+                            Text(profile.fullName)
+                                .font(.title.bold())
+                                .foregroundStyle(AppTheme.warmTextPrimary)
+                            
+                            Text(profile.email)
+                                .font(.subheadline)
+                                .foregroundStyle(AppTheme.warmTextSecondary)
+                        }
+                        
+                        Spacer()
+                    } else {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle("Profile")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Close") { dismiss() }
+                        .fontWeight(.semibold)
+                        .foregroundStyle(AppTheme.orange)
+                }
+            }
+            .task {
+                let profiles = await communityStore.fetchProfiles(for: [userId])
+                profile = profiles.first
+            }
+        }
+    }
 }

@@ -16,6 +16,10 @@ class CommunityStore {
     var savedPostIds: Set<UUID> = []
     var isLoading = false
     var errorMessage: String?
+    
+    // Notifications State
+    var resolvedRequests: [String: String] = [:] // key: userId_communityId, value: "accepted" or "rejected"
+    var simulatedNotifications: [AppNotification] = []
 
     // MARK: - Computed
     func posts(in community: Community) -> [Post] {
@@ -25,7 +29,8 @@ class CommunityStore {
         postComments.filter { $0.postId == post.id }.sorted { $0.createdAt < $1.createdAt }
     }
     func isLiked(postId: UUID, userId: UUID) -> Bool { postLikes.contains { $0.postId == postId && $0.userId == userId } }
-    func isMember(communityId: UUID, userId: UUID) -> Bool { communityMembers.contains { $0.communityId == communityId && $0.userId == userId } }
+    func isMember(communityId: UUID, userId: UUID) -> Bool { communityMembers.contains { $0.communityId == communityId && $0.userId == userId && $0.role != "pending" } }
+    func hasPendingRequest(communityId: UUID, userId: UUID) -> Bool { communityMembers.contains { $0.communityId == communityId && $0.userId == userId && $0.role == "pending" } }
     func communities(in category: CommunityCategory) -> [Community] { communities.filter { $0.categoryId == category.id } }
     func memberRole(communityId: UUID, userId: UUID) -> String? { communityMembers.first { $0.communityId == communityId && $0.userId == userId }?.role }
     func isSaved(postId: UUID, userId: UUID) -> Bool { savedPostIds.contains(postId) }
@@ -43,6 +48,8 @@ class CommunityStore {
         postLikes = []
         postComments = []
         savedPostIds = []
+        resolvedRequests = [:]
+        simulatedNotifications = []
     }
 
     // MARK: - Fetch
@@ -57,6 +64,7 @@ class CommunityStore {
                 .value
             communities = fetched
         } catch {
+            if error is CancellationError { return }
             errorMessage = "Failed to load communities: \(error.localizedDescription)"
         }
         isLoading = false
@@ -72,6 +80,7 @@ class CommunityStore {
                 .value
             communityCategories = fetched
         } catch {
+            if error is CancellationError { return }
             errorMessage = "Failed to load categories: \(error.localizedDescription)"
         }
         isLoading = false
@@ -108,6 +117,7 @@ class CommunityStore {
             let existingOther = posts.filter { $0.communityId != communityId }
             posts = existingOther + populated
         } catch {
+            if error is CancellationError { return }
             errorMessage = "Failed to load posts: \(error.localizedDescription)"
         }
         isLoading = false
@@ -137,6 +147,7 @@ class CommunityStore {
                 .value
             communityMembers = fetched
         } catch {
+            if error is CancellationError { return }
             errorMessage = "Failed to load members: \(error.localizedDescription)"
         }
     }
@@ -174,6 +185,7 @@ class CommunityStore {
             let existingOther = postComments.filter { $0.postId != postId }
             postComments = existingOther + populated
         } catch {
+            if error is CancellationError { return }
             errorMessage = "Failed to load comments: \(error.localizedDescription)"
         }
     }
@@ -193,55 +205,190 @@ class CommunityStore {
     }
 
     // MARK: - Communities
-    func createCommunity(name: String, description: String, categoryId: UUID?, isPrivate: Bool, userId: UUID, coverImageUrl: String? = nil) async {
+    func createCommunity(name: String, description: String, categoryId: UUID?, isPrivate: Bool, userId: UUID, coverImageUrl: String? = nil, profileImageUrl: String? = nil) async throws {
         let community = Community(
             categoryId: categoryId, creatorId: userId, name: name,
             description: description, coverImageUrl: coverImageUrl,
+            profileImageUrl: profileImageUrl,
             isPrivate: isPrivate, memberCount: 1, createdAt: Date()
         )
-        do {
-            let inserted: Community = try await client
-                .from("communities")
-                .insert(community)
-                .select().single().execute().value
-            communities.insert(inserted, at: 0)
+        let inserted: Community = try await client
+            .from("communities")
+            .insert(community)
+            .select().single().execute().value
+        communities.insert(inserted, at: 0)
 
-            // Auto-join as admin
-            let member = CommunityMember(userId: userId, communityId: inserted.id, role: "admin", joinedAt: Date())
-            let insertedMember: CommunityMember = try await client
-                .from("community_members")
-                .insert(member)
-                .select().single().execute().value
-            communityMembers.append(insertedMember)
-        } catch {
-            errorMessage = "Failed to create community: \(error.localizedDescription)"
-        }
+        // Auto-join as admin
+        let member = CommunityMember(userId: userId, communityId: inserted.id, role: "admin", joinedAt: Date())
+        let insertedMember: CommunityMember = try await client
+            .from("community_members")
+            .insert(member)
+            .select().single().execute().value
+        communityMembers.append(insertedMember)
     }
 
     func joinCommunity(_ community: Community, userId: UUID) async {
-        guard !isMember(communityId: community.id, userId: userId) else { return }
-        let member = CommunityMember(userId: userId, communityId: community.id, role: "member", joinedAt: Date())
+        guard !isMember(communityId: community.id, userId: userId) && !hasPendingRequest(communityId: community.id, userId: userId) else { return }
+        
+        let targetRole = community.isPrivate ? "pending" : "member"
+        let member = CommunityMember(userId: userId, communityId: community.id, role: targetRole, joinedAt: Date())
+        
         do {
             let inserted: CommunityMember = try await client
                 .from("community_members")
                 .insert(member)
                 .select().single().execute().value
             communityMembers.append(inserted)
-
-            // Update member count
-            if let index = communities.firstIndex(where: { $0.id == community.id }) {
-                communities[index].memberCount += 1
-                try await client
-                    .from("communities")
-                    .update(["member_count": communities[index].memberCount])
-                    .eq("id", value: community.id.uuidString)
-                    .execute()
+            
+            // Only update member count if they actually joined (not pending)
+            if targetRole == "member" {
+                await syncMemberCount(for: community.id)
+            } else if targetRole == "pending" {
+                // TODO: Trigger a notification to the community owner (community.creatorId)
+                // This requires a backend push notification setup or an in-app notifications table
+                print("Notification would be sent to owner \(community.creatorId) for pending request.")
             }
         } catch {
+            if error is CancellationError { return }
             errorMessage = "Failed to join community: \(error.localizedDescription)"
         }
     }
+    
+    func removePendingRequest(communityId: UUID, userId: UUID) async {
+        do {
+            try await client
+                .from("community_members")
+                .delete()
+                .eq("user_id", value: userId.uuidString)
+                .eq("community_id", value: communityId.uuidString)
+                .eq("role", value: "pending")
+                .execute()
 
+            communityMembers.removeAll { $0.communityId == communityId && $0.userId == userId && $0.role == "pending" }
+        } catch {
+            if error is CancellationError { return }
+            errorMessage = "Failed to remove request: \(error.localizedDescription)"
+        }
+    }
+    
+    func acceptJoinRequest(_ member: CommunityMember) async {
+        do {
+            try await client
+                .from("community_members")
+                .update(["role": "member"])
+                .eq("user_id", value: member.userId.uuidString)
+                .eq("community_id", value: member.communityId.uuidString)
+                .execute()
+            
+            // Re-fetch members from DB to confirm the change actually persisted
+            // (Supabase RLS may silently block the update, affecting 0 rows)
+            await fetchAllMembers()
+            
+            // Verify it actually changed
+            let updatedMember = communityMembers.first(where: {
+                $0.userId == member.userId && $0.communityId == member.communityId
+            })
+            
+            if updatedMember?.role == "member" {
+                await syncMemberCount(for: member.communityId)
+                
+                // Track resolution locally
+                let key = "\(member.userId.uuidString)_\(member.communityId.uuidString)"
+                resolvedRequests[key] = "accepted"
+                
+                // Simulate notification to the requester
+                let notif = AppNotification(userId: member.userId, message: "Your request to join was accepted.")
+                simulatedNotifications.append(notif)
+            } else {
+                errorMessage = "Could not accept request. Please check your database permissions (RLS policies) allow community creators to update members."
+            }
+        } catch {
+            if error is CancellationError { return }
+            errorMessage = "Failed to accept request: \(error.localizedDescription)"
+        }
+    }
+    
+    func rejectJoinRequest(_ member: CommunityMember) async {
+        do {
+            try await client
+                .from("community_members")
+                .delete()
+                .eq("user_id", value: member.userId.uuidString)
+                .eq("community_id", value: member.communityId.uuidString)
+                .execute()
+            
+            // Re-fetch members from DB to confirm the delete actually persisted
+            await fetchAllMembers()
+            
+            // Check if the member was actually deleted
+            let stillExists = communityMembers.contains(where: {
+                $0.userId == member.userId && $0.communityId == member.communityId
+            })
+            
+            if !stillExists {
+                // Track resolution locally (keep for notification history)
+                let key = "\(member.userId.uuidString)_\(member.communityId.uuidString)"
+                resolvedRequests[key] = "rejected"
+                
+                // Simulate notification to the requester
+                let notif = AppNotification(userId: member.userId, message: "Your request to join was declined.")
+                simulatedNotifications.append(notif)
+            } else {
+                errorMessage = "Could not reject request. Please check your database permissions (RLS policies) allow community creators to delete members."
+            }
+        } catch {
+            if error is CancellationError { return }
+            errorMessage = "Failed to reject request: \(error.localizedDescription)"
+        }
+    }
+    
+    func removeMember(_ member: CommunityMember) async {
+        do {
+            try await client
+                .from("community_members")
+                .delete()
+                .eq("user_id", value: member.userId.uuidString)
+                .eq("community_id", value: member.communityId.uuidString)
+                .execute()
+            
+            // Re-fetch members from DB to confirm the delete actually persisted
+            await fetchAllMembers()
+            
+            let stillExists = communityMembers.contains(where: {
+                $0.userId == member.userId && $0.communityId == member.communityId
+            })
+            
+            if !stillExists {
+                await syncMemberCount(for: member.communityId)
+            } else {
+                errorMessage = "Could not remove member. Please check your database permissions (RLS policies) allow community creators to delete members."
+            }
+        } catch {
+            if error is CancellationError { return }
+            errorMessage = "Failed to remove member: \(error.localizedDescription)"
+        }
+    }
+
+    /// Recompute the member count from the actual members array and sync to DB.
+    func syncMemberCount(for communityId: UUID) async {
+        let actualCount = communityMembers.filter {
+            $0.communityId == communityId && ($0.role == "member" || $0.role == "admin")
+        }.count
+        
+        if let index = communities.firstIndex(where: { $0.id == communityId }) {
+            communities[index].memberCount = actualCount
+            do {
+                try await client
+                    .from("communities")
+                    .update(["member_count": actualCount])
+                    .eq("id", value: communityId.uuidString)
+                    .execute()
+            } catch {
+                print("Failed to sync member count: \(error.localizedDescription)")
+            }
+        }
+    }
+    
     func leaveCommunity(_ community: Community, userId: UUID) async {
         do {
             try await client
@@ -253,15 +400,9 @@ class CommunityStore {
 
             communityMembers.removeAll { $0.communityId == community.id && $0.userId == userId }
 
-            if let index = communities.firstIndex(where: { $0.id == community.id }) {
-                communities[index].memberCount = max(0, communities[index].memberCount - 1)
-                try await client
-                    .from("communities")
-                    .update(["member_count": communities[index].memberCount])
-                    .eq("id", value: community.id.uuidString)
-                    .execute()
-            }
+            await syncMemberCount(for: community.id)
         } catch {
+            if error is CancellationError { return }
             errorMessage = "Failed to leave community: \(error.localizedDescription)"
         }
     }
@@ -284,6 +425,7 @@ class CommunityStore {
             }
             posts.insert(inserted, at: 0)
         } catch {
+            if error is CancellationError { return }
             errorMessage = "Failed to create post: \(error.localizedDescription)"
         }
     }
@@ -299,6 +441,7 @@ class CommunityStore {
             postComments.removeAll { $0.postId == post.id }
             postLikes.removeAll { $0.postId == post.id }
         } catch {
+            if error is CancellationError { return }
             errorMessage = "Failed to delete post: \(error.localizedDescription)"
         }
     }
@@ -373,6 +516,7 @@ class CommunityStore {
             }
             postComments.append(inserted)
         } catch {
+            if error is CancellationError { return }
             errorMessage = "Failed to add comment: \(error.localizedDescription)"
         }
     }
@@ -386,6 +530,7 @@ class CommunityStore {
                 .execute()
             postComments.removeAll { $0.id == comment.id }
         } catch {
+            if error is CancellationError { return }
             errorMessage = "Failed to delete comment: \(error.localizedDescription)"
         }
     }
@@ -435,6 +580,7 @@ class CommunityStore {
                 .value
             return fetched
         } catch {
+            if error is CancellationError { return [] }
             errorMessage = "Failed to fetch profiles: \(error.localizedDescription)"
             return []
         }
@@ -464,6 +610,7 @@ class CommunityStore {
                 communityMembers[index].role = "admin"
             }
         } catch {
+            if error is CancellationError { return }
             errorMessage = "Failed to transfer ownership: \(error.localizedDescription)"
         }
     }
@@ -496,6 +643,7 @@ class CommunityStore {
             communityMembers.removeAll { $0.communityId == community.id }
             posts.removeAll { $0.communityId == community.id }
         } catch {
+            if error is CancellationError { return }
             errorMessage = "Failed to dissolve community: \(error.localizedDescription)"
         }
     }
@@ -580,8 +728,9 @@ class CommunityStore {
                         communities[idx].creatorId = systemCreatorId
                     }
                 } catch {
-                    errorMessage = "Failed to update creator: \(error.localizedDescription)"
-                }
+            if error is CancellationError { return }
+            errorMessage = "Failed to update creator: \(error.localizedDescription)"
+        }
             }
             
             // Patch cover image if missing
@@ -597,8 +746,9 @@ class CommunityStore {
                         communities[idx].coverImageUrl = logoUrl
                     }
                 } catch {
-                    errorMessage = "Failed to update cover image: \(error.localizedDescription)"
-                }
+            if error is CancellationError { return }
+            errorMessage = "Failed to update cover image: \(error.localizedDescription)"
+        }
             }
             return
         }
@@ -669,6 +819,7 @@ class CommunityStore {
             }
             
         } catch {
+            if error is CancellationError { return }
             errorMessage = "Failed to seed Sondhara community: \(error.localizedDescription)"
         }
     }
