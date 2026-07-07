@@ -391,9 +391,12 @@ struct CommunityHome: View {
                 }
                 .onAppear {
                     let key = "hasSeenCommunityOnboarding_\(currentUserId.uuidString)"
-                    if !UserDefaults.standard.bool(forKey: key) {
+                    let hasCommunities = !createdCommunities.isEmpty || !joinedCommunities.isEmpty
+                    if !UserDefaults.standard.bool(forKey: key) && !hasCommunities {
                         showOnboarding = true
                     }
+                    // Mark as seen immediately so it never shows on subsequent app launches
+                    UserDefaults.standard.set(true, forKey: key)
                 }
                 .fullScreenCover(isPresented: $showOnboarding) {
                     emptyStateView
@@ -621,8 +624,11 @@ struct CommunityHome: View {
                 
                 // ── CTA Button ──
                 Button {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
-                        showJoinOptions = true
+                    withAnimation {
+                        if showOnboarding {
+                            UserDefaults.standard.set(true, forKey: "hasSeenCommunityOnboarding_\(currentUserId.uuidString)")
+                            showOnboarding = false
+                        }
                     }
                 } label: {
                     Text("Get Started")
