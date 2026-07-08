@@ -170,13 +170,14 @@ struct GlassCard: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .background(.ultraThinMaterial)
+            .background(Color.white.opacity(0.85)) // Crisp, high-contrast base
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(Color.white.opacity(0.15), lineWidth: 0.5)
+                    .stroke(Color.white.opacity(0.5), lineWidth: 1) // Stronger border
             )
-            .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
+            .shadow(color: AppTheme.orange.opacity(0.12), radius: 15, x: 0, y: 6) // Warmer, more noticeable shadow
+            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2) // Sharp inner shadow
     }
 }
 

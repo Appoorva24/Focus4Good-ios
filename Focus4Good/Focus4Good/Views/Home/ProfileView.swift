@@ -1,5 +1,8 @@
 import SwiftUI
 import PhotosUI
+import UniformTypeIdentifiers
+import Supabase
+import Auth
 
 struct ProfileView: View {
     @Environment(UserStore.self) private var userStore
@@ -10,11 +13,16 @@ struct ProfileView: View {
     @State private var showTimezoneAlert = false
     @State private var selectedPhotoItem: PhotosPickerItem? = nil
     @State private var profileImage: UIImage? = nil
-    @State private var showPhotoPicker = false
     @State private var showBadges = false
+    @State private var showPhotoError = false
 
-    private var userName: String { userStore.currentUser?.fullName ?? "Loading…" }
+    private var userName: String { userStore.currentUser?.fullName ?? "User" }
     private var userEmail: String { userStore.currentUser?.email ?? "" }
+
+    // Persistence key for profile image
+    private var profileImageKey: String {
+        "profileImage_\(userStore.currentUser?.id.uuidString ?? "default")"
+    }
 
     var body: some View {
         NavigationStack {
@@ -52,9 +60,7 @@ struct ProfileView: View {
                                 }
                             }
                             .overlay(alignment: .bottomTrailing) {
-                                Button {
-                                    showPhotoPicker = true
-                                } label: {
+                                PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
                                     ZStack {
                                         Circle()
                                             .fill(Color(.systemBackground))
@@ -169,16 +175,52 @@ struct ProfileView: View {
                         .foregroundStyle(AppTheme.orange)
                 }
             }
-            .photosPicker(isPresented: $showPhotoPicker, selection: $selectedPhotoItem, matching: .images)
         }
         .onChange(of: selectedPhotoItem) { _, newItem in
+            guard let item = newItem else { return }
             Task {
-                guard let item = newItem else { return }
-                if let data = try? await item.loadTransferable(type: Data.self),
-                   let image = UIImage(data: data) {
-                    profileImage = image
+                do {
+                    if let result = try await item.loadTransferable(type: PickedImage.self) {
+                        await MainActor.run {
+                            profileImage = result.uiImage
+                            // Persist to UserDefaults
+                            if let jpegData = result.uiImage.jpegData(compressionQuality: 0.8) {
+                                UserDefaults.standard.set(jpegData, forKey: profileImageKey)
+                            }
+                        }
+                    }
+                } catch {
+                    print("Photo load error: \(error)")
+                    await MainActor.run {
+                        showPhotoError = true
+                    }
+                }
+                await MainActor.run {
+                    selectedPhotoItem = nil
                 }
             }
+        }
+        .onAppear {
+            // Load persisted profile image
+            if profileImage == nil,
+               let data = UserDefaults.standard.data(forKey: profileImageKey),
+               let image = UIImage(data: data) {
+                profileImage = image
+            }
+            // Re-fetch profile if missing
+            if userStore.currentUser == nil {
+                Task {
+                    let session = try? await SupabaseManager.shared.client.auth.session
+                    if let userId = session?.user.id {
+                        await userStore.fetchCurrentUser(userId: userId)
+                    }
+                }
+            }
+        }
+        .alert("Invalid Photo", isPresented: $showPhotoError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Dimension is not correct or format is not supported. Please select a different image.")
         }
         .alert("Sign Out?", isPresented: $showSignOutAlert) {
             Button("Cancel", role: .cancel) {}
@@ -197,6 +239,10 @@ struct ProfileView: View {
             BadgesView()
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
+        }
+        // Auto-dismiss when user signs out
+        .onChange(of: userStore.isAuthenticated) { _, isAuth in
+            if !isAuth { dismiss() }
         }
     }
 
@@ -303,6 +349,21 @@ struct EditProfileView: View {
                 fullName = userStore.currentUser?.fullName ?? ""
                 email = userStore.currentUser?.email ?? ""
             }
+        }
+    }
+}
+
+// MARK: - Transferable Image Helper
+
+private struct PickedImage: Transferable {
+    let uiImage: UIImage
+
+    static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(importedContentType: .image) { data in
+            guard let image = UIImage(data: data) else {
+                throw CocoaError(.fileReadCorruptFile)
+            }
+            return PickedImage(uiImage: image)
         }
     }
 }

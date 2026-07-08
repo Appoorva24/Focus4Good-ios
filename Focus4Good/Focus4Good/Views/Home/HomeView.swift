@@ -16,6 +16,11 @@ struct HomeView: View {
     @State private var navigationPath = NavigationPath()
     @State private var showProfile = false
     @State private var appeared = false
+    @State private var profileImage: UIImage? = nil
+
+    private var profileImageKey: String {
+        "profileImage_\(userStore.currentUser?.id.uuidString ?? "default")"
+    }
 
     private var todayGoalProgress: Double {
         let today = Date()
@@ -64,21 +69,27 @@ struct HomeView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showProfile = true } label: {
-                        ZStack {
-                            Circle()
-                                .fill(AppTheme.orange.opacity(0.15))
-                            Image(systemName: "person.fill")
-                                .font(.system(size: 15, weight: .semibold))
+                        if let uiImage = profileImage {
+                            Image(uiImage: uiImage)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 32, height: 32)
+                                .clipShape(Circle())
+                        } else {
+                            Image(systemName: "person.crop.circle")
+                                .font(.system(size: 22))
                                 .foregroundStyle(AppTheme.orange)
                         }
-                        .frame(width: 38, height: 38)
-                        .clipShape(Circle())
                     }
-                    .buttonStyle(.plain)
                 }
             }
             .sheet(isPresented: $showProfile) {
                 ProfileView()
+            }
+            .onChange(of: showProfile) { _, isShowing in
+                if !isShowing {
+                    loadProfileImage()
+                }
             }
             .navigationDestination(for: HomeDestination.self) { dest in
                 switch dest {
@@ -87,6 +98,7 @@ struct HomeView: View {
                 }
             }
             .onAppear {
+                loadProfileImage()
                 if !UserDefaults.standard.bool(forKey: "didResetPoints") {
                     Task {
                         if let pts = userStore.currentUser?.focusPoints, pts > 0 {
@@ -99,6 +111,17 @@ struct HomeView: View {
                     appeared = true
                 }
             }
+        }
+    }
+
+    // MARK: - Subviews
+    
+    private func loadProfileImage() {
+        if let data = UserDefaults.standard.data(forKey: profileImageKey),
+           let image = UIImage(data: data) {
+            profileImage = image
+        } else {
+            profileImage = nil
         }
     }
 

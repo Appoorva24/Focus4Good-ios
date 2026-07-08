@@ -179,12 +179,15 @@ class UserStore {
     }
     
     func signOut() {
-        Task {
-            try? await client.auth.signOut()
-        }
+        // Sign out from Supabase (fire-and-forget is fine — we clear local state immediately)
+        Task { try? await client.auth.signOut() }
+        // Clear auth state
         currentUser = nil
         userSettings = nil
         isAuthenticated = false
+        isLoading = false
+        errorMessage = nil
+        isMfaRequired = false
         // Clear ALL cached store data
         TaskStore.shared.tasks = []
         TaskStore.shared.categories = []
@@ -349,6 +352,16 @@ class UserStore {
         let record = DonationRecord(goalTitle: goal.title, pointsSpent: goal.pointsCost, date: Date())
         donationHistory = [record] + donationHistory
         
+        // Send Thank You Email asynchronously
+        Task {
+            await EmailService.shared.sendDonationThankYouEmail(
+                to: user.email,
+                userName: user.fullName,
+                points: goal.pointsCost,
+                ngoName: "Sondhara Welfare and Trust"
+            )
+        }
+        
         return true
     }
     
@@ -437,3 +450,50 @@ class UserStore {
     }
 }
 
+// MARK: - Email Service
+
+class EmailService {
+    static let shared = EmailService()
+    
+    // TODO: Replace these with your actual EmailJS credentials from https://www.emailjs.com/
+    private let serviceId = "YOUR_SERVICE_ID"
+    private let templateId = "YOUR_TEMPLATE_ID"
+    private let publicKey = "YOUR_PUBLIC_KEY"
+    
+    private let endpoint = URL(string: "https://api.emailjs.com/api/v1.0/email/send")!
+    
+    private init() {}
+    
+    func sendDonationThankYouEmail(to email: String, userName: String, points: Int, ngoName: String) async {
+        let payload: [String: Any] = [
+            "service_id": serviceId,
+            "template_id": templateId,
+            "user_id": publicKey,
+            "template_params": [
+                "to_name": userName,
+                "to_email": email,
+                "points": points,
+                "ngo_name": ngoName
+            ]
+        ]
+        
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: payload) else { return }
+        
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = jsonData
+        
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
+                print("✅ Email sent successfully to \(email)")
+            } else {
+                let responseString = String(data: data, encoding: .utf8) ?? ""
+                print("❌ Failed to send email. Response: \(responseString)")
+            }
+        } catch {
+            print("❌ Failed to send email. Error: \(error.localizedDescription)")
+        }
+    }
+}

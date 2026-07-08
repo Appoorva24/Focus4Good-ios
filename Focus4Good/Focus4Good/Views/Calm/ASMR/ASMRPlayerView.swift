@@ -60,12 +60,15 @@ struct ASMRPlayerView: View {
         .background(AppTheme.appGradient.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
+            ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     dismiss()
                 } label: {
-                    Image(systemName: "chevron.down")
-                        .foregroundColor(.primary)
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(AppTheme.warmTextPrimary)
+                        .frame(width: 30, height: 30)
+                        .background(Circle().fill(.ultraThinMaterial))
                 }
             }
         }

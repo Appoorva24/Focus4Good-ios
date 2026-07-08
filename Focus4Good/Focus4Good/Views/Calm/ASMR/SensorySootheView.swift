@@ -22,6 +22,9 @@ struct SensorySootheView: View {
                 // 1. Top Section: 5 Playlists (Horizontally Scrollable)
                 playlistsSection
                 
+                // 1.5. Favourites Section
+                favouritesSection
+                
                 // 2. Middle Section: Recent Playlist
                 if recentPlaylist != nil {
                     recentPlaylistSection
@@ -94,6 +97,110 @@ struct SensorySootheView: View {
             }
 
         }
+    }
+
+    // MARK: - Favourites Section
+
+    private var favouriteSounds: [AsmrSound] {
+        let allSounds = ASMRData.playlists.flatMap { $0.sounds }
+        return allSounds.filter { favouriteNames.contains($0.name) }
+    }
+
+    private var favouritesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "heart.fill")
+                    .foregroundStyle(AppTheme.rose)
+                Text("Your Favourites")
+                    .font(.title2)
+                    .fontWeight(.bold)
+            }
+            .padding(.horizontal)
+
+            if favouriteSounds.isEmpty {
+                // Empty state
+                HStack(spacing: 12) {
+                    Image(systemName: "heart.slash")
+                        .font(.title2)
+                        .foregroundStyle(AppTheme.warmTextSecondary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("No favourites yet")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(AppTheme.warmTextPrimary)
+                        Text("Tap the heart icon on any sound to save it here.")
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.warmTextSecondary)
+                    }
+                    Spacer()
+                }
+                .padding(16)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color(.secondarySystemGroupedBackground))
+                )
+                .padding(.horizontal)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 14) {
+                        ForEach(favouriteSounds) { sound in
+                            Button {
+                                selectedSound = sound
+                                store.activeAsmrSound = sound
+                                store.showGlobalASMRPlayer = true
+                            } label: {
+                                favouriteSoundCard(sound)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 4)
+                }
+            }
+        }
+    }
+
+    private func favouriteSoundCard(_ sound: AsmrSound) -> some View {
+        VStack(spacing: 0) {
+            if !sound.imageUrl.isEmpty {
+                Image(sound.imageUrl)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 140, height: 140)
+                    .clipped()
+            } else {
+                Rectangle()
+                    .fill(Color(.systemGray5))
+                    .frame(width: 140, height: 140)
+                    .overlay(
+                        Image(systemName: "waveform")
+                            .font(.title)
+                            .foregroundStyle(.secondary)
+                    )
+            }
+
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(sound.name)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                    Text(sound.category)
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "play.fill")
+                    .font(.system(size: 10))
+                    .foregroundStyle(AppTheme.orange)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(Color(.secondarySystemGroupedBackground))
+        }
+        .frame(width: 140)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 3)
     }
     
     private func playlistCard(playlist: ASMRPlaylist) -> some View {

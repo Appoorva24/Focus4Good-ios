@@ -162,7 +162,7 @@ struct ProgressTrackerView: View {
             Text("Overview")
                 .font(.title3.bold())
 
-            HStack(alignment: .top, spacing: 12) {
+            HStack(spacing: 12) {
                 // Tasks Completed Card
                 Button { activeSheet = .tasksCompleted } label: {
                     tasksCompletedCard
@@ -203,7 +203,7 @@ struct ProgressTrackerView: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(16)
-        .frame(maxWidth: .infinity, minHeight: 200)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .glassCard()
     }
 
@@ -234,7 +234,7 @@ struct ProgressTrackerView: View {
             Spacer()
         }
         .padding(16)
-        .frame(maxWidth: .infinity, minHeight: 200, alignment: .topLeading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .glassCard()
     }
 

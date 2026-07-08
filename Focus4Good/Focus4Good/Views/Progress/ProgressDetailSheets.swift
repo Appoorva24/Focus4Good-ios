@@ -390,7 +390,7 @@ struct TasksCompletedDetailSheet: View {
                     .font(.caption.weight(.medium))
                     .foregroundStyle(AppTheme.warmTextSecondary)
             }
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(.vertical, 16)
             .glassCard()
 
@@ -408,7 +408,7 @@ struct TasksCompletedDetailSheet: View {
                     .font(.caption2)
                     .foregroundStyle(AppTheme.warmTextSecondary.opacity(0.7))
             }
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(.vertical, 16)
             .glassCard()
         }
