@@ -28,18 +28,18 @@ struct SplashView: View {
             VStack(spacing: 28) {
                 // ── Logo with glow halo ───────────────────────
                 ZStack {
-                    // Outer glow halo
+                    // Outer glow halo (subtle, so logo stays crisp)
                     Circle()
                         .fill(
                             RadialGradient(
                                 colors: [
-                                    AppTheme.orange.opacity(0.25),
-                                    AppTheme.orange.opacity(0.08),
+                                    AppTheme.orange.opacity(0.12),
+                                    AppTheme.orange.opacity(0.04),
                                     Color.clear
                                 ],
                                 center: .center,
-                                startRadius: 40,
-                                endRadius: 120
+                                startRadius: 50,
+                                endRadius: 130
                             )
                         )
                         .frame(width: 240, height: 240)
@@ -89,7 +89,7 @@ struct SplashView: View {
             // Halo glow
             withAnimation(.easeOut(duration: 1.0).delay(0.3)) {
                 haloScale = 1.0
-                haloOpacity = 1.0
+                haloOpacity = 0.6
             }
 
             // Tagline fade in
