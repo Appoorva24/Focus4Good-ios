@@ -154,7 +154,7 @@ struct BadgesView: View {
     }
 
     private func badgeCell(badge: ImpactBadge, unlocked: Bool) -> some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 10) {
             ZStack {
                 // Background shape (Gradient gem)
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
@@ -163,46 +163,46 @@ struct BadgesView: View {
                         ? LinearGradient(colors: [badge.color.opacity(0.7), badge.color], startPoint: .topLeading, endPoint: .bottomTrailing)
                         : LinearGradient(colors: [Color(.systemGray5)], startPoint: .top, endPoint: .bottom)
                     )
-                    .frame(width: 72, height: 72)
+                    .frame(width: 56, height: 56)
                     .shadow(color: unlocked ? badge.color.opacity(0.4) : .clear, radius: 10, x: 0, y: 6)
                 
                 // Glossy inner rim
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .stroke(LinearGradient(colors: [.white.opacity(0.8), .white.opacity(0.1)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1.5)
-                    .frame(width: 72, height: 72)
+                    .frame(width: 56, height: 56)
 
                 // The SF Symbol icon
                 Image(systemName: badge.icon)
-                    .font(.system(size: 32, weight: .semibold))
+                    .font(.system(size: 26, weight: .semibold))
                     .foregroundStyle(unlocked ? .white : Color(.systemGray3))
                     .symbolEffect(.bounce, value: unlocked)
                     .shadow(color: .black.opacity(0.2), radius: 2, x: 0, y: 2)
             }
 
-            VStack(spacing: 4) {
+            VStack(spacing: 3) {
                 Text(badge.title)
                     .font(.caption.weight(.bold))
                     .foregroundStyle(unlocked ? AppTheme.warmTextPrimary : AppTheme.warmTextSecondary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                    .minimumScaleFactor(0.75)
 
                 Text(unlocked ? badge.description : badge.requirement)
-                    .font(.system(size: 10))
+                    .font(.system(size: 9))
                     .foregroundStyle(AppTheme.warmTextSecondary)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
-                    .frame(height: 28)
+                    .frame(height: 24)
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
-        .padding(.horizontal, 8)
+        .frame(height: 140)
+        .padding(.horizontal, 4)
         .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .fill(Color(.systemBackground).opacity(unlocked ? 0.7 : 0.4))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .stroke(Color.white.opacity(unlocked ? 0.8 : 0.3), lineWidth: 1)
         )
         .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 4)

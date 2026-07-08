@@ -1,6 +1,8 @@
 import SwiftUI
 import PhotosUI
 import UniformTypeIdentifiers
+import Supabase
+import Auth
 
 struct ProfileView: View {
     @Environment(UserStore.self) private var userStore
@@ -14,7 +16,7 @@ struct ProfileView: View {
     @State private var showBadges = false
     @State private var showPhotoError = false
 
-    private var userName: String { userStore.currentUser?.fullName ?? "Loading…" }
+    private var userName: String { userStore.currentUser?.fullName ?? "User" }
     private var userEmail: String { userStore.currentUser?.email ?? "" }
 
     // Persistence key for profile image
@@ -204,6 +206,15 @@ struct ProfileView: View {
                let data = UserDefaults.standard.data(forKey: profileImageKey),
                let image = UIImage(data: data) {
                 profileImage = image
+            }
+            // Re-fetch profile if missing
+            if userStore.currentUser == nil {
+                Task {
+                    let session = try? await SupabaseManager.shared.client.auth.session
+                    if let userId = session?.user.id {
+                        await userStore.fetchCurrentUser(userId: userId)
+                    }
+                }
             }
         }
         .alert("Invalid Photo", isPresented: $showPhotoError) {
