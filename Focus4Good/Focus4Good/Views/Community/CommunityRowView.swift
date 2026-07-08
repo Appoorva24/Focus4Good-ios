@@ -7,9 +7,10 @@ struct CommunityRowView: View {
     @State private var showUnfollowAlert = false
     @State private var showPosts = false
     @State private var showCancelRequestAlert = false
+    @State private var showRequestedAlert = false
 
     private var currentUserId: UUID {
-        userStore.currentUser?.id ?? UUID()
+        userStore.currentUser?.id ?? UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
     }
 
     private var isJoined: Bool {
@@ -47,17 +48,21 @@ struct CommunityRowView: View {
                     } else {
                         Task {
                             await communityStore.joinCommunity(community, userId: currentUserId)
+                            if community.isPrivate {
+                                showRequestedAlert = true
+                            }
                         }
                     }
                 } label: {
-                    Text(isPending ? "Requested" : (community.isPrivate ? "Request" : "Join"))
+                    Text(isPending ? "Requested" : "Join")
                         .fontWeight(.semibold)
-                        .padding(.horizontal, 20)
+                        .frame(width: 100)
                         .padding(.vertical, 6)
                         .background(isPending ? Color.gray : AppTheme.orange)
                         .foregroundStyle(.white)
                         .clipShape(Capsule())
                 }
+                .buttonStyle(.plain)
             } else {
                 // Notification Badge for 'Your Communities' tab
                 let unreadCount = communityPosts.filter { $0.createdAt.timeIntervalSince1970 > lastVisited }.count
@@ -83,37 +88,63 @@ struct CommunityRowView: View {
     // MARK: - Community Info (icon + name + description)
 
     private var communityInfo: some View {
-        HStack {
+        HStack(alignment: .top, spacing: 12) {
             Group {
-                if let urlStr = community.coverImageUrl {
+                let displayUrlStr = community.profileImageUrl ?? community.coverImageUrl
+                if let urlStr = displayUrlStr {
                     if urlStr.hasPrefix("asset://") {
                         Image(urlStr.replacingOccurrences(of: "asset://", with: ""))
                             .resizable().scaledToFill()
                     } else if let url = URL(string: urlStr) {
                         AsyncImage(url: url) { phase in
                             if let img = phase.image { img.resizable().scaledToFill() }
-                            else { Image(systemName: "person.3.fill").font(.callout).foregroundStyle(.secondary) }
+                            else { Image(systemName: "person.3.fill").font(.title3).foregroundStyle(.secondary) }
                         }
                     } else {
-                        Image(systemName: "person.3.fill").font(.callout).foregroundStyle(.secondary)
+                        Image(systemName: "person.3.fill").font(.title3).foregroundStyle(.secondary)
                     }
                 } else {
-                    Image(systemName: "person.3.fill").font(.callout).foregroundStyle(.secondary)
+                    Image(systemName: "person.3.fill").font(.title3).foregroundStyle(.secondary)
                 }
             }
-            .frame(width: 40, height: 40)
+            .frame(width: 50, height: 50)
             .clipShape(Circle())
             .background(Circle().fill(Color(.systemGray5)))
 
-            VStack(alignment: .leading) {
-                Text(community.name)
-                    .font(.title3.bold())
-                    .foregroundStyle(.primary)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .center, spacing: 6) {
+                    Text(community.name)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                    
+                    Text(community.isPrivate ? "Private" : "Public")
+                        .font(.system(size: 10, weight: .bold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color(.secondarySystemFill))
+                        .foregroundStyle(.secondary)
+                        .clipShape(Capsule())
+                }
 
                 Text(community.description)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                    .lineLimit(2)
+                    .lineLimit(1)
+                    .multilineTextAlignment(.leading)
+                
+                HStack(spacing: 12) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "person.2.fill")
+                        Text("\(community.memberCount)")
+                    }
+                    HStack(spacing: 4) {
+                        Image(systemName: "text.bubble.fill")
+                        Text("\(communityPosts.count)")
+                    }
+                }
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color(.secondaryLabel))
             }
         }
     }
@@ -145,14 +176,19 @@ struct CommunityRowView: View {
             Text("Are you sure you want to unfollow \"\(community.name)\"? You will no longer see its posts in Your Communities.")
         }
         .alert("Cancel Request", isPresented: $showCancelRequestAlert) {
-            Button("Keep Request", role: .cancel) { }
             Button("Remove", role: .destructive) {
                 Task {
                     await communityStore.removePendingRequest(communityId: community.id, userId: currentUserId)
                 }
             }
+            Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Do you want to remove the request for joining this community?")
+            Text("Are you sure you want to cancel your request to join this community?")
+        }
+        .alert("Request Sent", isPresented: $showRequestedAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Your request to join this private community has been sent to the admin.")
         }
     }
 }
@@ -172,13 +208,14 @@ struct CommunityDetailView: View {
     @State private var showMembersSheet = false
     @State private var showPostsSheet = false
     @State private var showCancelRequestAlert = false
+    @State private var showRequestedAlert = false
 
     private var posts: [Post] {
         communityStore.posts(in: community)
     }
 
     private var currentUserId: UUID {
-        userStore.currentUser?.id ?? UUID()
+        userStore.currentUser?.id ?? UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
     }
 
     private var otherMembers: [CommunityMember] {
@@ -221,7 +258,8 @@ struct CommunityDetailView: View {
 
                         // Avatar
                         Group {
-                            if let urlStr = community.profileImageUrl {
+                            let displayUrlStr = community.profileImageUrl ?? community.coverImageUrl
+                            if let urlStr = displayUrlStr {
                                 if urlStr.hasPrefix("asset://") {
                                     Image(urlStr.replacingOccurrences(of: "asset://", with: ""))
                                         .resizable().scaledToFill()
@@ -341,6 +379,9 @@ struct CommunityDetailView: View {
                                 } else {
                                     Task {
                                         await communityStore.joinCommunity(community, userId: currentUserId)
+                                        if community.isPrivate {
+                                            showRequestedAlert = true
+                                        }
                                     }
                                 }
                             } label: {
@@ -413,6 +454,9 @@ struct CommunityDetailView: View {
                             } else {
                                 Task {
                                     await communityStore.joinCommunity(community, userId: currentUserId)
+                                    if community.isPrivate {
+                                        showRequestedAlert = true
+                                    }
                                 }
                             }
                         } label: {
@@ -452,14 +496,19 @@ struct CommunityDetailView: View {
             Text("You are the only member left. If you leave, this community will be dissolved. Are you sure you want to leave and dissolve \"\(community.name)\"?")
         }
         .alert("Cancel Request", isPresented: $showCancelRequestAlert) {
-            Button("Keep Request", role: .cancel) { }
             Button("Remove", role: .destructive) {
                 Task {
                     await communityStore.removePendingRequest(communityId: community.id, userId: currentUserId)
                 }
             }
+            Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Do you want to remove the request for joining this community?")
+            Text("Are you sure you want to cancel your request to join this community?")
+        }
+        .alert("Request Sent", isPresented: $showRequestedAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Your request to join this private community has been sent to the admin.")
         }
         .sheet(isPresented: $showTransferSheet) {
             TransferOwnershipSheet(community: community, otherMembers: otherMembers) {

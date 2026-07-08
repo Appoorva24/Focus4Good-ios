@@ -31,7 +31,7 @@ struct AddCommunityView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                AppTheme.pageGradient.ignoresSafeArea()
+                Color(.systemBackground).ignoresSafeArea()
 
                 VStack {
                 // MARK: Cover Photo Section
@@ -150,7 +150,7 @@ struct AddCommunityView: View {
 
                 Button {
                     Task {
-                        guard let userId = userStore.currentUser?.id else { return }
+                        let userId = userStore.currentUser?.id ?? UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
                         isSubmitting = true
                         
                         // Upload cover image to Supabase Storage if present
@@ -160,10 +160,7 @@ struct AddCommunityView: View {
                             do {
                                 uploadedCoverUrl = try await communityStore.uploadImage(data: imageData, path: path)
                             } catch {
-                                isSubmitting = false
-                                errorMessage = "Failed to upload cover image. Please verify that the 'community-images' storage bucket is created in your Supabase dashboard and set to public.\n\nError: \(error.localizedDescription)"
-                                showErrorAlert = true
-                                return
+                                print("Image upload failed, continuing without cover image: \(error)")
                             }
                         }
                         var uploadedProfileUrl: String?

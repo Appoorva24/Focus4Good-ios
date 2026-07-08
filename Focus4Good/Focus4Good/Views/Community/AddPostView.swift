@@ -55,10 +55,17 @@ struct AddPostView: View {
                         // MARK: - Author & Hashtag Header
                         HStack(alignment: .top, spacing: 12) {
                             Group {
-                                if let urlStr = currentUser?.profileImageUrl, let url = URL(string: urlStr) {
-                                    AsyncImage(url: url) { phase in
-                                        if let img = phase.image { img.resizable().scaledToFill() }
-                                        else { Image(systemName: "person.crop.circle.fill").font(.title).foregroundStyle(.secondary) }
+                                if let urlStr = currentUser?.profileImageUrl {
+                                    if urlStr.hasPrefix("asset://") {
+                                        Image(urlStr.replacingOccurrences(of: "asset://", with: ""))
+                                            .resizable().scaledToFill()
+                                    } else if let url = URL(string: urlStr) {
+                                        AsyncImage(url: url) { phase in
+                                            if let img = phase.image { img.resizable().scaledToFill() }
+                                            else { Image(systemName: "person.crop.circle.fill").font(.title).foregroundStyle(.secondary) }
+                                        }
+                                    } else {
+                                        Image(systemName: "person.crop.circle.fill").font(.title).foregroundStyle(.secondary)
                                     }
                                 } else {
                                     Image(systemName: "person.crop.circle.fill").font(.title).foregroundStyle(.secondary)
@@ -254,7 +261,7 @@ struct AddPostView: View {
     
     private func submitPost() {
         Task {
-            guard let authorId = currentUser?.id else { return }
+            let authorId = currentUser?.id ?? UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
             isSubmitting = true
             let tag = selectedHashtag == .none ? nil : (selectedHashtag == .custom ? customHashtagText : selectedHashtag.rawValue)
             

@@ -47,13 +47,20 @@ struct TransferOwnershipSheet: View {
                                 } label: {
                                     HStack {
                                         Group {
-                                            if let urlStr = profile.profileImageUrl, let url = URL(string: urlStr) {
-                                                AsyncImage(url: url) { phase in
-                                                    if let img = phase.image { img.resizable().scaledToFill() }
-                                                    else { Image(systemName: "person.fill").font(.subheadline).foregroundStyle(.secondary) }
+                                            if let urlStr = profile.profileImageUrl {
+                                                if urlStr.hasPrefix("asset://") {
+                                                    Image(urlStr.replacingOccurrences(of: "asset://", with: ""))
+                                                        .resizable().scaledToFill()
+                                                } else if let url = URL(string: urlStr) {
+                                                    AsyncImage(url: url) { phase in
+                                                        if let img = phase.image { img.resizable().scaledToFill() }
+                                                        else { Image(systemName: "person.crop.circle.fill").foregroundStyle(.secondary) }
+                                                    }
+                                                } else {
+                                                    Image(systemName: "person.crop.circle.fill").foregroundStyle(.secondary)
                                                 }
                                             } else {
-                                                Image(systemName: "person.fill").font(.subheadline).foregroundStyle(.secondary)
+                                                Image(systemName: "person.crop.circle.fill").foregroundStyle(.secondary)
                                             }
                                         }
                                         .frame(width: 36, height: 36)

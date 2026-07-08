@@ -42,6 +42,15 @@ struct CommunityMembersSheet: View {
         userStore.currentUser?.id == community.creatorId
     }
     
+    private var isAdmin: Bool {
+        if isOwner { return true }
+        guard let userId = userStore.currentUser?.id else { return false }
+        if let member = communityStore.communityMembers.first(where: { $0.communityId == community.id && $0.userId == userId }) {
+            return member.role == "admin" || member.role == "owner"
+        }
+        return false
+    }
+    
     var body: some View {
         NavigationStack {
             Group {
@@ -57,7 +66,7 @@ struct CommunityMembersSheet: View {
                 } else {
                     List {
                         // Pending Requests Section
-                        if isOwner && !pendingRows.isEmpty {
+                        if isAdmin && !pendingRows.isEmpty {
                             Section("Pending Requests") {
                                 ForEach(pendingRows) { row in
                                     pendingMemberRow(row)
@@ -207,13 +216,20 @@ struct CommunityMembersSheet: View {
     @ViewBuilder
     private func avatarView(_ row: CommunityMemberRow) -> some View {
         Group {
-            if let urlStr = row.imageUrl, let url = URL(string: urlStr) {
-                AsyncImage(url: url) { phase in
-                    if let img = phase.image {
-                        img.resizable().scaledToFill()
-                    } else {
-                        initialsView(row.name)
+            if let urlStr = row.imageUrl {
+                if urlStr.hasPrefix("asset://") {
+                    Image(urlStr.replacingOccurrences(of: "asset://", with: ""))
+                        .resizable().scaledToFill()
+                } else if let url = URL(string: urlStr) {
+                    AsyncImage(url: url) { phase in
+                        if let img = phase.image {
+                            img.resizable().scaledToFill()
+                        } else {
+                            initialsView(row.name)
+                        }
                     }
+                } else {
+                    initialsView(row.name)
                 }
             } else {
                 initialsView(row.name)

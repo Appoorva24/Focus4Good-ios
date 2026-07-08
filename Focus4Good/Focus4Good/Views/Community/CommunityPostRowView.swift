@@ -27,16 +27,14 @@ struct CommunityPostRowView: View {
     @Environment(CommunityStore.self) private var communityStore
     @Environment(UserStore.self) private var userStore
 
-    private var currentUserId: UUID? { userStore.currentUser?.id }
+    private var currentUserId: UUID { userStore.currentUser?.id ?? UUID(uuidString: "00000000-0000-0000-0000-000000000000")! }
 
     private var isLiked: Bool {
-        guard let uid = currentUserId else { return false }
-        return communityStore.isLiked(postId: post.id, userId: uid)
+        return communityStore.isLiked(postId: post.id, userId: currentUserId)
     }
 
     private var isSaved: Bool {
-        guard let uid = currentUserId else { return false }
-        return communityStore.isSaved(postId: post.id, userId: uid)
+        return communityStore.isSaved(postId: post.id, userId: currentUserId)
     }
 
     private var commentCount: Int {
@@ -48,10 +46,17 @@ struct CommunityPostRowView: View {
             // ── Author Header ──
             HStack(spacing: 12) {
                 Group {
-                    if let urlStr = post.authorImageUrl, let url = URL(string: urlStr) {
-                        AsyncImage(url: url) { phase in
-                            if let img = phase.image { img.resizable().scaledToFill() }
-                            else { Image(systemName: "person.crop.circle.fill").font(.title2).foregroundStyle(.secondary) }
+                    if let urlStr = post.authorImageUrl {
+                        if urlStr.hasPrefix("asset://") {
+                            Image(urlStr.replacingOccurrences(of: "asset://", with: ""))
+                                .resizable().scaledToFill()
+                        } else if let url = URL(string: urlStr) {
+                            AsyncImage(url: url) { phase in
+                                if let img = phase.image { img.resizable().scaledToFill() }
+                                else { Image(systemName: "person.crop.circle.fill").font(.title2).foregroundStyle(.secondary) }
+                            }
+                        } else {
+                            Image(systemName: "person.crop.circle.fill").font(.title2).foregroundStyle(.secondary)
                         }
                     } else {
                         Image(systemName: "person.crop.circle.fill").font(.title2).foregroundStyle(.secondary)
@@ -180,8 +185,7 @@ struct CommunityPostRowView: View {
                 HStack(spacing: 6) {
                     // Like Button (Heart Icon)
                     Button {
-                        guard let uid = currentUserId else { return }
-                        Task { await communityStore.toggleLike(postId: post.id, userId: uid) }
+                        Task { await communityStore.toggleLike(postId: post.id, userId: currentUserId) }
                     } label: {
                         Image(systemName: isLiked ? "heart.fill" : "heart")
                             .font(.system(size: 18))
@@ -221,10 +225,8 @@ struct CommunityPostRowView: View {
                 
                 Spacer()
                 
-                // Save Button
                 Button {
-                    guard let uid = currentUserId else { return }
-                    Task { await communityStore.toggleSave(postId: post.id, userId: uid) }
+                    Task { await communityStore.toggleSave(postId: post.id, userId: currentUserId) }
                 } label: {
                     Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
                         .font(.system(size: 18))
@@ -297,13 +299,20 @@ struct PostLikesSheetView: View {
                     List(likers) { user in
                         HStack(spacing: 12) {
                             Group {
-                                if let urlStr = user.profileImageUrl, let url = URL(string: urlStr) {
-                                    AsyncImage(url: url) { phase in
-                                        if let img = phase.image { img.resizable().scaledToFill() }
-                                        else { Image(systemName: "person.crop.circle.fill").font(.subheadline).foregroundStyle(.secondary) }
+                                if let urlStr = user.profileImageUrl {
+                                    if urlStr.hasPrefix("asset://") {
+                                        Image(urlStr.replacingOccurrences(of: "asset://", with: ""))
+                                            .resizable().scaledToFill()
+                                    } else if let url = URL(string: urlStr) {
+                                        AsyncImage(url: url) { phase in
+                                            if let img = phase.image { img.resizable().scaledToFill() }
+                                            else { Image(systemName: "person.crop.circle.fill").foregroundStyle(.secondary) }
+                                        }
+                                    } else {
+                                        Image(systemName: "person.crop.circle.fill").foregroundStyle(.secondary)
                                     }
                                 } else {
-                                    Image(systemName: "person.crop.circle.fill").font(.subheadline).foregroundStyle(.secondary)
+                                    Image(systemName: "person.crop.circle.fill").foregroundStyle(.secondary)
                                 }
                             }
                             .frame(width: 40, height: 40)
@@ -382,13 +391,20 @@ struct CommentsSheetView: View {
                         ForEach(comments) { comment in
                             HStack(alignment: .top, spacing: 12) {
                                 Group {
-                                    if let urlStr = comment.authorImageUrl, let url = URL(string: urlStr) {
-                                        AsyncImage(url: url) { phase in
-                                            if let img = phase.image { img.resizable().scaledToFill() }
-                                            else { Image(systemName: "person.fill").font(.subheadline).foregroundStyle(.secondary) }
+                                    if let urlStr = comment.authorImageUrl {
+                                        if urlStr.hasPrefix("asset://") {
+                                            Image(urlStr.replacingOccurrences(of: "asset://", with: ""))
+                                                .resizable().scaledToFill()
+                                        } else if let url = URL(string: urlStr) {
+                                            AsyncImage(url: url) { phase in
+                                                if let img = phase.image { img.resizable().scaledToFill() }
+                                                else { Image(systemName: "person.crop.circle.fill").foregroundStyle(.secondary) }
+                                            }
+                                        } else {
+                                            Image(systemName: "person.crop.circle.fill").foregroundStyle(.secondary)
                                         }
                                     } else {
-                                        Image(systemName: "person.fill").font(.subheadline).foregroundStyle(.secondary)
+                                        Image(systemName: "person.crop.circle.fill").foregroundStyle(.secondary)
                                     }
                                 }
                                 .frame(width: 36, height: 36)
@@ -423,13 +439,20 @@ struct CommentsSheetView: View {
                     Divider()
                     HStack(alignment: .bottom, spacing: 12) {
                         Group {
-                            if let urlStr = currentUser?.profileImageUrl, let url = URL(string: urlStr) {
-                                AsyncImage(url: url) { phase in
-                                    if let img = phase.image { img.resizable().scaledToFill() }
-                                    else { Image(systemName: "person.fill").font(.callout).foregroundStyle(.secondary) }
+                            if let urlStr = currentUser?.profileImageUrl {
+                                if urlStr.hasPrefix("asset://") {
+                                    Image(urlStr.replacingOccurrences(of: "asset://", with: ""))
+                                        .resizable().scaledToFill()
+                                } else if let url = URL(string: urlStr) {
+                                    AsyncImage(url: url) { phase in
+                                        if let img = phase.image { img.resizable().scaledToFill() }
+                                        else { Image(systemName: "person.crop.circle.fill").foregroundStyle(.secondary) }
+                                    }
+                                } else {
+                                    Image(systemName: "person.crop.circle.fill").foregroundStyle(.secondary)
                                 }
                             } else {
-                                Image(systemName: "person.fill").font(.callout).foregroundStyle(.secondary)
+                                Image(systemName: "person.crop.circle.fill").foregroundStyle(.secondary)
                             }
                         }
                         .frame(width: 32, height: 32)
@@ -446,8 +469,8 @@ struct CommentsSheetView: View {
                                 .padding(.vertical, 8)
                             
                             Button {
-                                guard !newCommentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                                      let userId = currentUser?.id else { return }
+                                guard !newCommentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+                                let userId = currentUser?.id ?? UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
                                 Task {
                                     await communityStore.addComment(
                                         content: newCommentText.trimmingCharacters(in: .whitespacesAndNewlines),
